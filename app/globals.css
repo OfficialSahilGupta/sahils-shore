@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Shore Light Palette */
+    --background: #faf7f2;
+    --surface: #ffffff;
+    --surface-muted: #f1ebe0;
+    --primary: #1f7a8c;
+    --primary-soft: #bfdbf7;
+    --accent-warm: #e0a458;
+    --text: #14232e;
+    --text-muted: #5b6b76;
+    --border: #e6dfd5;
+    --success: #2e9e6b;
+    --warning: #d9922b;
+    --danger: #d1495b;
+
+    /* Semantic mappings */
+    --primary-foreground: #ffffff;
+    --accent: #bfdbf7;
+    --accent-foreground: #14232e;
+    --ring: #1f7a8c;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Midnight Tide Dark Palette */
+    --background: #0b1620;
+    --surface: #122231;
+    --surface-muted: #1a2e40;
+    --primary: #4fb3c8;
+    --primary-soft: #1d4558;
+    --accent-warm: #e8b26a;
+    --text: #e6eef3;
+    --text-muted: #8fa3b0;
+    --border: #1e354a;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+
+    /* Semantic mappings */
+    --primary-foreground: #0b1620;
+    --accent: #1d4558;
+    --accent-foreground: #e6eef3;
+    --ring: #4fb3c8;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--text);
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom scrollbar matching calm coastal theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-muted);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
