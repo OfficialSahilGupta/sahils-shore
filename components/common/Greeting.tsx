@@ -66,18 +66,18 @@ export function Greeting({ className = "" }: GreetingProps) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <div className="flex items-center gap-2 text-xs font-medium text-text-muted">
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1" suppressHydrationWarning>
           <Calendar className="h-3.5 w-3.5 text-primary" />
           {dateString || "Loading date..."}
         </span>
         <span className="text-border">•</span>
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1" suppressHydrationWarning>
           <Clock className="h-3.5 w-3.5 text-accent-warm" />
           {timeString ? `${timeString} IST` : "IST"}
         </span>
       </div>
       <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-text sm:text-3xl">
-        <span>{greeting}</span>
+        <span suppressHydrationWarning>{greeting}</span>
         <Sparkles className="hidden h-5 w-5 shrink-0 animate-pulse text-accent-warm sm:inline-block" />
       </h1>
       <p className="text-sm text-text-muted">

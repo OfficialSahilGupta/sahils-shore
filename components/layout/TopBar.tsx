@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { WaveLogo } from "@/components/common/WaveLogo";
 import { getEnabledModules, getModuleByRoute, AppModule } from "@/lib/modules";
+import { useModules } from "@/lib/modules/ModuleContext";
 import { ModuleIcon } from "@/components/common/ModuleIcon";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +26,7 @@ import {
   Sparkles,
   CornerDownLeft,
   LogOut,
+  Settings,
 } from "lucide-react";
 
 export function TopBar() {
@@ -72,7 +74,8 @@ export function TopBar() {
   };
 
   const currentModule = getModuleByRoute(pathname);
-  const allModules = getEnabledModules();
+  const { enabledModules } = useModules();
+  const allModules = enabledModules;
 
   // Filter modules based on search query
   const filteredModules = allModules.filter(
@@ -322,7 +325,7 @@ export function TopBar() {
                   <div className="flex items-center justify-between rounded-lg bg-surface-muted px-2 py-1.5 text-text">
                     <span className="text-text-muted">App Version</span>
                     <span className="font-mono font-medium text-primary">
-                      Phase 1 Auth & DB
+                      Phase 2 Theme OS
                     </span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-surface-muted px-2 py-1.5 text-text">
@@ -344,6 +347,17 @@ export function TopBar() {
                     className="hover:bg-primary-soft/30 w-full rounded-lg py-1.5 text-center text-xs font-medium text-primary transition-colors"
                   >
                     View Shore Home
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      router.push("/settings");
+                    }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-center text-xs font-medium text-text transition-colors hover:bg-surface-muted"
+                  >
+                    <Settings className="h-3.5 w-3.5 text-primary" />
+                    <span>Settings & Customization</span>
                   </button>
 
                   <button

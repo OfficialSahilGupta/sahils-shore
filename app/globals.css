@@ -1,10 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Geist:wght@100..900&family=Inter:wght@100..900&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Shore Light Palette */
+    /* Shore Light Palette (Default) */
     --background: #faf7f2;
     --surface: #ffffff;
     --surface-muted: #f1ebe0;
@@ -24,6 +26,10 @@
     --accent-foreground: #14232e;
     --ring: #1f7a8c;
     --radius: 0.75rem;
+
+    /* Atmosphere tokens */
+    --glass-blur: 12px;
+    --glass-opacity: 0.85;
   }
 
   .dark {
@@ -60,7 +66,203 @@
       "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
+}
+
+/* ============================================================================
+   Typography Selection Engine (Forces exact font family across all elements)
+   ============================================================================ */
+html[data-font="inter"],
+html[data-font="inter"] body,
+html[data-font="inter"] button,
+html[data-font="inter"] input,
+html[data-font="inter"] select,
+html[data-font="inter"] textarea,
+[data-font="inter"] .font-sans {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+html[data-font="geist"],
+html[data-font="geist"] body,
+html[data-font="geist"] button,
+html[data-font="geist"] input,
+html[data-font="geist"] select,
+html[data-font="geist"] textarea,
+[data-font="geist"] .font-sans {
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+html[data-font="dm-sans"],
+html[data-font="dm-sans"] body,
+html[data-font="dm-sans"] button,
+html[data-font="dm-sans"] input,
+html[data-font="dm-sans"] select,
+html[data-font="dm-sans"] textarea,
+[data-font="dm-sans"] .font-sans {
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+html[data-font="lora"],
+html[data-font="lora"] body,
+html[data-font="lora"] button,
+html[data-font="lora"] input,
+html[data-font="lora"] select,
+html[data-font="lora"] textarea,
+[data-font="lora"] .font-sans {
+  font-family: "Lora", Georgia, serif !important;
+}
+
+/* ============================================================================
+   Border Radius Engine (Instant visual reaction for sharp, subtle, pill, full)
+   ============================================================================ */
+[data-radius="none"] .rounded-sm,
+[data-radius="none"] .rounded,
+[data-radius="none"] .rounded-md,
+[data-radius="none"] .rounded-lg,
+[data-radius="none"] .rounded-xl,
+[data-radius="none"] .rounded-2xl,
+[data-radius="none"] .rounded-3xl {
+  border-radius: 0px !important;
+}
+
+[data-radius="sm"] .rounded-sm { border-radius: 4px !important; }
+[data-radius="sm"] .rounded-md { border-radius: 6px !important; }
+[data-radius="sm"] .rounded-lg { border-radius: 8px !important; }
+[data-radius="sm"] .rounded-xl { border-radius: 10px !important; }
+[data-radius="sm"] .rounded-2xl { border-radius: 12px !important; }
+[data-radius="sm"] .rounded-3xl { border-radius: 14px !important; }
+
+[data-radius="md"] .rounded-sm { border-radius: 6px !important; }
+[data-radius="md"] .rounded-md { border-radius: 10px !important; }
+[data-radius="md"] .rounded-lg { border-radius: 14px !important; }
+[data-radius="md"] .rounded-xl { border-radius: 16px !important; }
+[data-radius="md"] .rounded-2xl { border-radius: 20px !important; }
+[data-radius="md"] .rounded-3xl { border-radius: 24px !important; }
+
+[data-radius="lg"] .rounded-sm { border-radius: 8px !important; }
+[data-radius="lg"] .rounded-md { border-radius: 14px !important; }
+[data-radius="lg"] .rounded-lg { border-radius: 20px !important; }
+[data-radius="lg"] .rounded-xl { border-radius: 24px !important; }
+[data-radius="lg"] .rounded-2xl { border-radius: 28px !important; }
+[data-radius="lg"] .rounded-3xl { border-radius: 32px !important; }
+
+[data-radius="full"] .rounded-sm,
+[data-radius="full"] .rounded-md,
+[data-radius="full"] .rounded-lg,
+[data-radius="full"] .rounded-xl,
+[data-radius="full"] .rounded-2xl,
+[data-radius="full"] .rounded-3xl {
+  border-radius: 9999px !important;
+}
+
+/* ============================================================================
+   Spatial Density Engine (Compact vs Comfortable vs Spacious)
+   ============================================================================ */
+/* Compact mode */
+[data-density="compact"] main {
+  padding: 0.75rem 1rem 4rem 1rem !important;
+}
+[data-density="compact"] section {
+  padding: 0.85rem !important;
+}
+[data-density="compact"] .space-y-8 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1.15rem !important;
+}
+[data-density="compact"] .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.85rem !important;
+}
+[data-density="compact"] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.55rem !important;
+}
+[data-density="compact"] .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.4rem !important;
+}
+[data-density="compact"] .gap-6 {
+  gap: 0.85rem !important;
+}
+[data-density="compact"] .gap-4 {
+  gap: 0.55rem !important;
+}
+[data-density="compact"] .gap-3 {
+  gap: 0.45rem !important;
+}
+[data-density="compact"] .p-5 {
+  padding: 0.85rem !important;
+}
+[data-density="compact"] .p-4 {
+  padding: 0.65rem !important;
+}
+
+/* Spacious mode */
+[data-density="spacious"] main {
+  padding: 2.5rem 3rem 8rem 3rem !important;
+}
+[data-density="spacious"] section {
+  padding: 1.85rem !important;
+}
+[data-density="spacious"] .space-y-8 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 2.75rem !important;
+}
+[data-density="spacious"] .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 2.25rem !important;
+}
+[data-density="spacious"] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1.5rem !important;
+}
+[data-density="spacious"] .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1.25rem !important;
+}
+[data-density="spacious"] .gap-6 {
+  gap: 2.25rem !important;
+}
+[data-density="spacious"] .gap-4 {
+  gap: 1.5rem !important;
+}
+[data-density="spacious"] .gap-3 {
+  gap: 1.25rem !important;
+}
+[data-density="spacious"] .p-5 {
+  padding: 1.85rem !important;
+}
+[data-density="spacious"] .p-4 {
+  padding: 1.4rem !important;
+}
+
+/* ============================================================================
+   Background Atmosphere Styles
+   ============================================================================ */
+[data-bg-style="gradient"] body {
+  background: radial-gradient(
+      circle at top left,
+      var(--primary-soft) 0%,
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      var(--surface-muted) 0%,
+      transparent 40%
+    ),
+    var(--background);
+  background-attachment: fixed;
+}
+
+[data-bg-style="image"] body {
+  background-image: var(--bg-image-url);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+[data-bg-style="glass"] .bg-surface {
+  backdrop-filter: blur(var(--glass-blur, 12px));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 12px));
+  background-color: color-mix(
+    in srgb,
+    var(--surface) calc(var(--glass-opacity, 0.85) * 100%),
+    transparent
+  ) !important;
 }
 
 /* Custom scrollbar matching calm coastal theme */
@@ -74,7 +276,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--surface-muted);
+  background: var(--border);
   border-radius: 9999px;
 }
 

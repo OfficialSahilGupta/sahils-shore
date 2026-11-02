@@ -158,7 +158,8 @@ _Update this section after every phase so context survives between sessions._
 
 - [x] Phase 0: Setup, app shell, placeholder pages, navigation, theme tokens, PWA basics (Completed)
 - [x] Phase 1: Supabase auth, schema (including `timeline_events`), RLS, generated types (Completed)
-- [ ] Phase 2: Theme engine and presets
+- [x] Phase 2: Theme engine and presets (Completed)
+- [ ] Phase 3: Todos + Daily Tracker + Habits
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -173,4 +174,9 @@ _Update this section after every phase so context survives between sessions._
   - Added single-user lock in `/auth/callback` enforcing `ALLOWED_EMAIL` with immediate session termination and redirect on unauthorized attempts.
   - Protected routes via Next.js middleware using `@supabase/ssr` session refresh.
   - Added reusable `writeTimelineEvent()` in `lib/timeline/index.ts` and `/api/health` diagnostic endpoint.
+  - Implemented 7 theme presets (Shore, Midnight Tide, Sakura, Forest, Sunset, Mono, Ocean) with WCAG AA compliance.
+  - Added dynamic accent color generator with relative luminance contrast checker (warning if < 4.5:1).
+  - Built zero-FOUC anti-flash engine with inline pre-paint script, localStorage caching, and Supabase `settings.theme` synchronization.
+  - Added module customizer supporting drag-and-drop reordering, inline renaming, and visibility toggles, directly driving `Sidebar` and `MobileNav`.
+  - Added Settings > Privacy stub for PIN/Biometric module protection saving to `settings.privacy`.
 - Known issues / TODOs: _(none yet)_

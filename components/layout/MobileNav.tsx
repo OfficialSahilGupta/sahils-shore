@@ -3,12 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  AppModule,
-  CATEGORY_LABELS,
-  getEnabledModules,
-  ModuleCategory,
-} from "@/lib/modules";
+import { CATEGORY_LABELS, ModuleCategory } from "@/lib/modules";
+import { useModules } from "@/lib/modules/ModuleContext";
 import { ModuleIcon } from "@/components/common/ModuleIcon";
 import { WaveLogo } from "@/components/common/WaveLogo";
 import { cn } from "@/lib/utils";
@@ -25,6 +21,7 @@ import {
   FileText,
   BookOpen,
   ArrowRight,
+  Settings,
 } from "lucide-react";
 
 export function MobileNav() {
@@ -33,15 +30,14 @@ export function MobileNav() {
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
-  const enabledModules = getEnabledModules();
+  const { enabledModules, mobileNavModules } = useModules();
   const categories: ModuleCategory[] = ["core", "growth", "life", "insights"];
 
-  const mainTabs = [
-    { name: "Today", route: "/", icon: Compass },
-    { name: "Tasks", route: "/todos", icon: CheckSquare },
-    { name: "Track", route: "/tracker", icon: Activity },
-    { name: "Money", route: "/expenses", icon: Wallet },
-  ];
+  // Use configured mobile nav modules or top 4 enabled modules
+  const activeTabs =
+    mobileNavModules.length >= 3
+      ? mobileNavModules.slice(0, 4)
+      : enabledModules.slice(0, 4);
 
   const quickAddOptions = [
     {
@@ -104,23 +100,23 @@ export function MobileNav() {
           onClick={() => setQuickAddOpen(false)}
         >
           <div
-            className="animate-in slide-in-from-bottom max-h-[80vh] w-full overflow-y-auto rounded-t-3xl border-t border-border bg-surface p-5 pb-8 duration-200"
+            className="animate-in slide-in-from-bottom w-full rounded-t-3xl border-t border-border bg-surface p-5 pb-8 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
+            <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-text">
                 <Sparkles className="h-4 w-4 text-accent-warm" />
-                <h3 className="text-base font-semibold text-text">Quick Add Action</h3>
+                <span>Quick Log / Add Action</span>
               </div>
               <button
                 onClick={() => setQuickAddOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-muted text-text-muted hover:text-text"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-text-muted hover:text-text"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               {quickAddOptions.map((opt) => (
                 <button
                   key={opt.route}
@@ -128,15 +124,13 @@ export function MobileNav() {
                     setQuickAddOpen(false);
                     router.push(opt.route);
                   }}
-                  className="bg-surface-muted/60 hover:border-primary/50 flex flex-col items-start rounded-2xl border border-border p-3 text-left transition-colors"
+                  className="flex flex-col items-start gap-1 rounded-2xl border border-border bg-surface-muted/60 p-3 text-left transition-colors hover:bg-surface-muted"
                 >
-                  <div className="shadow-xs mb-2 flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-primary">
+                  <div className="rounded-xl border border-border bg-surface p-2 text-primary shadow-sm">
                     <opt.icon className="h-4 w-4" />
                   </div>
-                  <span className="text-xs font-semibold text-text">{opt.label}</span>
-                  <span className="mt-0.5 line-clamp-1 text-[10px] text-text-muted">
-                    {opt.desc}
-                  </span>
+                  <span className="mt-1 text-xs font-semibold text-text">{opt.label}</span>
+                  <span className="line-clamp-1 text-[10px] text-text-muted">{opt.desc}</span>
                 </button>
               ))}
             </div>
@@ -144,51 +138,63 @@ export function MobileNav() {
         </div>
       )}
 
-      {/* Bottom Navigation Bar */}
+      {/* Persistent Bottom Tab Bar (Mobile) */}
       <nav
-        aria-label="Mobile navigation"
-        className="bg-surface/95 fixed bottom-0 left-0 right-0 z-30 flex h-16 select-none items-center justify-around border-t border-border px-2 backdrop-blur-lg md:hidden"
+        aria-label="Mobile Navigation"
+        className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-border bg-surface/90 px-2 backdrop-blur-lg md:hidden"
       >
-        {mainTabs.map((tab) => {
+        {activeTabs.map((tab) => {
           const isActive =
             tab.route === "/" ? pathname === "/" : pathname.startsWith(tab.route);
 
           return (
             <Link
-              key={tab.route}
+              key={tab.id}
               href={tab.route}
               className={cn(
-                "relative flex h-full w-14 flex-col items-center justify-center gap-1 transition-colors",
-                isActive
-                  ? "font-semibold text-primary"
-                  : "text-text-muted hover:text-text",
+                "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
+                isActive ? "text-primary" : "text-text-muted hover:text-text"
               )}
             >
-              <tab.icon className={cn("h-5 w-5", isActive && "stroke-[2.2]")} />
-              <span className="text-[10px] tracking-tight">{tab.name}</span>
-              {isActive && (
-                <span className="absolute top-1.5 h-1 w-1 rounded-full bg-primary" />
-              )}
+              <div
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
+                  isActive && "bg-primary-soft/40"
+                )}
+              >
+                <ModuleIcon
+                  name={tab.iconName}
+                  className={cn("h-4 w-4", isActive ? "text-primary" : "text-text-muted")}
+                />
+              </div>
+              <span className="truncate max-w-[64px]">{tab.shortName}</span>
             </Link>
           );
         })}
 
-        {/* More Tab Trigger */}
+        {/* 5th Tab: "More" Drawer Trigger */}
         <button
           onClick={() => setMoreSheetOpen(true)}
           className={cn(
-            "relative flex h-full w-14 flex-col items-center justify-center gap-1 transition-colors",
-            moreSheetOpen
-              ? "font-semibold text-primary"
-              : "text-text-muted hover:text-text",
+            "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
+            moreSheetOpen || pathname.startsWith("/settings")
+              ? "text-primary"
+              : "text-text-muted hover:text-text"
           )}
         >
-          <LayoutGrid className="h-5 w-5" />
-          <span className="text-[10px] tracking-tight">More</span>
+          <div
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
+              (moreSheetOpen || pathname.startsWith("/settings")) && "bg-primary-soft/40"
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </div>
+          <span>More</span>
         </button>
       </nav>
 
-      {/* "More" Sheet displaying all 16 modules */}
+      {/* "More" Sheet displaying all modules + Settings */}
       {moreSheetOpen && (
         <div
           role="dialog"
@@ -205,8 +211,8 @@ export function MobileNav() {
               <div className="flex items-center gap-2.5">
                 <WaveLogo size={28} />
                 <div>
-                  <h3 className="text-base font-semibold text-text">All Shore Modules</h3>
-                  <p className="text-[11px] text-text-muted">16 core Life OS areas</p>
+                  <h3 className="text-base font-semibold text-text">Shore Modules</h3>
+                  <p className="text-[11px] text-text-muted">Personal Life OS Workspace</p>
                 </div>
               </div>
               <button
@@ -214,6 +220,28 @@ export function MobileNav() {
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-text-muted hover:text-text"
               >
                 <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Settings Quick Link */}
+            <div className="mb-4">
+              <button
+                onClick={() => {
+                  setMoreSheetOpen(false);
+                  router.push("/settings");
+                }}
+                className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-primary/10 p-3 text-left text-primary transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Settings className="h-4 w-4" />
+                  <div>
+                    <div className="text-xs font-semibold">Settings & Customization</div>
+                    <div className="text-[10px] text-text-muted">
+                      Theme presets, modules, and privacy
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
 
@@ -245,8 +273,8 @@ export function MobileNav() {
                             className={cn(
                               "flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors",
                               isActive
-                                ? "bg-primary-soft/30 border-primary/40 text-primary"
-                                : "bg-surface-muted/50 border-border text-text hover:bg-surface-muted",
+                                ? "border-primary/40 bg-primary-soft/30 text-primary"
+                                : "border-border bg-surface-muted/50 text-text hover:bg-surface-muted"
                             )}
                           >
                             <div className="shrink-0 rounded-lg border border-border bg-surface p-1.5 text-primary">
@@ -257,7 +285,7 @@ export function MobileNav() {
                                 {mod.name}
                               </div>
                               <div className="font-mono text-[10px] text-text-muted">
-                                Phase {mod.phase}
+                                {mod.shortName}
                               </div>
                             </div>
                           </button>

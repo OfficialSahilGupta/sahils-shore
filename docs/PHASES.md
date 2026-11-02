@@ -30,11 +30,15 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 2: Theme Engine & Presets
+### Phase 2: Theme Engine & Presets (Current)
 
-- Preset selector: Shore, Midnight Tide, Sakura, Forest, Sunset, Mono, Ocean
-- Dynamic CSS variable switching and persistent user preferences
-- Font selection and layout density controls
+- [x] Preset selector: Shore, Midnight Tide, Sakura, Forest, Sunset, Mono, Ocean
+- [x] Dynamic CSS variable switching with WCAG AA contrast ratio evaluator and accent color generator
+- [x] Font selection (Inter, Geist, DM Sans, Lora), border radius slider, spatial density, and atmosphere backgrounds (gradient, glass, image)
+- [x] Live interactive preview panel with Recharts metric visualizer
+- [x] Module management: drag-and-drop reordering, inline renaming, and visibility toggles driving Sidebar and MobileNav
+- [x] Settings > Privacy stub for PIN/Biometric lock preferences
+- [x] Zero-flash hydration engine with localStorage pre-paint script and Supabase `settings.theme` sync
 
 ---
 
