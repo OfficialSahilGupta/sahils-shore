@@ -1,11 +1,10 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+import { ExpensesContainer } from "@/components/expenses/ExpensesContainer";
 
 export const metadata = {
-  title: "Expense Tracker",
+  title: "Expense Tracker | Sahil's Shore",
+  description: "Paise-accurate cashflow, category budgets, and spending insights.",
 };
 
 export default function ExpensesPage() {
-  const currentModule = getModuleByRoute("/expenses")!;
-  return <PlaceholderModule module={currentModule} />;
+  return <ExpensesContainer />;
 }

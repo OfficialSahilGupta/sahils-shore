@@ -900,6 +900,7 @@ export interface Database {
           receipt_url: string | null;
           drive_file_id: string | null;
           is_recurring: boolean;
+          recurrence_rule: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -915,6 +916,7 @@ export interface Database {
           receipt_url?: string | null;
           drive_file_id?: string | null;
           is_recurring?: boolean;
+          recurrence_rule?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -930,6 +932,7 @@ export interface Database {
           receipt_url?: string | null;
           drive_file_id?: string | null;
           is_recurring?: boolean;
+          recurrence_rule?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1011,6 +1014,8 @@ export interface Database {
           photo_url: string | null;
           notes_taste: string | null;
           notes_health: string | null;
+          is_favorite: boolean;
+          eat_again: boolean;
           eaten_at: string;
           created_at: string;
           updated_at: string;
@@ -1027,6 +1032,8 @@ export interface Database {
           photo_url?: string | null;
           notes_taste?: string | null;
           notes_health?: string | null;
+          is_favorite?: boolean;
+          eat_again?: boolean;
           eaten_at?: string;
           created_at?: string;
           updated_at?: string;
@@ -1043,7 +1050,63 @@ export interface Database {
           photo_url?: string | null;
           notes_taste?: string | null;
           notes_health?: string | null;
+          is_favorite?: boolean;
+          eat_again?: boolean;
           eaten_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      recurring_expenses: {
+        Row: {
+          id: string;
+          user_id: string;
+          category_id: string | null;
+          amount_paise: number;
+          payment_method: string;
+          place: string | null;
+          notes: string | null;
+          frequency: "daily" | "weekly" | "monthly" | "yearly";
+          day_of_month: number | null;
+          day_of_week: string | null;
+          is_active: boolean;
+          last_processed_at: string | null;
+          next_due_date: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category_id?: string | null;
+          amount_paise: number;
+          payment_method?: string;
+          place?: string | null;
+          notes?: string | null;
+          frequency?: "daily" | "weekly" | "monthly" | "yearly";
+          day_of_month?: number | null;
+          day_of_week?: string | null;
+          is_active?: boolean;
+          last_processed_at?: string | null;
+          next_due_date?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category_id?: string | null;
+          amount_paise?: number;
+          payment_method?: string;
+          place?: string | null;
+          notes?: string | null;
+          frequency?: "daily" | "weekly" | "monthly" | "yearly";
+          day_of_month?: number | null;
+          day_of_week?: string | null;
+          is_active?: boolean;
+          last_processed_at?: string | null;
+          next_due_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };

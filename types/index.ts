@@ -68,6 +68,7 @@ export type Application = Database["public"]["Tables"]["applications"]["Row"];
 export type InterviewStory = Database["public"]["Tables"]["interview_stories"]["Row"];
 export type ExpenseCategory = Database["public"]["Tables"]["expense_categories"]["Row"];
 export type Expense = Database["public"]["Tables"]["expenses"]["Row"];
+export type RecurringExpense = Database["public"]["Tables"]["recurring_expenses"]["Row"];
 export type Income = Database["public"]["Tables"]["incomes"]["Row"];
 export type Budget = Database["public"]["Tables"]["budgets"]["Row"];
 export type Meal = Database["public"]["Tables"]["meals"]["Row"];

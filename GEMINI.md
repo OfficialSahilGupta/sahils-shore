@@ -160,6 +160,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 1: Supabase auth, schema (including `timeline_events`), RLS, generated types (Completed)
 - [x] Phase 2: Theme engine and presets (Completed)
 - [x] Phase 3: Todos + Daily Tracker + Habits (Completed)
+- [x] Phase 4: Expenses + Food Diary (Completed)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -187,4 +188,14 @@ _Update this section after every phase so context survives between sessions._
   - Built 52-week GitHub-style yearly activity heatmap, per-activity progress rings, and weekly/monthly Recharts charts.
   - Integrated optimistic updates with floating undo toast notifications for completions and deletions.
   - Persisted all completions and logs to Supabase tables (`tasks`, `subtasks`, `activities`, `activity_logs`, `habits`, `habit_logs`) and synced with `timeline_events`.
+  - Implemented paise-accurate integer currency utilities with Indian digit grouping (`₹1,23,456.00`), conversion helpers (`rupeesToPaise`, `paiseToRupees`), and CSV export.
+  - Built Expense Tracker with tactile numeric keypad, category chips, payment methods, place autocomplete, receipt attachment, and 1-tap quick logging (< 5s).
+  - Implemented monthly category budget progress bars with automatic color transitions: calm primary/green below 80%, amber warning at 80% to 99.9%, and red danger at 100%+.
+  - Created automated recurring expenses engine for subscriptions/rent with auto-creation for current month.
+  - Built spending insights analyzing weekend vs. weekday expenditure, top category share, and projected month-end burn rate.
+  - Added Recharts category donut, daily spend trend area chart, month-over-month comparison, and top places leaderboard.
+  - Built Food Diary logging meal slots (breakfast, lunch, snack, dinner), location, restaurant, ratings (1-5 stars), photo, taste and health notes.
+  - Built automated meal-expense synchronization: entering a meal cost auto-creates an expense in the "Food" category, syncing edits or deletions in real-time.
+  - Built 7-day weekly meal matrix (Mon-Sun) with slot quick adds and total daily food spend, plus "Places to eat again" directory.
+  - Wrote 17 unit tests for paise math, Indian grouping, budget thresholds, spending insights, and meal-expense sync logic (32 tests passing total).
 - Known issues / TODOs: _(none yet)_

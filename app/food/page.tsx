@@ -1,11 +1,10 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+import { FoodContainer } from "@/components/food/FoodContainer";
 
 export const metadata = {
-  title: "Food Diary",
+  title: "Food Diary | Sahil's Shore",
+  description: "Log meals, rate restaurants, track nutrition notes, and auto-sync expenses.",
 };
 
 export default function FoodPage() {
-  const currentModule = getModuleByRoute("/food")!;
-  return <PlaceholderModule module={currentModule} />;
+  return <FoodContainer />;
 }

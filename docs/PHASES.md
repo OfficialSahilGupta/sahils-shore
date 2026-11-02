@@ -60,12 +60,20 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 4: Expenses + Food Diary
+### Phase 4: Expenses + Food Diary (Completed)
 
-- Paise-accurate integer storage (INR)
-- Quick-add modal (< 5 seconds on mobile)
-- Category budgets and spending trends
-- Food diary with meal ratings, photos, and auto-linked expenses
+- [x] Paise-accurate integer storage (INR) & Indian numbering grouping (₹1,23,456.00)
+- [x] Tactile numeric keypad quick-add modal (< 5 seconds on mobile) with 1-tap save
+- [x] Category budgets with progress bars turning amber at 80% and red at 100%
+- [x] Recurring expenses engine (rent, subscriptions) with auto-creation
+- [x] Spending insights: Weekend vs. Weekday spend, Biggest category, Projected month-end spend
+- [x] Recharts visualizations: Category Donut, Daily Trend Area, Month vs. Previous Month, Top Places
+- [x] Food diary logging: meal slot, items, restaurant, ratings (1-5), photo, taste and health notes
+- [x] Automated meal-expense link synchronization (create, update, delete)
+- [x] 7-day weekly meal matrix, Favorites, and "Places to eat again"
+- [x] Automatic writes to `timeline_events` for expenses, income, and meals
+- [x] CSV export for expenses and income
+- [x] 17 unit tests covering paise formatting, budget thresholds, spending insights, and sync math
 
 ---
 
