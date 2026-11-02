@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { WaveLogo } from "@/components/common/WaveLogo";
-import { getEnabledModules, getModuleByRoute } from "@/lib/modules";
+import { getEnabledModules, getModuleByRoute, AppModule } from "@/lib/modules";
 import { ModuleIcon } from "@/components/common/ModuleIcon";
+import { cn } from "@/lib/utils";
 import {
   Search,
   Plus,
@@ -21,6 +22,7 @@ import {
   BookOpen,
   ArrowRight,
   Sparkles,
+  CornerDownLeft,
 } from "lucide-react";
 
 export function TopBar() {
@@ -30,11 +32,25 @@ export function TopBar() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const currentModule = getModuleByRoute(pathname);
   const allModules = getEnabledModules();
 
-  // Listen for keyboard shortcut Cmd+K / Ctrl+K
+  // Filter modules based on search query
+  const filteredModules = allModules.filter(
+    (m) =>
+      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.shortName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.tagline.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.route.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  // Global keyboard shortcuts (Cmd+K / Ctrl+K, Escape)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -50,12 +66,65 @@ export function TopBar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const filteredModules = allModules.filter(
-    (m) =>
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.tagline.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  // Reset selected index when query changes or dialog opens
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (searchOpen) {
+      setSelectedIndex(0);
+      setSearchQuery("");
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [searchOpen]);
+
+  // Scroll selected item into view in list
+  useEffect(() => {
+    if (itemRefs.current[selectedIndex]) {
+      itemRefs.current[selectedIndex]?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  }, [selectedIndex]);
+
+  const handleSelectModule = (mod: AppModule) => {
+    setSearchOpen(false);
+    setSearchQuery("");
+    router.push(mod.route);
+  };
+
+  // Handle keyboard navigation inside search input
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (filteredModules.length > 0) {
+        setSelectedIndex((prev) => (prev + 1) % filteredModules.length);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (filteredModules.length > 0) {
+        setSelectedIndex(
+          (prev) => (prev - 1 + filteredModules.length) % filteredModules.length,
+        );
+      }
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (
+        filteredModules.length > 0 &&
+        selectedIndex >= 0 &&
+        selectedIndex < filteredModules.length
+      ) {
+        handleSelectModule(filteredModules[selectedIndex]);
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setSearchOpen(false);
+    }
+  };
 
   const quickAddOptions = [
     {
@@ -115,7 +184,7 @@ export function TopBar() {
           </div>
         </div>
 
-        {/* Global Search Bar */}
+        {/* Global Search Bar Trigger */}
         <div className="mx-2 hidden max-w-md flex-1 sm:block">
           <button
             onClick={() => setSearchOpen(true)}
@@ -254,17 +323,22 @@ export function TopBar() {
         <div
           role="dialog"
           aria-modal="true"
+          onClick={() => setSearchOpen(false)}
           className="animate-in fade-in fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-16 backdrop-blur-sm duration-150 sm:pt-24"
         >
-          <div className="animate-in zoom-in-95 w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl duration-150">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="animate-in zoom-in-95 w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl duration-150"
+          >
             {/* Search Input */}
             <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
               <Search className="h-4 w-4 shrink-0 text-text-muted" />
               <input
-                autoFocus
+                ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleInputKeyDown}
                 placeholder="Jump to any module or feature..."
                 className="flex-1 border-0 bg-transparent text-sm text-text outline-none placeholder:text-text-muted"
               />
@@ -283,48 +357,95 @@ export function TopBar() {
                   No modules found matching &quot;{searchQuery}&quot;
                 </div>
               ) : (
-                filteredModules.map((mod) => (
-                  <button
-                    key={mod.id}
-                    onClick={() => {
-                      setSearchOpen(false);
-                      router.push(mod.route);
-                    }}
-                    className="group flex w-full items-center justify-between rounded-xl p-2.5 text-left transition-colors hover:bg-surface-muted"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-muted text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                        <ModuleIcon name={mod.iconName} className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold text-text transition-colors group-hover:text-primary">
-                          {mod.name}
+                filteredModules.map((mod, idx) => {
+                  const isSelected = idx === selectedIndex;
+                  return (
+                    <button
+                      key={mod.id}
+                      ref={(el) => {
+                        itemRefs.current[idx] = el;
+                      }}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                      onClick={() => handleSelectModule(mod)}
+                      className={cn(
+                        "group flex w-full items-center justify-between rounded-xl border p-2.5 text-left transition-colors",
+                        isSelected
+                          ? "bg-primary-soft/35 border-primary/30 text-primary"
+                          : "border-transparent text-text hover:bg-surface-muted",
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                            isSelected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-surface-muted text-primary group-hover:bg-primary group-hover:text-primary-foreground",
+                          )}
+                        >
+                          <ModuleIcon name={mod.iconName} className="h-4 w-4" />
                         </div>
-                        <div className="text-[11px] text-text-muted">{mod.tagline}</div>
+                        <div>
+                          <div
+                            className={cn(
+                              "text-xs font-semibold transition-colors",
+                              isSelected
+                                ? "text-primary"
+                                : "text-text group-hover:text-primary",
+                            )}
+                          >
+                            {mod.name}
+                          </div>
+                          <div className="text-[11px] text-text-muted">{mod.tagline}</div>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="rounded border border-border bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
-                        Phase {mod.phase}
-                      </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-                    </div>
-                  </button>
-                ))
+                      <div className="flex items-center gap-2">
+                        <span className="rounded border border-border bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+                          Phase {mod.phase}
+                        </span>
+                        {isSelected ? (
+                          <span className="bg-primary-soft/40 border-primary/20 flex items-center gap-0.5 rounded border px-1 py-0.5 font-mono text-[10px] text-primary">
+                            ↵ Enter
+                          </span>
+                        ) : (
+                          <ArrowRight className="h-3.5 w-3.5 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
 
-            {/* Search Footer */}
-            <div className="bg-surface-muted/50 flex items-center justify-between border-t border-border px-4 py-2 text-[11px] text-text-muted">
-              <span>
-                Press{" "}
-                <kbd className="rounded border border-border bg-surface px-1 py-0.5 font-mono text-text">
-                  ESC
-                </kbd>{" "}
-                to close
+            {/* Search Footer with Navigation Hints */}
+            <div className="bg-surface-muted/50 flex items-center justify-between border-t border-border px-4 py-2.5 text-[11px] text-text-muted">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text">
+                    ↑
+                  </kbd>
+                  <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text">
+                    ↓
+                  </kbd>
+                  <span>navigate</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text">
+                    ↵
+                  </kbd>
+                  <span>select</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text">
+                    esc
+                  </kbd>
+                  <span>close</span>
+                </span>
+              </div>
+              <span className="font-mono">
+                {filteredModules.length} module{filteredModules.length === 1 ? "" : "s"}
               </span>
-              <span>16 Core Modules Available</span>
             </div>
           </div>
         </div>
