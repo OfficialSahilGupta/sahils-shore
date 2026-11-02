@@ -157,7 +157,8 @@ Detailed prompts for each phase live in `docs/PHASES.md`. I'll paste one at a ti
 _Update this section after every phase so context survives between sessions._
 
 - [x] Phase 0: Setup, app shell, placeholder pages, navigation, theme tokens, PWA basics (Completed)
-- [ ] Phase 1: Supabase auth, schema (including `timeline_events`), RLS, generated types
+- [x] Phase 1: Supabase auth, schema (including `timeline_events`), RLS, generated types (Completed)
+- [ ] Phase 2: Theme engine and presets
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -165,4 +166,11 @@ _Update this section after every phase so context survives between sessions._
   - IST timezone handling in `Greeting.tsx` via `Asia/Kolkata` with smooth client-side hydration.
   - Desktop collapsible sidebar (persists in `localStorage`), mobile bottom nav with 5 tabs + floating quick-add dock + full module drawer.
   - Generated PWA icons (`icon-192.png`, `icon-512.png`, `maskable-512.png`, `favicon.svg`) and `manifest.json`.
+  - Installed `@supabase/ssr` and `@supabase/supabase-js`.
+  - Created master schema `supabase/migrations/20261102000000_schema.sql` covering all 37 tables with `id`, `user_id`, `created_at`, `updated_at`, strict RLS policies (`auth.uid() = user_id`), `handle_updated_at` triggers, and composite indexes.
+  - Implemented `public.seed_user_defaults` function seeding 8 expense categories and 6 core activities, wired to `on_auth_user_created` trigger on `auth.users`.
+  - Stored money as integer paise (`amount_paise bigint`) and timestamps as ISO 8601 UTC with IST `Asia/Kolkata` presentation.
+  - Added single-user lock in `/auth/callback` enforcing `ALLOWED_EMAIL` with immediate session termination and redirect on unauthorized attempts.
+  - Protected routes via Next.js middleware using `@supabase/ssr` session refresh.
+  - Added reusable `writeTimelineEvent()` in `lib/timeline/index.ts` and `/api/health` diagnostic endpoint.
 - Known issues / TODOs: _(none yet)_

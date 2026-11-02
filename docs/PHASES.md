@@ -19,12 +19,14 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 1: Supabase Auth, Schema & Types
+### Phase 1: Supabase Auth, Schema & Types (Current)
 
-- Supabase client helpers (SSR & client)
-- PostgreSQL schema for all core modules + `timeline_events`
-- Row Level Security (RLS) policies on every table: `auth.uid() = user_id`
-- Generated TypeScript types
+- [x] Supabase client helpers (SSR browser, server, and middleware)
+- [x] PostgreSQL schema for all core modules + `timeline_events` (37 tables, paise integer, UTC timestamptz)
+- [x] Row Level Security (RLS) policies on every table: `auth.uid() = user_id`
+- [x] Generated TypeScript types matching Supabase Database interface
+- [x] Single-user Google sign-in lock (`ALLOWED_EMAIL`) and branded `/login` page
+- [x] Reusable `writeTimelineEvent()` and `/api/health` diagnostic endpoint
 
 ---
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -11,6 +12,17 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
+  const isAuthPage = pathname.startsWith("/login");
+
+  if (isAuthPage) {
+    return (
+      <main className="min-h-screen bg-background text-text">
+        <PageTransition>{children}</PageTransition>
+      </main>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-background text-text">
       {/* Desktop Collapsible Sidebar */}

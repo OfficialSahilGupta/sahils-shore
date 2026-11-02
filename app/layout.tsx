@@ -4,7 +4,20 @@ import "@/app/globals.css";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { AppShell } from "@/components/layout/AppShell";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+  fallback: [
+    "-apple-system",
+    "BlinkMacSystemFont",
+    "Segoe UI",
+    "Roboto",
+    "Helvetica Neue",
+    "Arial",
+    "sans-serif",
+  ],
+});
 
 export const metadata: Metadata = {
   title: {

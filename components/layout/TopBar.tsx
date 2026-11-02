@@ -8,6 +8,7 @@ import { WaveLogo } from "@/components/common/WaveLogo";
 import { getEnabledModules, getModuleByRoute, AppModule } from "@/lib/modules";
 import { ModuleIcon } from "@/components/common/ModuleIcon";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import {
   Search,
   Plus,
@@ -23,6 +24,7 @@ import {
   ArrowRight,
   Sparkles,
   CornerDownLeft,
+  LogOut,
 } from "lucide-react";
 
 export function TopBar() {
@@ -33,9 +35,41 @@ export function TopBar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>("Sahil");
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  useEffect(() => {
+    try {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data }) => {
+        if (data.user) {
+          setUserEmail(data.user.email || null);
+          const metaName =
+            data.user.user_metadata?.full_name ||
+            data.user.user_metadata?.name ||
+            data.user.email?.split("@")[0];
+          if (metaName) setUserName(metaName);
+        }
+      });
+    } catch {
+      // Ignored if client isn't configured yet
+    }
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Sign-out error:", err);
+    }
+    setUserMenuOpen(false);
+    router.push("/login");
+    router.refresh();
+  };
 
   const currentModule = getModuleByRoute(pathname);
   const allModules = getEnabledModules();
@@ -267,19 +301,19 @@ export function TopBar() {
               aria-label="Sahil Profile Menu"
               className="hover:border-primary/50 flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-muted text-xs font-semibold tracking-tight text-text shadow-sm transition-all"
             >
-              S
+              {userName ? userName.charAt(0).toUpperCase() : "S"}
             </button>
 
             {userMenuOpen && (
-              <div className="animate-in fade-in zoom-in-95 absolute right-0 z-50 mt-2 w-60 rounded-2xl border border-border bg-surface p-3 shadow-xl duration-150">
+              <div className="animate-in fade-in zoom-in-95 absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-border bg-surface p-3 shadow-xl duration-150">
                 <div className="flex items-center gap-2.5 border-b border-border pb-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
-                    S
+                    {userName ? userName.charAt(0).toUpperCase() : "S"}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-text">Sahil</p>
+                    <p className="truncate text-sm font-semibold text-text">{userName}</p>
                     <p className="truncate text-[11px] text-text-muted">
-                      Full-Stack Dev • IST (Asia/Kolkata)
+                      {userEmail || "Full-Stack Dev • IST"}
                     </p>
                   </div>
                 </div>
@@ -288,7 +322,7 @@ export function TopBar() {
                   <div className="flex items-center justify-between rounded-lg bg-surface-muted px-2 py-1.5 text-text">
                     <span className="text-text-muted">App Version</span>
                     <span className="font-mono font-medium text-primary">
-                      Phase 0 Shell
+                      Phase 1 Auth & DB
                     </span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-surface-muted px-2 py-1.5 text-text">
@@ -301,7 +335,7 @@ export function TopBar() {
                   </div>
                 </div>
 
-                <div className="border-t border-border pt-2">
+                <div className="space-y-1 border-t border-border pt-2">
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
@@ -310,6 +344,14 @@ export function TopBar() {
                     className="hover:bg-primary-soft/30 w-full rounded-lg py-1.5 text-center text-xs font-medium text-primary transition-colors"
                   >
                     View Shore Home
+                  </button>
+
+                  <button
+                    onClick={handleSignOut}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-center text-xs font-medium text-danger transition-colors hover:bg-danger/10"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>

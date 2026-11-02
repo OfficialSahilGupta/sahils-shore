@@ -1,2 +1,0 @@
--- Migration placeholder for Phase 1
--- Initial schema definitions for core tables and timeline_events will be placed here.
