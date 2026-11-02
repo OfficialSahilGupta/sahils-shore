@@ -161,6 +161,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 2: Theme engine and presets (Completed)
 - [x] Phase 3: Todos + Daily Tracker + Habits (Completed)
 - [x] Phase 4: Expenses + Food Diary (Completed)
+- [x] Phase 5: Today Dashboard + Unified Timeline (Completed - MVP Complete)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -198,4 +199,11 @@ _Update this section after every phase so context survives between sessions._
   - Built automated meal-expense synchronization: entering a meal cost auto-creates an expense in the "Food" category, syncing edits or deletions in real-time.
   - Built 7-day weekly meal matrix (Mon-Sun) with slot quick adds and total daily food spend, plus "Places to eat again" directory.
   - Wrote 17 unit tests for paise math, Indian grouping, budget thresholds, spending insights, and meal-expense sync logic (32 tests passing total).
+  - Built responsive drag-and-drop, resizable widget grid powered by `react-grid-layout` with responsive breakpoints (`lg`, `md`, `sm`, `xs`, `xxs`).
+  - Implemented all 11 core dashboard widgets: Greeting & Horizon with weather-free quote of the day, Top 3 Priorities with task pinning modal, Today's Tasks with inline adder, Habit Checklist with flame streaks and skip preservation, Focus Timer with stopwatch & Pomodoro (refresh-surviving via `localStorage`), Active Streaks leaderboard, Spent Today with budget remaining progress bar, Meals Logged with 4 slots and food spend, Mini Activity Chart with Recharts weekly focus bar visualization, Quick Note scratchpad with auto-save to `notes`, and embedded Unified Timeline.
+  - Built Unified Timeline reading from `timeline_events` within exact 24-hour IST date boundary (`[startUTC, endUTC]`), with type-specific color/icon styling, metadata badges, and rich source record dialog with module deep links.
+  - Built Day View at `/day/[date]` with date picker, prev/next arrows, daily totals (time studied, money spent, meals count, tasks completed), full vertical timeline, and day reflection notes.
+  - Built Edit Layout Mode with widget library drawer to add/remove widgets, resize handles, reset defaults, and bidirectional persistence to `settings.layout` and localStorage.
+  - Built Global Quick Capture bottom sheet/modal accessible via mobile floating `+` button, top bar `+` button, and `q` keyboard shortcut with 5 tabs (Task, Expense, Meal, Note, Timer).
+  - Wrote 13 unit tests for Phase 5 covering IST day bounds, timeline classification, day totals aggregation, quote selection, and layout configurations (45 passing tests total).
 - Known issues / TODOs: _(none yet)_

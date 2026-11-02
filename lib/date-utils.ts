@@ -247,3 +247,19 @@ export function getISTMonthGrid(year: number, month: number): {
 
   return grid;
 }
+
+/**
+ * Returns UTC ISO string range [startUTC, endUTC] for a 24-hour IST calendar day "YYYY-MM-DD".
+ * For example: "2026-11-02" in IST begins at 2026-11-01T18:30:00.000Z and ends at 2026-11-02T18:29:59.999Z.
+ */
+export function getISTDateRangeUTC(dateStr: string = todayIST()): {
+  startUTC: string;
+  endUTC: string;
+} {
+  const start = new Date(`${dateStr}T00:00:00.000+05:30`);
+  const end = new Date(`${dateStr}T23:59:59.999+05:30`);
+  return {
+    startUTC: start.toISOString(),
+    endUTC: end.toISOString(),
+  };
+}

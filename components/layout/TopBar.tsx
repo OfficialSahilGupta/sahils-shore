@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { WaveLogo } from "@/components/common/WaveLogo";
 import { getEnabledModules, getModuleByRoute, AppModule } from "@/lib/modules";
 import { useModules } from "@/lib/modules/ModuleContext";
+import { useQuickCapture } from "@/lib/quick-capture/QuickCaptureContext";
 import { ModuleIcon } from "@/components/common/ModuleIcon";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -75,6 +76,7 @@ export function TopBar() {
 
   const currentModule = getModuleByRoute(pathname);
   const { enabledModules } = useModules();
+  const { open: openQuickCapture } = useQuickCapture();
   const allModules = enabledModules;
 
   // Filter modules based on search query
@@ -251,7 +253,7 @@ export function TopBar() {
           {/* Quick-Add Button (+) */}
           <div className="relative">
             <button
-              onClick={() => setQuickAddOpen(!quickAddOpen)}
+              onClick={() => openQuickCapture()}
               aria-label="Quick Add"
               className="flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-all hover:opacity-90"
             >

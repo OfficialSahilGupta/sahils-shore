@@ -77,11 +77,15 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 5: Today Dashboard + Unified Timeline (MVP Complete)
+### Phase 5: Today Dashboard + Unified Timeline (Completed - MVP Complete)
 
-- Real-time today overview, priorities, habits, and focus timer
-- Unified timeline reading from `timeline_events` across all modules
-- Day View for any historical IST date
+- [x] Responsive drag-and-drop, resizable widget grid powered by `react-grid-layout` with breakpoints for desktop (`lg`), tablet (`md`, `sm`), and mobile (`xs`, `xxs`)
+- [x] All 11 core dashboard widgets: Greeting & Horizon, Top 3 Priorities, Today's Tasks, Habit Checklist, Focus Timer, Active Streaks, Spent Today, Meals Logged, Mini Activity Chart, Quick Note, and Unified Timeline
+- [x] Unified Timeline reading `timeline_events` within 24-hour IST UTC bounds (`[startUTC, endUTC]`), with type-specific color/icon styling and tappable source modal
+- [x] Day View at `/day/[date]` with date picker, prev/next arrows, daily totals (time studied, money spent, meals, tasks), and day reflection notes
+- [x] Edit layout mode with widget library modal to add/remove widgets, resize handles, reset to default, and persistence in `settings.layout` & localStorage
+- [x] Global Quick Capture: floating `+` button, top bar `+`, and `q` keyboard shortcut offering Task, Expense, Meal, Note, and Timer in one sheet
+- [x] 13 unit tests covering IST range boundaries, timeline event parsing, daily totals calculation, quote deterministic selector, and layout defaults (45 tests passing total)
 
 ---
 

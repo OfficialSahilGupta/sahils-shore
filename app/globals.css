@@ -283,3 +283,22 @@ html[data-font="lora"] textarea,
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* React Grid Layout & Shore Widget Grid Styling */
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
+
+.react-grid-item.react-grid-placeholder {
+  background: var(--primary) !important;
+  opacity: 0.15 !important;
+  border: 2px dashed var(--primary) !important;
+  border-radius: var(--radius, 1rem) !important;
+  transition-duration: 100ms;
+  z-index: 2;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  border-right: 2px solid var(--primary) !important;
+  border-bottom: 2px solid var(--primary) !important;
+  opacity: 0.7;
+}

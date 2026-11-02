@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CATEGORY_LABELS, ModuleCategory } from "@/lib/modules";
 import { useModules } from "@/lib/modules/ModuleContext";
+import { useQuickCapture } from "@/lib/quick-capture/QuickCaptureContext";
 import { ModuleIcon } from "@/components/common/ModuleIcon";
 import { WaveLogo } from "@/components/common/WaveLogo";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ export function MobileNav() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const { enabledModules, mobileNavModules } = useModules();
+  const { open: openQuickCapture } = useQuickCapture();
   const categories: ModuleCategory[] = ["core", "growth", "life", "insights"];
 
   // Use configured mobile nav modules or top 4 enabled modules
@@ -83,7 +85,7 @@ export function MobileNav() {
       {/* Floating Quick-Add Button (Mobile) */}
       <div className="fixed bottom-20 right-4 z-40 md:hidden">
         <button
-          onClick={() => setQuickAddOpen(!quickAddOpen)}
+          onClick={() => openQuickCapture()}
           aria-label="Quick Add"
           className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:opacity-95 active:scale-95"
         >
