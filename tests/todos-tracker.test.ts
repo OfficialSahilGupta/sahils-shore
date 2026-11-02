@@ -13,6 +13,7 @@ import {
   formatISTTime,
   getISTDayOfWeek,
   isTodayIST,
+  todayIST,
 } from "../lib/date-utils.ts";
 
 import {
@@ -226,13 +227,17 @@ describe("5. Habit Streaks with Skip-Day Support", () => {
   };
 
   test("skip day does not break active streak", () => {
-    // Oct 30 completed, Oct 31 skipped, Nov 1 completed, Nov 2 completed
+    const d4 = todayIST();
+    const d3 = addDaysIST(d4, -1);
+    const d2 = addDaysIST(d4, -2);
+    const d1 = addDaysIST(d4, -3);
+
     const logs: HabitLog[] = [
       {
         id: "l1",
         user_id: "user-1",
         habit_id: "habit-1",
-        logged_date: "2026-10-30",
+        logged_date: d1,
         completed: true,
         notes: null,
         created_at: "",
@@ -242,7 +247,7 @@ describe("5. Habit Streaks with Skip-Day Support", () => {
         id: "l2",
         user_id: "user-1",
         habit_id: "habit-1",
-        logged_date: "2026-10-31",
+        logged_date: d2,
         completed: false,
         notes: "skipped - travel day",
         created_at: "",
@@ -252,7 +257,7 @@ describe("5. Habit Streaks with Skip-Day Support", () => {
         id: "l3",
         user_id: "user-1",
         habit_id: "habit-1",
-        logged_date: "2026-11-01",
+        logged_date: d3,
         completed: true,
         notes: null,
         created_at: "",
@@ -262,7 +267,7 @@ describe("5. Habit Streaks with Skip-Day Support", () => {
         id: "l4",
         user_id: "user-1",
         habit_id: "habit-1",
-        logged_date: "2026-11-02",
+        logged_date: d4,
         completed: true,
         notes: null,
         created_at: "",

@@ -25,7 +25,7 @@ export function TargetProgressRings({
   activeActivityId,
 }: TargetProgressRingsProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {activities.map((activity) => {
         const streakInfo = activityStreaks[activity.id] || {
           currentStreak: 0,
@@ -46,7 +46,7 @@ export function TargetProgressRings({
           <div
             key={activity.id}
             onClick={() => onSelectActivity(activity.id)}
-            className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer ${
+            className={`w-full h-full flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer ${
               isSelected
                 ? "border-[var(--primary)] bg-[var(--primary-soft)]/20 shadow-sm"
                 : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/50"

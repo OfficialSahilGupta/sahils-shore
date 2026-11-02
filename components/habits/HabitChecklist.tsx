@@ -52,7 +52,7 @@ export function HabitChecklist({
   };
 
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-4">
+    <div className="w-full rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-4">
       {/* Header & Stats */}
       <div className="flex items-center justify-between pb-1 border-b border-[var(--border)]/40">
         <div>

@@ -1,0 +1,719 @@
+"use client";
+
+// ============================================================================
+// Sahil's Shore: Full-Stack Learning Hub Main Container
+// Multi-track management (Java/Spring Boot & MERN/TypeScript)
+// Roadmap checklist, Concepts-learned log, Project tracker,
+// Interview Q&A bank, Mock Interview mode, Mini-Projects, Resources, and Timer
+// ============================================================================
+
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  Layers,
+  Cpu,
+  BookOpen,
+  Lightbulb,
+  FolderGit2,
+  HelpCircle,
+  Sparkles,
+  Bookmark,
+  RefreshCw,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type {
+  LearningTrack,
+  LearningItem,
+  LearningConcept,
+  Project,
+  InterviewQa,
+  MiniProjectIdea,
+  ResourceLink,
+  Json,
+} from "@/types";
+import {
+  ensureDefaultLearningTracks,
+  getRoadmapItems,
+  toggleRoadmapStatus,
+  updateRoadmapItemNotes,
+  getLearningConcepts,
+  createLearningConcept,
+  deleteLearningConcept,
+  getProjects,
+  createProject,
+  updateProject,
+  deleteProject,
+  getInterviewQa,
+  createInterviewQa,
+  updateInterviewQaConfidence,
+  deleteInterviewQa,
+  getMiniProjectIdeas,
+  convertIdeaToProject,
+  getResourceLinks,
+  createResourceLink,
+  deleteResourceLink,
+  logStudySession,
+  calculateRoadmapProgress,
+  type CreateConceptInput,
+  type CreateProjectInput,
+  type CreateInterviewQaInput,
+  type CreateResourceLinkInput,
+} from "@/lib/learning";
+import { SPRING_TRACK_SEED, MERN_TRACK_SEED } from "@/lib/learning/seeds";
+import { TrackSelector } from "./TrackSelector";
+import { StudyTimerBar } from "./StudyTimerBar";
+import { RoadmapChecklist } from "./RoadmapChecklist";
+import { ConceptsLog } from "./ConceptsLog";
+import { ProjectTracker } from "./ProjectTracker";
+import { InterviewQaBank } from "./InterviewQaBank";
+import { MiniProjectIdeas } from "./MiniProjectIdeas";
+import { ResourceLinksList } from "./ResourceLinksList";
+
+type LearningTab =
+  | "roadmap"
+  | "concepts"
+  | "projects"
+  | "interview"
+  | "mini_projects"
+  | "resources";
+
+export function LearningContainer() {
+  const supabase = createClient();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [tracks, setTracks] = useState<LearningTrack[]>([]);
+  const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<LearningTab>("roadmap");
+  const [isLoading, setIsLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Track data
+  const [roadmapItems, setRoadmapItems] = useState<LearningItem[]>([]);
+  const [concepts, setConcepts] = useState<LearningConcept[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [interviewQuestions, setInterviewQuestions] = useState<InterviewQa[]>([]);
+  const [miniProjectIdeas, setMiniProjectIdeas] = useState<MiniProjectIdea[]>([]);
+  const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>([]);
+
+  // Progress map per track
+  const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // 1. Initialize user and ensure tracks
+  useEffect(() => {
+    async function initUserAndTracks() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          setUserId(user.id);
+          const loadedTracks = await ensureDefaultLearningTracks(supabase, user.id);
+          setTracks(loadedTracks);
+          if (loadedTracks.length > 0) {
+            setActiveTrackId(loadedTracks[0].id);
+          }
+        } else {
+          // Preview mode: display seeded tracks immediately
+          const previewTracks: LearningTrack[] = [
+            {
+              id: "preview-spring",
+              user_id: "preview",
+              title: SPRING_TRACK_SEED.title,
+              description: SPRING_TRACK_SEED.description,
+              icon: SPRING_TRACK_SEED.icon,
+              color: SPRING_TRACK_SEED.color,
+              slug: SPRING_TRACK_SEED.slug,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            {
+              id: "preview-mern",
+              user_id: "preview",
+              title: MERN_TRACK_SEED.title,
+              description: MERN_TRACK_SEED.description,
+              icon: MERN_TRACK_SEED.icon,
+              color: MERN_TRACK_SEED.color,
+              slug: MERN_TRACK_SEED.slug,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ];
+          setTracks(previewTracks);
+          setActiveTrackId("preview-spring");
+        }
+      } catch (err) {
+        console.error("[LearningContainer] Error initializing tracks:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    initUserAndTracks();
+  }, [supabase]);
+
+  // 2. Fetch all module data for active track
+  const fetchTrackData = useCallback(async () => {
+    if (!activeTrackId) return;
+
+    if (!userId) {
+      // Preview mode: Load from seeded curriculum
+      const isMern = activeTrackId === "preview-mern" || activeTrackId.includes("mern");
+      const seed = isMern ? MERN_TRACK_SEED : SPRING_TRACK_SEED;
+
+      const items: LearningItem[] = seed.roadmap.map((item, idx) => ({
+        id: `preview-item-${idx}`,
+        user_id: "preview",
+        track_id: activeTrackId,
+        topic: item.topic,
+        category: item.category,
+        notes: item.notes || null,
+        resources: (item.resources || []) as unknown as Json,
+        status: idx < 3 ? "completed" : idx === 3 ? "in_progress" : "planned",
+        order_index: idx,
+        completed_at: idx < 3 ? new Date().toISOString() : null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const qList: InterviewQa[] = seed.interviewQa.map((qa, idx) => ({
+        id: `preview-qa-${idx}`,
+        user_id: "preview",
+        track_id: activeTrackId,
+        technology: qa.technology,
+        question: qa.question,
+        answer: qa.answer,
+        difficulty: qa.difficulty,
+        confidence: qa.confidence,
+        tags: qa.tags,
+        last_practiced_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const ideas: MiniProjectIdea[] = seed.miniProjects.map((idea, idx) => ({
+        id: `preview-idea-${idx}`,
+        user_id: "preview",
+        track_id: activeTrackId,
+        title: idea.title,
+        description: idea.description,
+        difficulty: idea.difficulty,
+        suggested_tech: idea.suggested_tech,
+        is_completed: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const rLinks: ResourceLink[] = seed.resources.map((res, idx) => ({
+        id: `preview-res-${idx}`,
+        user_id: "preview",
+        track_id: activeTrackId,
+        title: res.title,
+        url: res.url,
+        category: res.category,
+        description: res.description,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      setRoadmapItems(items);
+      setInterviewQuestions(qList);
+      setMiniProjectIdeas(ideas);
+      setResourceLinks(rLinks);
+
+      const prog = calculateRoadmapProgress(items);
+      setProgressMap((prev) => ({ ...prev, [activeTrackId]: prog.percentage }));
+      return;
+    }
+
+    try {
+      const [rItems, cLogs, pList, qList, ideas, rLinks] = await Promise.all([
+        getRoadmapItems(supabase, userId, activeTrackId),
+        getLearningConcepts(supabase, userId, activeTrackId),
+        getProjects(supabase, userId, activeTrackId),
+        getInterviewQa(supabase, userId, activeTrackId),
+        getMiniProjectIdeas(supabase, userId, activeTrackId),
+        getResourceLinks(supabase, userId, activeTrackId),
+      ]);
+
+      setRoadmapItems(rItems);
+      setConcepts(cLogs);
+      setProjects(pList);
+      setInterviewQuestions(qList);
+      setMiniProjectIdeas(ideas);
+      setResourceLinks(rLinks);
+
+      // Update progress for active track
+      const prog = calculateRoadmapProgress(rItems);
+      setProgressMap((prev) => ({ ...prev, [activeTrackId]: prog.percentage }));
+    } catch (err) {
+      console.error("[LearningContainer] Error loading track data:", err);
+    }
+  }, [supabase, userId, activeTrackId]);
+
+  useEffect(() => {
+    if (activeTrackId) {
+      fetchTrackData();
+    }
+  }, [activeTrackId, fetchTrackData]);
+
+  const activeTrack = useMemo(() => {
+    return tracks.find((t) => t.id === activeTrackId) || null;
+  }, [tracks, activeTrackId]);
+
+  // --------------------------------------------------------------------------
+  // Handlers
+  // --------------------------------------------------------------------------
+
+  // Timer Session
+  const handleSaveStudySession = async (
+    durationSeconds: number,
+    notes?: string
+  ) => {
+    if (!userId || !activeTrack) return;
+    const slug = activeTrack.slug || "spring";
+    const log = await logStudySession(
+      supabase,
+      userId,
+      slug,
+      durationSeconds,
+      notes
+    );
+    if (log) {
+      const mins = Math.round(durationSeconds / 60);
+      showToast(`Logged ${mins}m study session to Daily Tracker & Timeline!`);
+    }
+  };
+
+  // Roadmap
+  const handleToggleRoadmapStatus = async (
+    itemId: string,
+    newStatus: "planned" | "in_progress" | "completed"
+  ) => {
+    if (!userId) {
+      setRoadmapItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                status: newStatus,
+                completed_at: newStatus === "completed" ? new Date().toISOString() : null,
+              }
+            : item
+        )
+      );
+      if (activeTrackId) {
+        const nextList = roadmapItems.map((item) =>
+          item.id === itemId ? { ...item, status: newStatus } : item
+        );
+        const prog = calculateRoadmapProgress(nextList);
+        setProgressMap((prev) => ({ ...prev, [activeTrackId]: prog.percentage }));
+      }
+      showToast(`Updated topic status to ${newStatus.replace("_", " ")}`);
+      return;
+    }
+
+    const updated = await toggleRoadmapStatus(
+      supabase,
+      userId,
+      itemId,
+      newStatus,
+      activeTrack?.title
+    );
+    if (updated) {
+      setRoadmapItems((prev) =>
+        prev.map((item) => (item.id === itemId ? updated : item))
+      );
+      if (activeTrackId) {
+        const nextList = roadmapItems.map((item) =>
+          item.id === itemId ? updated : item
+        );
+        const prog = calculateRoadmapProgress(nextList);
+        setProgressMap((prev) => ({ ...prev, [activeTrackId]: prog.percentage }));
+      }
+      showToast(
+        newStatus === "completed"
+          ? `Completed "${updated.topic}"! Added to timeline.`
+          : `Updated topic status to ${newStatus.replace("_", " ")}`
+      );
+    }
+  };
+
+  const handleUpdateRoadmapNotes = async (itemId: string, notes: string) => {
+    if (!userId) {
+      setRoadmapItems((prev) =>
+        prev.map((item) => (item.id === itemId ? { ...item, notes } : item))
+      );
+      showToast("Topic notes saved");
+      return;
+    }
+
+    const updated = await updateRoadmapItemNotes(supabase, userId, itemId, notes);
+    if (updated) {
+      setRoadmapItems((prev) =>
+        prev.map((item) => (item.id === itemId ? updated : item))
+      );
+      showToast("Topic notes saved");
+    }
+  };
+
+  // Concepts
+  const handleAddConcept = async (input: {
+    title: string;
+    notes: string;
+    learned_at?: string;
+  }) => {
+    if (!userId) return;
+    const created = await createLearningConcept(
+      supabase,
+      userId,
+      {
+        track_id: activeTrackId,
+        title: input.title,
+        notes: input.notes,
+        learned_at: input.learned_at,
+      },
+      activeTrack?.title
+    );
+    if (created) {
+      setConcepts((prev) => [created, ...prev]);
+      showToast(`Logged concept "${created.title}" to timeline!`);
+    }
+  };
+
+  const handleDeleteConcept = async (conceptId: string) => {
+    if (!userId) return;
+    const success = await deleteLearningConcept(supabase, userId, conceptId);
+    if (success) {
+      setConcepts((prev) => prev.filter((c) => c.id !== conceptId));
+      showToast("Concept deleted");
+    }
+  };
+
+  // Projects
+  const handleSaveProject = async (
+    input: CreateProjectInput,
+    projectId?: string
+  ) => {
+    if (!userId) return;
+    if (projectId) {
+      const updated = await updateProject(
+        supabase,
+        userId,
+        projectId,
+        input as Partial<Project>
+      );
+      if (updated) {
+        setProjects((prev) =>
+          prev.map((p) => (p.id === projectId ? updated : p))
+        );
+        showToast("Project updated");
+      }
+    } else {
+      const created = await createProject(supabase, userId, input);
+      if (created) {
+        setProjects((prev) => [created, ...prev]);
+        showToast(`Created project "${created.title}"!`);
+      }
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (!userId) return;
+    const success = await deleteProject(supabase, userId, projectId);
+    if (success) {
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      showToast("Project deleted");
+    }
+  };
+
+  // Interview Q&A
+  const handleAddInterviewQa = async (input: CreateInterviewQaInput) => {
+    if (!userId) return;
+    const created = await createInterviewQa(supabase, userId, input);
+    if (created) {
+      setInterviewQuestions((prev) => [created, ...prev]);
+      showToast("Interview question added");
+    }
+  };
+
+  const handleUpdateConfidence = async (qaId: string, confidence: number) => {
+    if (!userId) {
+      setInterviewQuestions((prev) =>
+        prev.map((q) => (q.id === qaId ? { ...q, confidence } : q))
+      );
+      showToast(`Updated confidence to ${confidence} stars`);
+      return;
+    }
+    const updated = await updateInterviewQaConfidence(
+      supabase,
+      userId,
+      qaId,
+      confidence
+    );
+    if (updated) {
+      setInterviewQuestions((prev) =>
+        prev.map((q) => (q.id === qaId ? updated : q))
+      );
+      showToast(`Updated confidence to ${confidence} stars`);
+    }
+  };
+
+  const handleDeleteInterviewQa = async (qaId: string) => {
+    if (!userId) {
+      setInterviewQuestions((prev) => prev.filter((q) => q.id !== qaId));
+      showToast("Question deleted");
+      return;
+    }
+    const success = await deleteInterviewQa(supabase, userId, qaId);
+    if (success) {
+      setInterviewQuestions((prev) => prev.filter((q) => q.id !== qaId));
+      showToast("Question deleted");
+    }
+  };
+
+  // Mini Projects
+  const handleStartMiniProject = async (idea: MiniProjectIdea) => {
+    if (!userId) {
+      const mockProject: Project = {
+        id: `preview-proj-${Date.now()}`,
+        user_id: "preview",
+        track_id: activeTrackId,
+        title: idea.title,
+        description: idea.description,
+        tech_stack: idea.suggested_tech,
+        status: "in_progress",
+        repo_url: null,
+        deployed_url: null,
+        readme_notes: `Started from mini-project idea: ${idea.title}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setProjects((prev) => [mockProject, ...prev]);
+      setMiniProjectIdeas((prev) =>
+        prev.map((i) => (i.id === idea.id ? { ...i, is_completed: true } : i))
+      );
+      setActiveTab("projects");
+      showToast(`Promoted "${idea.title}" to active projects!`);
+      return;
+    }
+    const project = await convertIdeaToProject(supabase, userId, idea);
+    if (project) {
+      setProjects((prev) => [project, ...prev]);
+      setMiniProjectIdeas((prev) =>
+        prev.map((i) => (i.id === idea.id ? { ...i, is_completed: true } : i))
+      );
+      setActiveTab("projects");
+      showToast(`Promoted "${idea.title}" to active projects!`);
+    }
+  };
+
+  // Resources
+  const handleAddResource = async (input: CreateResourceLinkInput) => {
+    if (!userId) return;
+    const created = await createResourceLink(supabase, userId, input);
+    if (created) {
+      setResourceLinks((prev) => [created, ...prev]);
+      showToast("Resource link saved");
+    }
+  };
+
+  const handleDeleteResource = async (linkId: string) => {
+    if (!userId) return;
+    const success = await deleteResourceLink(supabase, userId, linkId);
+    if (success) {
+      setResourceLinks((prev) => prev.filter((r) => r.id !== linkId));
+      showToast("Resource link deleted");
+    }
+  };
+
+  return (
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 pt-2">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-[var(--text)] px-4 py-2.5 text-xs font-semibold text-[var(--surface)] shadow-lg animate-in slide-in-from-bottom duration-200">
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Page Header */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between w-full">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)] flex items-center gap-2.5">
+            <Layers className="h-6 w-6 text-[var(--primary)]" />
+            Full-Stack Learning Hub
+          </h1>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            Master the Java/Spring Boot & MERN stacks with roadmaps, concept notes, project showcase, and mock interviews
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={fetchTrackData}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 rounded-xl border border-[var(--surface-muted)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 transition-colors self-start sm:self-auto"
+          title="Refresh"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
+          />
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      {/* 1. Track Selector */}
+      <TrackSelector
+        tracks={tracks}
+        activeTrackId={activeTrackId}
+        onSelectTrack={(id) => setActiveTrackId(id)}
+        progressMap={progressMap}
+      />
+
+      {/* 2. Study Session Timer Bar (reusing daily tracker activity logger) */}
+      <StudyTimerBar
+        track={activeTrack}
+        onSaveSession={handleSaveStudySession}
+      />
+
+      {/* 3. Navigation Tabs */}
+      <div className="flex items-center gap-1.5 border-b border-[var(--surface-muted)] overflow-x-auto pb-1 text-xs font-semibold w-full">
+        <button
+          type="button"
+          onClick={() => setActiveTab("roadmap")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
+            activeTab === "roadmap"
+              ? "bg-[var(--primary)] text-white shadow-sm"
+              : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
+          }`}
+        >
+          <BookOpen className="h-4 w-4" />
+          <span>Roadmap ({roadmapItems.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("concepts")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
+            activeTab === "concepts"
+              ? "bg-[var(--primary)] text-white shadow-sm"
+              : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
+          }`}
+        >
+          <Lightbulb className="h-4 w-4" />
+          <span>Concepts Log ({concepts.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("projects")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
+            activeTab === "projects"
+              ? "bg-[var(--primary)] text-white shadow-sm"
+              : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
+          }`}
+        >
+          <FolderGit2 className="h-4 w-4" />
+          <span>Projects ({projects.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("interview")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
+            activeTab === "interview"
+              ? "bg-[var(--primary)] text-white shadow-sm"
+              : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
+          }`}
+        >
+          <HelpCircle className="h-4 w-4" />
+          <span>Interview Q&A ({interviewQuestions.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("mini_projects")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
+            activeTab === "mini_projects"
+              ? "bg-[var(--primary)] text-white shadow-sm"
+              : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
+          }`}
+        >
+          <Sparkles className="h-4 w-4" />
+          <span>Mini-Projects ({miniProjectIdeas.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("resources")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
+            activeTab === "resources"
+              ? "bg-[var(--primary)] text-white shadow-sm"
+              : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
+          }`}
+        >
+          <Bookmark className="h-4 w-4" />
+          <span>Resources ({resourceLinks.length})</span>
+        </button>
+      </div>
+
+      {/* 4. Active Tab Content */}
+      <div className="pt-1">
+        {activeTab === "roadmap" && (
+          <RoadmapChecklist
+            items={roadmapItems}
+            trackTitle={activeTrack?.title || "Track"}
+            onToggleStatus={handleToggleRoadmapStatus}
+            onUpdateNotes={handleUpdateRoadmapNotes}
+          />
+        )}
+
+        {activeTab === "concepts" && (
+          <ConceptsLog
+            concepts={concepts}
+            trackTitle={activeTrack?.title}
+            onAddConcept={handleAddConcept}
+            onDeleteConcept={handleDeleteConcept}
+          />
+        )}
+
+        {activeTab === "projects" && (
+          <ProjectTracker
+            projects={projects}
+            activeTrackId={activeTrackId}
+            onSaveProject={handleSaveProject}
+            onDeleteProject={handleDeleteProject}
+          />
+        )}
+
+        {activeTab === "interview" && (
+          <InterviewQaBank
+            questions={interviewQuestions}
+            activeTrackId={activeTrackId}
+            onAddQuestion={handleAddInterviewQa}
+            onUpdateConfidence={handleUpdateConfidence}
+            onDeleteQuestion={handleDeleteInterviewQa}
+          />
+        )}
+
+        {activeTab === "mini_projects" && (
+          <MiniProjectIdeas
+            ideas={miniProjectIdeas}
+            onStartProject={handleStartMiniProject}
+          />
+        )}
+
+        {activeTab === "resources" && (
+          <ResourceLinksList
+            resources={resourceLinks}
+            activeTrackId={activeTrackId}
+            onAddResource={handleAddResource}
+            onDeleteResource={handleDeleteResource}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

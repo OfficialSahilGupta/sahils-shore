@@ -1,11 +1,10 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+import { DsaContainer } from "@/components/dsa/DsaContainer";
 
 export const metadata = {
-  title: "DSA Tracker",
+  title: "DSA Tracker | Sahil's Shore",
+  description: "Track algorithm problems, spaced repetition revisions, CodeMirror snippets, and topic progress.",
 };
 
 export default function DSAPage() {
-  const currentModule = getModuleByRoute("/dsa")!;
-  return <PlaceholderModule module={currentModule} />;
+  return <DsaContainer />;
 }

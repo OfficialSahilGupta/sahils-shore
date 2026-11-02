@@ -146,7 +146,7 @@ export function DayViewContainer({ date }: DayViewContainerProps) {
   const minsRemaining = totals.minutesStudied % 60;
 
   return (
-    <div className="flex flex-col gap-6 pb-16 max-w-5xl mx-auto w-full">
+    <div className="w-full max-w-7xl mx-auto flex flex-col gap-6 pb-16">
       {/* Navigation Top Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface border border-border p-4 rounded-2xl shadow-2xs">
         <div className="flex items-center gap-3">

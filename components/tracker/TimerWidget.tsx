@@ -297,7 +297,7 @@ export function TimerWidget({
       : 0;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
+    <div className="w-full relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
         {/* Left: Mode Toggles & Activity Selector */}
         <div className="flex flex-col gap-4 w-full md:w-auto">

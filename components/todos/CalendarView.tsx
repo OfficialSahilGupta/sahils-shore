@@ -114,7 +114,7 @@ export function CalendarView({
   }, [currentYear, currentMonth]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="w-full flex flex-col gap-4">
       {/* Calendar Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
         <div className="flex items-center gap-2">

@@ -89,11 +89,22 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 6: DSA + Full-Stack Learning Hub
+### Phase 6: DSA + Full-Stack Learning Hub (Completed)
 
-- Problem bank, difficulty breakdown, approach notes, and code snippets
-- SM-2 spaced repetition revision queue
-- Java/Spring Boot & MERN learning roadmaps, concept notes, and project showcase
+- [x] DSA problem tracker: title, link, platform, 17 topic tags, difficulty, status, time spent, approach notes, complexity, and CodeMirror (Java, JS, TS, Python)
+- [x] Spaced repetition revision queue (1, 3, 7, 14, 30 days) with "Revise today" and 1-click Easy/Hard rescheduling
+- [x] Weak-topic detection algorithm based on low solve rate (< 50%) or recurring revision needs
+- [x] Daily goal counter, flame streak tracker, topic progress rings, and difficulty split
+- [x] Automatic writes to `activity_logs` (DSA activity) and `timeline_events`
+- [x] Full-Stack Learning Hub with two curated tracks: "Java and Spring Boot" (16 topics) & "MERN and TypeScript" (13 topics)
+- [x] Interactive roadmap checklist with % completion, category badges, and expandable notes
+- [x] Concepts-learned log with IST date capture, search, and timeline integration
+- [x] Project showcase tracker with status, tech stack chips, GitHub repo, Live Demo, and README notes
+- [x] Interview Q&A bank with 1-5 star confidence rating and Mock Technical Interview mode with 2-minute countdown timer
+- [x] Mini-project ideas list with 1-click promotion to active projects
+- [x] Categorized resource links directory (Documentation, Tutorials, Practice, Videos)
+- [x] Integrated study session timer bar syncing to Daily Tracker activities ("Spring Boot" / "MERN") and `timeline_events`
+- [x] 10 unit tests for Phase 6 covering SM-2 intervals, weak-topic detection, DSA streaks, roadmap progress, and mock interview randomizer (55 total passing tests)
 
 ---
 

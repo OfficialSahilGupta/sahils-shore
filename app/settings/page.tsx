@@ -24,7 +24,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
       {/* Top Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">

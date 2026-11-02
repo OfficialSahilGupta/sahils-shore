@@ -162,6 +162,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 3: Todos + Daily Tracker + Habits (Completed)
 - [x] Phase 4: Expenses + Food Diary (Completed)
 - [x] Phase 5: Today Dashboard + Unified Timeline (Completed - MVP Complete)
+- [x] Phase 6: DSA + Full-Stack Learning Hub (Completed)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -205,5 +206,11 @@ _Update this section after every phase so context survives between sessions._
   - Built Day View at `/day/[date]` with date picker, prev/next arrows, daily totals (time studied, money spent, meals count, tasks completed), full vertical timeline, and day reflection notes.
   - Built Edit Layout Mode with widget library drawer to add/remove widgets, resize handles, reset defaults, and bidirectional persistence to `settings.layout` and localStorage.
   - Built Global Quick Capture bottom sheet/modal accessible via mobile floating `+` button, top bar `+` button, and `q` keyboard shortcut with 5 tabs (Task, Expense, Meal, Note, Timer).
-  - Wrote 13 unit tests for Phase 5 covering IST day bounds, timeline classification, day totals aggregation, quote selection, and layout configurations (45 passing tests total).
+  - Built DSA Tracker with CodeMirror syntax editor (Java, JS, TS, Python), 17 standard topics, difficulty split, complexity chips, and IST solving streak counter.
+  - Implemented SM-2 spaced repetition revision queue (1, 3, 7, 14, 30 days) with 1-click Easy/Hard rescheduling, peek view, and automatic `activity_logs` & `timeline_events` sync.
+  - Built weak-topic detection flagging topics with solve rate < 50% or repeated 'Needs revision' / 'Stuck' problems.
+  - Built Full-Stack Learning Hub supporting two curated tracks ("Java and Spring Boot" with 16 topics & "MERN and TypeScript" with 13 topics), concepts-learned log, project showcase with README drawers, interview Q&A bank with 1-5 star ratings, and 1-click mini-project promotion.
+  - Integrated mock technical interview mode with 2-minute countdown timer, answer reveal, and instant confidence scoring.
+  - Integrated study session stopwatch syncing directly into Daily Tracker (`activity_logs`) under Spring Boot / MERN and `timeline_events`.
+  - Wrote 10 unit tests for Phase 6 covering SM-2 intervals, weak-topic detection, DSA streaks, roadmap progress, and mock interview randomizer (55 tests passing total).
 - Known issues / TODOs: _(none yet)_

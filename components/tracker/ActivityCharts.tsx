@@ -48,7 +48,7 @@ export function ActivityCharts({ logs, activities }: ActivityChartsProps) {
   const activeActivities = activities.filter((a) => a.is_active);
 
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-4">
+    <div className="w-full rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-4">
       {/* Chart Switcher Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

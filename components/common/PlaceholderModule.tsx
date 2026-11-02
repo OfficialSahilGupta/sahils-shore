@@ -146,7 +146,7 @@ export function PlaceholderModule({ module, plannedFeatures }: PlaceholderModule
     ];
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
+    <div className="w-full max-w-7xl mx-auto flex flex-col gap-6 pb-16">
       {/* Top Banner / Breadcrumb */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
         <div className="flex items-center gap-2 text-xs text-text-muted">

@@ -226,7 +226,7 @@ export function TodayDashboard() {
   const today = todayIST();
 
   return (
-    <div className="flex flex-col gap-5 pb-16 max-w-7xl mx-auto w-full">
+    <div className="w-full max-w-7xl mx-auto flex flex-col gap-5 pb-16">
       {/* Top Controls Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface border border-border p-3.5 sm:p-4 rounded-2xl shadow-2xs">
         <div className="flex items-center gap-2.5">

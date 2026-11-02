@@ -285,7 +285,7 @@ export function DayPlanner({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex flex-col gap-4">
+      <div className="w-full flex flex-col gap-4">
         {/* Date Navigator Header */}
         <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
           <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export function DayPlanner({
         </div>
 
         {/* 2-Column Layout: Unscheduled Drawer & 30-Minute Timeline */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Unscheduled / Backlog Tasks Dock */}
           <div className="lg:col-span-1 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 max-h-[700px]">
             <div className="flex items-center justify-between pb-2 border-b border-[var(--border)] mb-3">

@@ -190,7 +190,7 @@ function KanbanColumn({
     <div
       ref={setNodeRef}
       id={col.id}
-      className={`flex flex-col rounded-2xl border transition-all p-3 min-h-[480px] ${
+      className={`w-full min-w-0 flex flex-col rounded-2xl border transition-all p-3 min-h-[480px] ${
         isOver
           ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/20 bg-[var(--primary-soft)]/15"
           : "border-[var(--border)] bg-[var(--surface-muted)]/30"
@@ -337,7 +337,7 @@ export function KanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-6">
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-6">
         {COLUMNS.map((col) => (
           <KanbanColumn
             key={col.id}

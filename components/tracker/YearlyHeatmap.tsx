@@ -53,7 +53,7 @@ export function YearlyHeatmap({ logs, activities }: YearlyHeatmapProps) {
   }, [heatmapDays]);
 
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-4">
+    <div className="w-full rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-4">
       {/* Header & Filter Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

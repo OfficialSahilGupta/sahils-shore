@@ -365,13 +365,19 @@ export interface Database {
           platform: string | null;
           topic: string | null;
           difficulty: "Easy" | "Medium" | "Hard";
-          status: "todo" | "attempted" | "solved" | "mastered";
+          status: "Solved" | "Needs revision" | "Stuck" | "Revisit" | "todo" | "attempted" | "solved" | "mastered";
           time_spent_minutes: number | null;
           approach_notes: string | null;
           code_snippet: string | null;
           language: string;
           next_revision_at: string | null;
           revision_count: number;
+          time_complexity: string | null;
+          space_complexity: string | null;
+          revision_interval_days: number;
+          last_revised_at: string | null;
+          revision_history: Json;
+          rating: "Easy" | "Hard" | null;
           created_at: string;
           updated_at: string;
         };
@@ -383,13 +389,19 @@ export interface Database {
           platform?: string | null;
           topic?: string | null;
           difficulty?: ("Easy" | "Medium" | "Hard");
-          status?: ("todo" | "attempted" | "solved" | "mastered");
+          status?: ("Solved" | "Needs revision" | "Stuck" | "Revisit" | "todo" | "attempted" | "solved" | "mastered");
           time_spent_minutes?: number | null;
           approach_notes?: string | null;
           code_snippet?: string | null;
           language?: string;
           next_revision_at?: string | null;
           revision_count?: number;
+          time_complexity?: string | null;
+          space_complexity?: string | null;
+          revision_interval_days?: number;
+          last_revised_at?: string | null;
+          revision_history?: Json;
+          rating?: ("Easy" | "Hard" | null);
           created_at?: string;
           updated_at?: string;
         };
@@ -401,13 +413,19 @@ export interface Database {
           platform?: string | null;
           topic?: string | null;
           difficulty?: ("Easy" | "Medium" | "Hard");
-          status?: ("todo" | "attempted" | "solved" | "mastered");
+          status?: ("Solved" | "Needs revision" | "Stuck" | "Revisit" | "todo" | "attempted" | "solved" | "mastered");
           time_spent_minutes?: number | null;
           approach_notes?: string | null;
           code_snippet?: string | null;
           language?: string;
           next_revision_at?: string | null;
           revision_count?: number;
+          time_complexity?: string | null;
+          space_complexity?: string | null;
+          revision_interval_days?: number;
+          last_revised_at?: string | null;
+          revision_history?: Json;
+          rating?: ("Easy" | "Hard" | null);
           created_at?: string;
           updated_at?: string;
         };
@@ -421,6 +439,7 @@ export interface Database {
           description: string | null;
           icon: string | null;
           color: string | null;
+          slug: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -431,6 +450,7 @@ export interface Database {
           description?: string | null;
           icon?: string | null;
           color?: string | null;
+          slug?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -441,6 +461,7 @@ export interface Database {
           description?: string | null;
           icon?: string | null;
           color?: string | null;
+          slug?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -455,6 +476,8 @@ export interface Database {
           status: "planned" | "in_progress" | "completed";
           notes: string | null;
           resources: Json;
+          order_index: number;
+          category: string | null;
           completed_at: string | null;
           created_at: string;
           updated_at: string;
@@ -467,6 +490,8 @@ export interface Database {
           status?: ("planned" | "in_progress" | "completed");
           notes?: string | null;
           resources?: Json;
+          order_index?: number;
+          category?: string | null;
           completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -479,6 +504,8 @@ export interface Database {
           status?: ("planned" | "in_progress" | "completed");
           notes?: string | null;
           resources?: Json;
+          order_index?: number;
+          category?: string | null;
           completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -496,6 +523,7 @@ export interface Database {
           status: "idea" | "in_progress" | "completed" | "deployed";
           repo_url: string | null;
           deployed_url: string | null;
+          readme_notes: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -509,6 +537,7 @@ export interface Database {
           status?: ("idea" | "in_progress" | "completed" | "deployed");
           repo_url?: string | null;
           deployed_url?: string | null;
+          readme_notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -522,6 +551,7 @@ export interface Database {
           status?: ("idea" | "in_progress" | "completed" | "deployed");
           repo_url?: string | null;
           deployed_url?: string | null;
+          readme_notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -537,6 +567,8 @@ export interface Database {
           answer: string;
           difficulty: string | null;
           tags: string[];
+          confidence: number;
+          last_practiced_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -549,6 +581,8 @@ export interface Database {
           answer: string;
           difficulty?: string | null;
           tags?: string[];
+          confidence?: number;
+          last_practiced_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -561,6 +595,116 @@ export interface Database {
           answer?: string;
           difficulty?: string | null;
           tags?: string[];
+          confidence?: number;
+          last_practiced_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      learning_concepts: {
+        Row: {
+          id: string;
+          user_id: string;
+          track_id: string | null;
+          title: string;
+          notes: string;
+          learned_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          track_id?: string | null;
+          title: string;
+          notes: string;
+          learned_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          track_id?: string | null;
+          title?: string;
+          notes?: string;
+          learned_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      mini_project_ideas: {
+        Row: {
+          id: string;
+          user_id: string;
+          track_id: string | null;
+          title: string;
+          description: string | null;
+          difficulty: "Beginner" | "Intermediate" | "Advanced";
+          suggested_tech: string[];
+          is_completed: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          track_id?: string | null;
+          title: string;
+          description?: string | null;
+          difficulty?: "Beginner" | "Intermediate" | "Advanced";
+          suggested_tech?: string[];
+          is_completed?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          track_id?: string | null;
+          title?: string;
+          description?: string | null;
+          difficulty?: "Beginner" | "Intermediate" | "Advanced";
+          suggested_tech?: string[];
+          is_completed?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      resource_links: {
+        Row: {
+          id: string;
+          user_id: string;
+          track_id: string | null;
+          title: string;
+          url: string;
+          category: string;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          track_id?: string | null;
+          title: string;
+          url: string;
+          category?: string;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          track_id?: string | null;
+          title?: string;
+          url?: string;
+          category?: string;
+          description?: string | null;
           created_at?: string;
           updated_at?: string;
         };
