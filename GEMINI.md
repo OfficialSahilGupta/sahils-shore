@@ -159,7 +159,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 0: Setup, app shell, placeholder pages, navigation, theme tokens, PWA basics (Completed)
 - [x] Phase 1: Supabase auth, schema (including `timeline_events`), RLS, generated types (Completed)
 - [x] Phase 2: Theme engine and presets (Completed)
-- [ ] Phase 3: Todos + Daily Tracker + Habits
+- [x] Phase 3: Todos + Daily Tracker + Habits (Completed)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -179,4 +179,12 @@ _Update this section after every phase so context survives between sessions._
   - Built zero-FOUC anti-flash engine with inline pre-paint script, localStorage caching, and Supabase `settings.theme` synchronization.
   - Added module customizer supporting drag-and-drop reordering, inline renaming, and visibility toggles, directly driving `Sidebar` and `MobileNav`.
   - Added Settings > Privacy stub for PIN/Biometric module protection saving to `settings.privacy`.
+  - Built full Todos & Planner module: List, Kanban (`@dnd-kit`), Month & Week Calendar, and 30-minute slot Day Planner.
+  - Implemented natural language quick-add parsing (`title`, `!priority`, `#tags`, `time`, `date`).
+  - Added recurring task engine generating next instances on completion (daily, weekly, custom days, monthly).
+  - Built timer & Pomodoro widget surviving browser refresh by saving ISO start timestamps in `localStorage`.
+  - Built IST day-boundary and streak calculations (including skip-day preservation for habits).
+  - Built 52-week GitHub-style yearly activity heatmap, per-activity progress rings, and weekly/monthly Recharts charts.
+  - Integrated optimistic updates with floating undo toast notifications for completions and deletions.
+  - Persisted all completions and logs to Supabase tables (`tasks`, `subtasks`, `activities`, `activity_logs`, `habits`, `habit_logs`) and synced with `timeline_events`.
 - Known issues / TODOs: _(none yet)_

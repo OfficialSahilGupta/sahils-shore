@@ -4,6 +4,7 @@ import "@/app/globals.css";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { ThemeConfigProvider } from "@/lib/theme/ThemeContext";
 import { ModuleConfigProvider } from "@/lib/modules/ModuleContext";
+import { ToastProvider } from "@/components/ui/toast";
 import { AppShell } from "@/components/layout/AppShell";
 
 const inter = Inter({
@@ -97,7 +98,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           <ThemeConfigProvider>
             <ModuleConfigProvider>
-              <AppShell>{children}</AppShell>
+              <ToastProvider>
+                <AppShell>{children}</AppShell>
+              </ToastProvider>
             </ModuleConfigProvider>
           </ThemeConfigProvider>
         </ThemeProvider>

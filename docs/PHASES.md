@@ -42,11 +42,21 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 3: Todos + Daily Tracker + Habits
+### Phase 3: Todos + Daily Tracker + Habits (Completed)
 
-- Priority, tags, subtasks, recurring tasks
-- Views: List, Kanban (drag & drop), Calendar, and IST time-blocking day planner
-- Daily activity tracker with Pomodoro, streaks, and GitHub-style heatmap
+- [x] Full CRUD tasks with priority, tags, subtasks, notes, and recurrence (daily, weekly, custom days, monthly)
+- [x] Recurrence engine auto-generating next task instance upon completion
+- [x] Natural language quick-add parser (e.g. `revise graphs tomorrow 7pm !high #dsa`)
+- [x] List, Kanban (`@dnd-kit` across Backlog/Today/Doing/Done), and Calendar (Month + Week) views
+- [x] Time-blocking day planner with 30-minute slots (06:00 to 23:30 IST) and task drag & drop
+- [x] Optimistic updates and floating undo toasts for deletions and completions
+- [x] Customizable activities with target minutes, stopwatch, and configurable Pomodoro (25/5)
+- [x] Refresh-surviving timer storing start timestamps in `localStorage`
+- [x] IST day-boundary aware streak calculations with minimum thresholds
+- [x] GitHub-style 52-week yearly heatmap (per-activity & combined) and Recharts weekly/monthly charts
+- [x] Habits checklist widget with flame streaks and skip-day preservation
+- [x] Automatic writes to `timeline_events` for every completed task, study session, and habit
+- [x] 15 unit tests covering recurrence generation, IST day boundaries, and streak logic
 
 ---
 

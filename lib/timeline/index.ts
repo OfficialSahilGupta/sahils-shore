@@ -4,8 +4,8 @@
 // ============================================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Json } from "@/types/database";
-import type { TimelineEvent, TimelineEventType } from "@/types";
+import type { Database, Json } from "../../types/database.ts";
+import type { TimelineEvent, TimelineEventType } from "../../types/index.ts";
 
 export interface WriteTimelineEventParams {
   /** The UUID of the authenticated user performing the action */

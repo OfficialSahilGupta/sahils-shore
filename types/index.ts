@@ -2,9 +2,9 @@
 // Sahil's Shore: Global TypeScript Type Definitions
 // ============================================================================
 
-import type { Database } from "@/types/database";
+import type { Database } from "./database.ts";
 
-export * from "@/types/database";
+export * from "./database.ts";
 
 // Currency in paise (Rs 10.50 = 1050). Never use floats for money.
 export type CurrencyINR = number;
