@@ -1949,6 +1949,54 @@ export interface Database {
         };
         Relationships: [];
       };
+      backup_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          trigger_type: string;
+          status: string;
+          drive_folder_id: string | null;
+          folder_name: string;
+          tables_count: number;
+          rows_count: number;
+          file_size_bytes: number;
+          details: Json;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          trigger_type: string;
+          status: string;
+          drive_folder_id?: string | null;
+          folder_name: string;
+          tables_count?: number;
+          rows_count?: number;
+          file_size_bytes?: number;
+          details?: Json;
+          error_message?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          trigger_type?: string;
+          status?: string;
+          drive_folder_id?: string | null;
+          folder_name?: string;
+          tables_count?: number;
+          rows_count?: number;
+          file_size_bytes?: number;
+          details?: Json;
+          error_message?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

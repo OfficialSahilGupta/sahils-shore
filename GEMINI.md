@@ -168,6 +168,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 9: Career Hub (Completed)
 - [x] Phase 10: Journal, Notes, Goals, Health (Completed)
 - [x] Phase 11: Analytics + AI Coach (Completed)
+- [x] Phase 12: Backups/restore, PWA offline queue, polish, deploy (Completed — All 12 Phases Complete!)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -286,4 +287,17 @@ _Update this section after every phase so context survives between sessions._
   - Cached AI Coach insights in `public.ai_coach_insights` table with single-user RLS and automated `timeline_events` writes.
   - Embedded AI Coach Horizon card on Today Dashboard with 1-click "Add to Tasks", Weekly Review modal, and toggleable settings under Settings > AI Coach.
   - Wrote 17 unit tests for Phase 11 covering productivity score math, skill normalization and 24x7 heatmap, paise budget thresholds, Pearson correlation, privacy scrubber, heuristic coach generator, and report export (134 tests passing total).
+  - Built full Google Drive automated backup and retention system exporting all 37 database tables to `backup.json` and key tables to CSV inside `Shore/Backups/YYYY-MM-DD/`.
+  - Automated weekly Vercel Cron job at path `/api/cron/backup` protected by `CRON_SECRET` and scheduled via `vercel.json` (`0 2 * * 0`).
+  - Implemented automated retention pruning keeping the 12 most recent backups in Google Drive and trashing older ones.
+  - Built database Restore Tool with drag-and-drop JSON upload, row count previews across all tables, and dual restoration strategies: Merge (upsert) and Replace (clean wipe & rebuild) with confirmation modal.
+  - Built 1-click "Download Backup Archive (.zip)" bundling full JSON and key RFC-4180 CSV tables.
+  - Built Service Worker (`public/sw.js`) with shell pre-caching, runtime stale-while-revalidate, offline fallback page (`public/offline.html`), and background sync message dispatch.
+  - Built IndexedDB offline queue (`shore_offline_db`) caching tasks, expenses, meals, notes, and photos with UUID idempotency keys to prevent duplicate syncs.
+  - Built PWA Web Share Target (`/share-target`) to capture links, texts, and notes from mobile OS share sheets directly into Shore.
+  - Built Command Palette powered by `cmdk` with navigation to all 16 modules, quick creation actions, and unified global search querying across Tasks, Notes, DSA problems, German Vocab, Places, Expenses, and Journal entries.
+  - Built single-key global shortcuts (`n`, `e`, `m`, `/`, `?`, and `g` + letter navigation sequence) with interactive keyboard shortcuts cheat sheet.
+  - Added `components/ui/skeleton.tsx`, `app/error.tsx`, and `app/not-found.tsx` for error boundaries and empty states.
+  - Documented production setup in `README.md`, including architecture diagram (Mermaid), Google OAuth "In production" consent guide, Supabase migration instructions, and `.env.example`.
+  - Wrote 14 unit tests for Phase 12 covering RFC-4180 CSV escaping, backup manifest and key CSV tables, JSON previewing and warning flags, restoration dependency order, 12-backup retention pruning, and offline queue mutation idempotency (148 tests passing total).
 - Known issues / TODOs: _(none yet)_

@@ -12,18 +12,21 @@ import { ModuleSettings } from "@/components/settings/ModuleSettings";
 import { PrivacySettings } from "@/components/settings/PrivacySettings";
 import { DriveSettings } from "@/components/settings/DriveSettings";
 import { CoachSettings } from "@/components/settings/CoachSettings";
+import { BackupSettings } from "@/components/settings/BackupSettings";
 import { ThemePreviewPanel } from "@/components/settings/ThemePreviewPanel";
-import { Palette, Grid, Shield, HardDrive, Sparkles, RefreshCw, Bot } from "lucide-react";
+import { Palette, Grid, Shield, HardDrive, Sparkles, RefreshCw, Bot, Database } from "lucide-react";
 
-type SettingsTab = "appearance" | "modules" | "privacy" | "drive" | "coach";
+type SettingsTab = "appearance" | "modules" | "privacy" | "drive" | "coach" | "backups";
 
 function SettingsContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
 
-  // Automatically activate Drive tab if redirected from OAuth callback or params
+  // Automatically activate Drive tab or Backups tab if requested in URL
   useEffect(() => {
-    if (
+    if (searchParams?.get("tab") === "backups") {
+      setActiveTab("backups");
+    } else if (
       searchParams?.get("tab") === "drive" ||
       searchParams?.has("drive") ||
       searchParams?.has("drive_error")
@@ -38,6 +41,7 @@ function SettingsContent() {
     { id: "privacy" as const, label: "Privacy & Vault", icon: Shield },
     { id: "drive" as const, label: "Google Drive Sync", icon: HardDrive },
     { id: "coach" as const, label: "AI Coach", icon: Bot },
+    { id: "backups" as const, label: "Backups & Restore", icon: Database },
   ];
 
   return (
@@ -114,6 +118,12 @@ function SettingsContent() {
       {activeTab === "coach" && (
         <div className="max-w-3xl">
           <CoachSettings />
+        </div>
+      )}
+
+      {activeTab === "backups" && (
+        <div className="max-w-5xl">
+          <BackupSettings />
         </div>
       )}
     </div>

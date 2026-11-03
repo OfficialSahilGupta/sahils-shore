@@ -5,6 +5,9 @@ import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { ThemeConfigProvider } from "@/lib/theme/ThemeContext";
 import { ModuleConfigProvider } from "@/lib/modules/ModuleContext";
 import { ToastProvider } from "@/components/ui/toast";
+import { OfflineProvider } from "@/lib/offline/OfflineContext";
+import { PwaProvider } from "@/components/pwa/PwaProvider";
+import { PwaInstallBanner } from "@/components/pwa/PwaInstallBanner";
 import { AppShell } from "@/components/layout/AppShell";
 
 const inter = Inter({
@@ -99,7 +102,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeConfigProvider>
             <ModuleConfigProvider>
               <ToastProvider>
-                <AppShell>{children}</AppShell>
+                <OfflineProvider>
+                  <PwaProvider>
+                    <AppShell>{children}</AppShell>
+                    <PwaInstallBanner />
+                  </PwaProvider>
+                </OfflineProvider>
               </ToastProvider>
             </ModuleConfigProvider>
           </ThemeConfigProvider>

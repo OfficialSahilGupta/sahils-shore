@@ -290,3 +290,20 @@ export function utcToZonedDate(utcIsoOrDate: string | Date): Date {
 }
 
 export const formatTime12HourIST = formatISTTime;
+
+export const currentISTDateString = todayIST;
+
+export function formatISTTimestamp(isoString: string): string {
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: IST_TIMEZONE,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
+}
+

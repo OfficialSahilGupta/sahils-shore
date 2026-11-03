@@ -557,3 +557,76 @@ export async function disconnectDrive(
 
   return !error;
 }
+
+/**
+ * Uploads a text or small binary file directly to Google Drive via multipart upload.
+ */
+export async function uploadSimpleDriveFile(
+  accessToken: string,
+  folderId: string,
+  fileName: string,
+  mimeType: string,
+  content: string | Buffer
+): Promise<{ id: string; name: string }> {
+  const metadata = { name: fileName, parents: [folderId] };
+  const boundary = "-------ShoreBackupBoundary" + Date.now();
+  const delimiter = `\r\n--${boundary}\r\n`;
+  const closeDelim = `\r\n--${boundary}--`;
+
+  const contentStr = typeof content === "string" ? content : content.toString("utf8");
+
+  const multipartRequestBody =
+    delimiter +
+    "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+    JSON.stringify(metadata) +
+    delimiter +
+    `Content-Type: ${mimeType}\r\n\r\n` +
+    contentStr +
+    closeDelim;
+
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body: multipartRequestBody,
+    }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Google Drive upload failed (${res.status}): ${errText}`);
+  }
+
+  const data = await res.json();
+  return { id: data.id, name: data.name };
+}
+
+/**
+ * Lists subfolders directly under a given parent folder.
+ */
+export async function listDriveSubfolders(
+  accessToken: string,
+  parentId: string
+): Promise<{ id: string; name: string; createdTime?: string }[]> {
+  const q = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+      q
+    )}&spaces=drive&fields=files(id, name, createdTime)&orderBy=createdTime desc&pageSize=100`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (!res.ok) {
+    return [];
+  }
+
+  const data = await res.json();
+  return data.files || [];
+}
+

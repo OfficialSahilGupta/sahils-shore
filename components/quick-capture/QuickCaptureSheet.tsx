@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useQuickCapture, QuickCaptureTab } from "@/lib/quick-capture/QuickCaptureContext";
+import { useOfflineQueue } from "@/lib/offline/OfflineContext";
 import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import { createTask, parseNaturalLanguageTask } from "@/lib/todos";
@@ -35,6 +36,7 @@ import {
 
 export function QuickCaptureSheet() {
   const { isOpen, activeTab, close, setActiveTab } = useQuickCapture();
+  const { enqueueMutation, isOnline } = useOfflineQueue();
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -118,9 +120,27 @@ export function QuickCaptureSheet() {
     if (!taskInput.trim()) return;
 
     setIsSubmitting(true);
+    const parsed = parseNaturalLanguageTask(taskInput.trim());
+
+    // Offline branch
+    if (!isOnline) {
+      await enqueueMutation("task", {
+        title: parsed.title,
+        priority: (parsed.priority || taskPriority) as any,
+        due_date: parsed.dueDate || taskDueDate,
+        due_time: parsed.dueTime,
+        tags: parsed.tags.length > 0 ? parsed.tags : ["inbox"],
+        status: "todo",
+      });
+      setTaskInput("");
+      notifyChange();
+      setIsSubmitting(false);
+      close();
+      return;
+    }
+
     try {
       const supabase = createClient();
-      const parsed = parseNaturalLanguageTask(taskInput.trim());
       const res = await createTask(supabase, userId || "anonymous", {
         title: parsed.title,
         priority: (parsed.priority || taskPriority) as any,
@@ -142,7 +162,18 @@ export function QuickCaptureSheet() {
         toast({ title: "Failed to create task", type: "error" });
       }
     } catch {
-      toast({ title: "Error creating task", type: "error" });
+      // Fallback to offline queue on network error
+      await enqueueMutation("task", {
+        title: parsed.title,
+        priority: (parsed.priority || taskPriority) as any,
+        due_date: parsed.dueDate || taskDueDate,
+        due_time: parsed.dueTime,
+        tags: parsed.tags.length > 0 ? parsed.tags : ["inbox"],
+        status: "todo",
+      });
+      setTaskInput("");
+      notifyChange();
+      close();
     } finally {
       setIsSubmitting(false);
     }
@@ -157,9 +188,27 @@ export function QuickCaptureSheet() {
     }
 
     setIsSubmitting(true);
+    const paise = rupeesToPaise(amountVal);
+
+    if (!isOnline) {
+      await enqueueMutation("expense", {
+        amount_paise: paise,
+        category_id: expenseCategoryId || null,
+        payment_method: expensePaymentMethod,
+        place_name: expensePlace.trim() || undefined,
+        notes: expenseNote.trim() || undefined,
+      });
+      setExpenseAmount("");
+      setExpensePlace("");
+      setExpenseNote("");
+      notifyChange();
+      setIsSubmitting(false);
+      close();
+      return;
+    }
+
     try {
       const supabase = createClient();
-      const paise = rupeesToPaise(amountVal);
       const res = await createExpense(supabase, userId || "anonymous", {
         amount_paise: paise,
         category_id: expenseCategoryId || null,
@@ -183,7 +232,18 @@ export function QuickCaptureSheet() {
         toast({ title: "Failed to log expense", type: "error" });
       }
     } catch {
-      toast({ title: "Error logging expense", type: "error" });
+      await enqueueMutation("expense", {
+        amount_paise: paise,
+        category_id: expenseCategoryId || null,
+        payment_method: expensePaymentMethod,
+        place_name: expensePlace.trim() || undefined,
+        notes: expenseNote.trim() || undefined,
+      });
+      setExpenseAmount("");
+      setExpensePlace("");
+      setExpenseNote("");
+      notifyChange();
+      close();
     } finally {
       setIsSubmitting(false);
     }
@@ -197,11 +257,28 @@ export function QuickCaptureSheet() {
     }
 
     setIsSubmitting(true);
+    const parsedCost = parseFloat(mealCost);
+    const costPaise = !isNaN(parsedCost) && parsedCost > 0 ? rupeesToPaise(parsedCost) : 0;
+
+    if (!isOnline) {
+      await enqueueMutation("meal", {
+        meal_type: mealSlot,
+        description: mealItems.trim(),
+        restaurant_name: mealRestaurant.trim() || null,
+        cost_paise: costPaise,
+        rating: mealRating,
+      });
+      setMealItems("");
+      setMealRestaurant("");
+      setMealCost("");
+      notifyChange();
+      setIsSubmitting(false);
+      close();
+      return;
+    }
+
     try {
       const supabase = createClient();
-      const parsedCost = parseFloat(mealCost);
-      const costPaise = !isNaN(parsedCost) && parsedCost > 0 ? rupeesToPaise(parsedCost) : 0;
-
       const res = await createMeal(supabase, userId || "anonymous", {
         meal_type: mealSlot,
         description: mealItems.trim(),
@@ -225,7 +302,18 @@ export function QuickCaptureSheet() {
         toast({ title: "Failed to log meal", type: "error" });
       }
     } catch {
-      toast({ title: "Error logging meal", type: "error" });
+      await enqueueMutation("meal", {
+        meal_type: mealSlot,
+        description: mealItems.trim(),
+        restaurant_name: mealRestaurant.trim() || null,
+        cost_paise: costPaise,
+        rating: mealRating,
+      });
+      setMealItems("");
+      setMealRestaurant("");
+      setMealCost("");
+      notifyChange();
+      close();
     } finally {
       setIsSubmitting(false);
     }
@@ -239,13 +327,29 @@ export function QuickCaptureSheet() {
     }
 
     setIsSubmitting(true);
+    const tags = noteTags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    if (!isOnline) {
+      await enqueueMutation("note", {
+        title: noteTitle.trim(),
+        content: noteContent.trim(),
+        tags,
+        is_pinned: notePinned,
+      });
+      setNoteTitle("");
+      setNoteContent("");
+      setNoteTags("");
+      notifyChange();
+      setIsSubmitting(false);
+      close();
+      return;
+    }
+
     try {
       const supabase = createClient();
-      const tags = noteTags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
-
       const res = await createNote(supabase, {
         userId: userId || "anonymous",
         title: noteTitle.trim(),
@@ -269,7 +373,17 @@ export function QuickCaptureSheet() {
         toast({ title: "Failed to save note", type: "error" });
       }
     } catch {
-      toast({ title: "Error saving note", type: "error" });
+      await enqueueMutation("note", {
+        title: noteTitle.trim(),
+        content: noteContent.trim(),
+        tags,
+        is_pinned: notePinned,
+      });
+      setNoteTitle("");
+      setNoteContent("");
+      setNoteTags("");
+      notifyChange();
+      close();
     } finally {
       setIsSubmitting(false);
     }
