@@ -156,12 +156,23 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 10: Journal, Notes, Goals, Health
+### Phase 10: Journal, Notes, Goals, Health (Completed)
 
-- Daily journal with mood/energy rating and weekly reviews
-- Markdown second brain with [[backlinks]] and search
-- Long-term goals with milestone progress
-- Health mini-trackers: water hydration, sleep, workouts, weight
+- [x] Daily journal: one entry per day, mood and energy (1-5 sliders), 3 gratitude prompts, wins, lessons, and free-write markdown
+- [x] 1-click "Auto-fill from Timeline" pulling that day's tasks completed, study sessions, DSA solved, meals logged, and expenses
+- [x] Auto-aggregated weekly review template pre-filled with the week's stats (hours studied, DSA solved, spent in paise/INR, streaks)
+- [x] Recharts mood and energy trajectory chart over 7, 14, and 30 days with average indicators
+- [x] Searchable archive of past reflections with mood badges and gratitude preview
+- [x] Markdown second brain with folders, tags, pinning, live preview, and instant full-text search
+- [x] Bidirectional [[backlinks]] engine syncing to `note_links` table with Backlinks Panel showing context excerpts
+- [x] Interactive 2D SVG Knowledge Graph visualizer mapping notes as nodes with folder colors and backlink connection lines
+- [x] Long-term goals with milestones, deadlines, status filters, and dynamic progress calculation weighted from milestones (70%) and linked tasks (30%)
+- [x] Quarterly goals view grouping goals into Q1-Q4 horizon cards with aggregate quarterly progress
+- [x] Toggleable health mini-trackers: water hydration (+/- glasses, 250ml per glass, 8-glass goal), sleep recovery (hours slider + 1-5 quality), workouts (type chips, duration presets, notes), and weight (fine adjustments with trend indicator)
+- [x] 7-day and 30-day Recharts vital trends for water hydration, sleep duration, workout minutes, and weight progression
+- [x] Automatic writes to `timeline_events` for journal reflections and health logs (water, sleep, workout, weight)
+- [x] Privacy PIN & WebAuthn biometric lock for Journal, Expenses, and Media Vault with configurable inactivity auto-lock timeouts (Settings > Privacy)
+- [x] 16 unit tests for Phase 10 covering weekly review aggregation, backlink parsing, goal progress math, quarterly date mapping, health conversions, and PIN hashing/verification (117 tests passing total)
 
 ---
 

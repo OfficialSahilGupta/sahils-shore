@@ -1,11 +1,15 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+// ============================================================================
+// Sahil's Shore: Notes / Second Brain Page Route
+// Route: /notes
+// ============================================================================
+
+import { NotesContainer } from "@/components/notes/NotesContainer";
 
 export const metadata = {
-  title: "Notes / Second Brain",
+  title: "Notes / Second Brain | Sahil's Shore",
+  description: "Markdown knowledge base with tags, [[backlinks]], full-text search, and quick pinning.",
 };
 
 export default function NotesPage() {
-  const currentModule = getModuleByRoute("/notes")!;
-  return <PlaceholderModule module={currentModule} />;
+  return <NotesContainer />;
 }

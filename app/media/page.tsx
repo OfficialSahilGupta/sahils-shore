@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { MediaVaultContainer } from "@/components/media/MediaVaultContainer";
+import { VaultProtectionGate } from "@/components/privacy/VaultProtectionGate";
 
 export const metadata = {
   title: "Media Vault & Memories | Sahil's Shore",
@@ -11,5 +12,9 @@ export const metadata = {
 };
 
 export default function MediaPage() {
-  return <MediaVaultContainer />;
+  return (
+    <VaultProtectionGate module="media" moduleName="Media Vault">
+      <MediaVaultContainer />
+    </VaultProtectionGate>
+  );
 }

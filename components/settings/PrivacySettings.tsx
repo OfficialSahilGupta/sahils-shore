@@ -2,12 +2,20 @@
 
 // ============================================================================
 // Sahil's Shore: Privacy & Security Settings Component
-// Stub for PIN/Biometric lock on sensitive modules (Journal, Expenses, Media)
+// Biometric & PIN lock protection for confidential areas (Journal, Expenses, Media)
 // ============================================================================
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Json } from "@/types/database";
+import {
+  hashPin,
+  generateSalt,
+  registerWebAuthnCredential,
+  isWebAuthnAvailable,
+  PrivacyConfig,
+  DEFAULT_PRIVACY_CONFIG,
+} from "@/lib/privacy";
 import {
   Lock,
   KeyRound,
@@ -16,37 +24,28 @@ import {
   Save,
   CheckCircle2,
   AlertCircle,
-  Eye,
-  EyeOff,
+  Fingerprint,
+  RotateCcw,
 } from "lucide-react";
 
-interface PrivacyConfig {
-  lock_journal: boolean;
-  lock_expenses: boolean;
-  lock_media: boolean;
-  auto_lock_minutes: number;
-}
-
-const DEFAULT_PRIVACY: PrivacyConfig = {
-  lock_journal: false,
-  lock_expenses: false,
-  lock_media: false,
-  auto_lock_minutes: 5,
-};
-
 export function PrivacySettings() {
-  const [privacy, setPrivacy] = useState<PrivacyConfig>(DEFAULT_PRIVACY);
-  const [pin, setPin] = useState<string>("");
+  const [privacy, setPrivacy] = useState<PrivacyConfig>(DEFAULT_PRIVACY_CONFIG);
   const [pinSetupOpen, setPinSetupOpen] = useState(false);
-  const [hasPinConfigured, setHasPinConfigured] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinError, setPinError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricStatus, setBiometricStatus] = useState<string>("");
 
   useEffect(() => {
     try {
       const cached = localStorage.getItem("shore_privacy_config");
-      if (cached) setPrivacy(JSON.parse(cached));
+      if (cached) setPrivacy((prev) => ({ ...prev, ...JSON.parse(cached) }));
     } catch {}
+
+    isWebAuthnAvailable().then(setBiometricSupported);
 
     try {
       const supabase = createClient();
@@ -58,12 +57,15 @@ export function PrivacySettings() {
             .eq("user_id", data.user.id)
             .single()
             .then(({ data: settingsData }) => {
-              if (
-                settingsData?.privacy &&
-                typeof settingsData.privacy === "object"
-              ) {
+              if (settingsData?.privacy && typeof settingsData.privacy === "object") {
                 const sbPrivacy = settingsData.privacy as Partial<PrivacyConfig>;
-                setPrivacy((prev) => ({ ...prev, ...sbPrivacy }));
+                setPrivacy((prev) => {
+                  const merged = { ...prev, ...sbPrivacy };
+                  try {
+                    localStorage.setItem("shore_privacy_config", JSON.stringify(merged));
+                  } catch {}
+                  return merged;
+                });
               }
             });
         }
@@ -71,7 +73,7 @@ export function PrivacySettings() {
     } catch {}
   }, []);
 
-  const handleToggle = (key: keyof Omit<PrivacyConfig, "auto_lock_minutes">) => {
+  const handleToggle = (key: "lock_journal" | "lock_expenses" | "lock_media") => {
     setPrivacy((prev) => {
       const updated = { ...prev, [key]: !prev[key] };
       try {
@@ -79,6 +81,97 @@ export function PrivacySettings() {
       } catch {}
       return updated;
     });
+  };
+
+  const handleSavePin = async () => {
+    setPinError("");
+    if (!newPin || newPin.length < 4 || newPin.length > 6) {
+      setPinError("PIN must be 4 to 6 digits.");
+      return;
+    }
+    if (newPin !== confirmPin) {
+      setPinError("PINs do not match. Please re-enter.");
+      return;
+    }
+
+    try {
+      const salt = generateSalt();
+      const hash = await hashPin(newPin, salt);
+      const updated: PrivacyConfig = {
+        ...privacy,
+        pin_hash: hash,
+        pin_salt: salt,
+      };
+
+      setPrivacy(updated);
+      try {
+        localStorage.setItem("shore_privacy_config", JSON.stringify(updated));
+      } catch {}
+
+      // Save to Supabase
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("settings")
+          .update({
+            privacy: updated as unknown as Json,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+      }
+
+      setPinSetupOpen(false);
+      setNewPin("");
+      setConfirmPin("");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch {
+      setPinError("Failed to save PIN.");
+    }
+  };
+
+  const handleEnrollBiometric = async () => {
+    setBiometricStatus("Prompting device...");
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const userId = user?.id || "shore_user";
+      const email = user?.email || "sahil@shore.local";
+
+      const cred = await registerWebAuthnCredential(userId, email);
+      if (cred) {
+        const updated: PrivacyConfig = {
+          ...privacy,
+          webauthn_credential_id: cred.credentialId,
+        };
+        setPrivacy(updated);
+        try {
+          localStorage.setItem("shore_privacy_config", JSON.stringify(updated));
+        } catch {}
+
+        if (user) {
+          await supabase
+            .from("settings")
+            .update({
+              privacy: updated as unknown as Json,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", user.id);
+        }
+        setBiometricStatus("Biometrics linked successfully!");
+      } else {
+        setBiometricStatus("Biometric setup canceled or not supported.");
+      }
+    } catch {
+      setBiometricStatus("Biometric enrollment failed.");
+    }
+    setTimeout(() => setBiometricStatus(""), 3500);
   };
 
   const handleSaveToCloud = async () => {
@@ -98,6 +191,9 @@ export function PrivacySettings() {
           })
           .eq("user_id", user.id);
       }
+      try {
+        localStorage.setItem("shore_privacy_config", JSON.stringify(privacy));
+      } catch {}
       setIsSaving(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
@@ -138,20 +234,106 @@ export function PrivacySettings() {
         </button>
       </div>
 
-      {/* Status Card */}
-      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-        <div className="flex items-start gap-3">
-          <Shield className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h3 className="text-xs font-semibold text-text">
-              Zero-Knowledge Local Lock (Phase 2 Stub)
-            </h3>
-            <p className="text-[11px] leading-relaxed text-text-muted">
-              Preferences set here are saved in Supabase `settings.privacy`. When active, entering locked modules
-              prompts for your local PIN or device biometric key before decrypting sensitive logs.
-            </p>
+      {/* Security Credentials Card */}
+      <div className="rounded-2xl border border-border bg-surface p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <KeyRound className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-text">Access PIN</h3>
+              <p className="text-xs text-text-muted">
+                {privacy.pin_hash ? "PIN configured and active" : "No PIN set yet"}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={() => setPinSetupOpen(true)}
+            className="rounded-xl border border-border bg-surface-muted px-3 py-1.5 text-xs font-medium text-text hover:bg-surface active:scale-95"
+          >
+            {privacy.pin_hash ? "Change PIN" : "Set Up PIN"}
+          </button>
         </div>
+
+        {/* PIN Setup Modal / Expander */}
+        {pinSetupOpen && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <h4 className="text-xs font-semibold text-text">
+              {privacy.pin_hash ? "Update Your PIN" : "Create a 4-6 Digit PIN"}
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={newPin}
+                onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="New PIN (4-6 digits)"
+                className="rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text outline-none focus:border-primary"
+              />
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={confirmPin}
+                onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="Confirm PIN"
+                className="rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text outline-none focus:border-primary"
+              />
+            </div>
+            {pinError && <p className="text-[11px] text-rose-500">{pinError}</p>}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSavePin}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+              >
+                Save PIN
+              </button>
+              <button
+                onClick={() => {
+                  setPinSetupOpen(false);
+                  setNewPin("");
+                  setConfirmPin("");
+                  setPinError("");
+                }}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-surface-muted"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Biometrics row */}
+        <div className="flex items-center justify-between pt-3 border-t border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-warm/10 text-accent-warm">
+              <Fingerprint className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-text">Device Biometrics (WebAuthn)</h3>
+              <p className="text-xs text-text-muted">
+                {privacy.webauthn_credential_id
+                  ? "Biometrics linked (Face ID / Touch ID / Passkey)"
+                  : biometricSupported
+                  ? "Supported on this device"
+                  : "Not supported in this browser"}
+              </p>
+            </div>
+          </div>
+          {biometricSupported && (
+            <button
+              onClick={handleEnrollBiometric}
+              className="rounded-xl border border-border bg-surface-muted px-3 py-1.5 text-xs font-medium text-text hover:bg-surface active:scale-95"
+            >
+              {privacy.webauthn_credential_id ? "Re-link Biometrics" : "Enable Biometrics"}
+            </button>
+          )}
+        </div>
+        {biometricStatus && (
+          <p className="text-xs text-primary font-medium">{biometricStatus}</p>
+        )}
       </div>
 
       {/* Module Lock Toggles */}
@@ -164,7 +346,7 @@ export function PrivacySettings() {
             <div className="space-y-0.5">
               <span className="text-xs font-semibold text-text">Lock Journal & Reflection</span>
               <p className="text-[11px] text-text-muted">
-                Requires PIN to view daily gratitude, mood trends, and reflection logs.
+                Requires PIN or biometric unlock to view daily reflections, gratitude, and mood trends.
               </p>
             </div>
             <button
@@ -185,7 +367,7 @@ export function PrivacySettings() {
             <div className="space-y-0.5">
               <span className="text-xs font-semibold text-text">Lock Expense Tracker</span>
               <p className="text-[11px] text-text-muted">
-                Hides financial cashflow, balances, and transaction history.
+                Hides financial cashflow, balances, category budgets, and transaction history.
               </p>
             </div>
             <button
@@ -206,7 +388,7 @@ export function PrivacySettings() {
             <div className="space-y-0.5">
               <span className="text-xs font-semibold text-text">Lock Media Vault</span>
               <p className="text-[11px] text-text-muted">
-                Protects Google Drive photo/video sync and private captures.
+                Protects Google Drive photo/video sync, private albums, and memories vault.
               </p>
             </div>
             <button
@@ -227,11 +409,15 @@ export function PrivacySettings() {
       {/* Auto-Lock Timeout */}
       <section className="space-y-3 rounded-2xl border border-border bg-surface p-5">
         <h3 className="text-sm font-semibold text-text">Auto-Lock Inactivity Timeout</h3>
-        <div className="grid grid-cols-3 gap-2">
+        <p className="text-xs text-text-muted">
+          Automatically re-locks protected vaults after inactivity in the session.
+        </p>
+        <div className="grid grid-cols-4 gap-2">
           {[
             { label: "Immediate", val: 0 },
-            { label: "5 Minutes", val: 5 },
-            { label: "15 Minutes", val: 15 },
+            { label: "5 Min", val: 5 },
+            { label: "15 Min", val: 15 },
+            { label: "30 Min", val: 30 },
           ].map((opt) => {
             const isSelected = privacy.auto_lock_minutes === opt.val;
             return (

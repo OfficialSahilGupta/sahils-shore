@@ -166,6 +166,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 7: Google Drive + Media Vault + Places/Map (Completed)
 - [x] Phase 8: German Hub + Pronunciation Lab (Completed)
 - [x] Phase 9: Career Hub (Completed)
+- [x] Phase 10: Journal, Notes, Goals, Health (Completed)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -260,4 +261,17 @@ _Update this section after every phase so context survives between sessions._
   - Built Company Intelligence & Notes hub documenting engineering culture, known tech stacks, interview stages, questions asked bank, and interactive checkable prep checklists.
   - Built Career Analytics & Stage Funnel visualizing weekly/monthly applications velocity, response rates, active interview pipeline, and drop-off conversion rates across all stages.
   - Wrote 11 unit tests for Phase 9 covering action verb detection, metric regex, paise salary math, follow-up categorizer, career stats & funnel math, and STAR question bank (101 tests passing total).
+  - Built Journal & Reflection module (`/journal`): one entry per IST calendar day with mood and energy ratings (1-5), 3 gratitude prompts, wins, lessons, and free-write markdown with live preview.
+  - Implemented 1-click "Auto-fill from Timeline" pulling that day's tasks completed, study sessions, DSA solved, meals logged, and expenses into the journal reflection.
+  - Built auto-aggregated Weekly Review generator calculating total study time, DSA solved, money spent in integer paise (INR), tasks completed, and habit logs into an editable synthesis markdown template.
+  - Built Mood & Energy Trajectory Recharts chart over 7, 14, and 30 days with average mood and energy indicators.
+  - Built Notes / Second Brain module (`/notes`): markdown editor with split/live preview, folder categorization, tags, pinning, and instant full-text search across titles, contents, folders, and tags.
+  - Implemented bidirectional `[[backlinks]]` engine automatically extracting linked note titles, syncing to `public.note_links`, and providing a Backlinks Panel with context excerpts and 1-click navigation.
+  - Built interactive 2D SVG Notes Knowledge Graph visualizer mapping notes as nodes with folder colors and backlink connection lines.
+  - Built Long-Term Goals module (`/goals`): goals with milestones, deadlines, category badges, dynamic progress calculations weighted from milestones (70%) and linked tasks (30%), and a Quarterly View grouping goals into Q1-Q4 horizon cards.
+  - Built Health Mini-Trackers module (`/health`): toggleable trackers for Water hydration (+/- glasses, 250ml per glass, 8-glass goal), Sleep recovery (duration slider + 1-5 quality), Workouts (type chips, duration presets, notes), and Body Weight (fine adjustments with trend indicator).
+  - Built 7-day and 30-day Recharts trends for water hydration, sleep duration, workout minutes, and weight progression.
+  - All journal reflections and health logs (water, sleep, workouts, weight) write to `public.timeline_events`.
+  - Built Privacy & Vault Protection System (`lib/privacy`): SHA-256 PIN hashing with cryptographic salts, WebAuthn biometric passkey integration (Touch ID / Face ID / Windows Hello), configurable inactivity auto-lock timeouts (Immediate, 5m, 15m, 30m), and reusable `VaultProtectionGate` securing Journal, Expenses, and Media Vault.
+  - Wrote 16 unit tests for Phase 10 covering weekly review markdown aggregation, backlink extraction and excerpt parsing, goal progress math, quarterly date mapping, health conversions and averages, and PIN hashing/verification (117 tests passing total).
 - Known issues / TODOs: _(none yet)_

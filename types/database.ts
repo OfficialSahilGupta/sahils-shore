@@ -1643,6 +1643,7 @@ export interface Database {
           user_id: string;
           title: string;
           content: string;
+          folder: string;
           tags: string[];
           is_pinned: boolean;
           created_at: string;
@@ -1653,6 +1654,7 @@ export interface Database {
           user_id: string;
           title: string;
           content?: string;
+          folder?: string;
           tags?: string[];
           is_pinned?: boolean;
           created_at?: string;
@@ -1663,6 +1665,7 @@ export interface Database {
           user_id?: string;
           title?: string;
           content?: string;
+          folder?: string;
           tags?: string[];
           is_pinned?: boolean;
           created_at?: string;
@@ -1706,6 +1709,9 @@ export interface Database {
           target_date: string | null;
           status: "in_progress" | "completed" | "archived";
           progress_percent: number;
+          linked_task_ids: string[];
+          linked_habit_ids: string[];
+          linked_activity_ids: string[];
           created_at: string;
           updated_at: string;
         };
@@ -1717,6 +1723,9 @@ export interface Database {
           target_date?: string | null;
           status?: ("in_progress" | "completed" | "archived");
           progress_percent?: number;
+          linked_task_ids?: string[];
+          linked_habit_ids?: string[];
+          linked_activity_ids?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -1728,6 +1737,9 @@ export interface Database {
           target_date?: string | null;
           status?: ("in_progress" | "completed" | "archived");
           progress_percent?: number;
+          linked_task_ids?: string[];
+          linked_habit_ids?: string[];
+          linked_activity_ids?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -1776,7 +1788,9 @@ export interface Database {
           logged_date: string;
           water_ml: number | null;
           sleep_hours: number | null;
+          sleep_quality: number | null;
           workout_minutes: number | null;
+          workout_type: string | null;
           workout_notes: string | null;
           weight_kg: number | null;
           created_at: string;
@@ -1788,7 +1802,9 @@ export interface Database {
           logged_date: string;
           water_ml?: number | null;
           sleep_hours?: number | null;
+          sleep_quality?: number | null;
           workout_minutes?: number | null;
+          workout_type?: string | null;
           workout_notes?: string | null;
           weight_kg?: number | null;
           created_at?: string;
@@ -1800,7 +1816,9 @@ export interface Database {
           logged_date?: string;
           water_ml?: number | null;
           sleep_hours?: number | null;
+          sleep_quality?: number | null;
           workout_minutes?: number | null;
+          workout_type?: string | null;
           workout_notes?: string | null;
           weight_kg?: number | null;
           created_at?: string;

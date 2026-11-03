@@ -1,4 +1,5 @@
 import { ExpensesContainer } from "@/components/expenses/ExpensesContainer";
+import { VaultProtectionGate } from "@/components/privacy/VaultProtectionGate";
 
 export const metadata = {
   title: "Expense Tracker | Sahil's Shore",
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function ExpensesPage() {
-  return <ExpensesContainer />;
+  return (
+    <VaultProtectionGate module="expenses" moduleName="Expense Tracker">
+      <ExpensesContainer />
+    </VaultProtectionGate>
+  );
 }

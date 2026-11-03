@@ -1,6 +1,6 @@
 // ============================================================================
-// Sahil's Shore: Notes & Reflections Module
-// Fast scratchpad, daily reflections, second brain notes with timeline integration
+// Sahil's Shore: Notes & Second Brain Data Layer
+// Fast scratchpad, markdown knowledge base, [[backlinks]], and graph network
 // ============================================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -13,6 +13,7 @@ export interface NoteItem {
   user_id: string;
   title: string;
   content: string;
+  folder: string;
   tags: string[];
   is_pinned: boolean;
   created_at: string;
@@ -23,6 +24,7 @@ export interface CreateNoteInput {
   userId: string;
   title: string;
   content?: string;
+  folder?: string;
   tags?: string[];
   is_pinned?: boolean;
 }
@@ -30,8 +32,70 @@ export interface CreateNoteInput {
 export interface UpdateNoteInput {
   title?: string;
   content?: string;
+  folder?: string;
   tags?: string[];
   is_pinned?: boolean;
+}
+
+export interface BacklinkReference {
+  sourceNoteId: string;
+  sourceNoteTitle: string;
+  folder: string;
+  contextExcerpt: string;
+}
+
+export interface GraphNode {
+  id: string;
+  title: string;
+  folder: string;
+  linkCount: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+}
+
+export interface NotesGraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+/**
+ * Extracts all [[Note Title]] backlink references from markdown text.
+ */
+export function extractBacklinks(markdown: string): string[] {
+  if (!markdown) return [];
+  const regex = /\[\[([^\]\n]+)\]\]/g;
+  const matches: string[] = [];
+  let m: RegExpExecArray | null;
+
+  while ((m = regex.exec(markdown)) !== null) {
+    const rawTitle = m[1].trim();
+    if (rawTitle && !matches.includes(rawTitle)) {
+      matches.push(rawTitle);
+    }
+  }
+
+  return matches;
+}
+
+/**
+ * Finds a snippet of text surrounding the mention of [[targetTitle]].
+ */
+export function extractContextSnippet(content: string, targetTitle: string): string {
+  if (!content) return "";
+  const lines = content.split("\n");
+  const targetLower = targetTitle.toLowerCase();
+
+  for (const line of lines) {
+    if (line.toLowerCase().includes(`[[${targetLower}]]`)) {
+      return line.trim();
+    }
+  }
+
+  // Fallback to first line
+  return lines[0]?.trim() || "";
 }
 
 /**
@@ -54,7 +118,10 @@ export async function getNotes(
       return [];
     }
 
-    return (data || []) as NoteItem[];
+    return (data || []).map((row) => ({
+      ...row,
+      folder: (row as any).folder || "General",
+    })) as NoteItem[];
   } catch (err) {
     console.error("[getNotes] Unexpected error:", err);
     return [];
@@ -68,7 +135,14 @@ export async function createNote(
   supabase: SupabaseClient<Database>,
   input: CreateNoteInput
 ): Promise<NoteItem | null> {
-  const { userId, title, content = "", tags = [], is_pinned = false } = input;
+  const {
+    userId,
+    title,
+    content = "",
+    folder = "General",
+    tags = [],
+    is_pinned = false,
+  } = input;
 
   try {
     const { data, error } = await supabase
@@ -77,9 +151,10 @@ export async function createNote(
         user_id: userId,
         title: title.trim(),
         content: content.trim(),
+        folder: folder.trim() || "General",
         tags,
         is_pinned,
-      })
+      } as any)
       .select()
       .single();
 
@@ -88,7 +163,10 @@ export async function createNote(
       return null;
     }
 
-    const note = data as NoteItem;
+    const note: NoteItem = {
+      ...(data as any),
+      folder: (data as any).folder || folder,
+    };
 
     // Log to timeline_events
     await writeTimelineEvent(supabase, {
@@ -99,6 +177,7 @@ export async function createNote(
       refId: note.id,
       meta: {
         title: note.title,
+        folder: note.folder,
         tags: note.tags,
         is_pinned: note.is_pinned,
       },
@@ -120,17 +199,18 @@ export async function updateNote(
   input: UpdateNoteInput
 ): Promise<NoteItem | null> {
   try {
-    const updates: Partial<Database["public"]["Tables"]["notes"]["Update"]> = {
+    const updates: any = {
       updated_at: new Date().toISOString(),
     };
     if (input.title !== undefined) updates.title = input.title.trim();
     if (input.content !== undefined) updates.content = input.content.trim();
+    if (input.folder !== undefined) updates.folder = input.folder.trim() || "General";
     if (input.tags !== undefined) updates.tags = input.tags;
     if (input.is_pinned !== undefined) updates.is_pinned = input.is_pinned;
 
     const { data, error } = await supabase
       .from("notes")
-      .update(updates as any)
+      .update(updates)
       .eq("id", noteId)
       .select()
       .single();
@@ -140,7 +220,10 @@ export async function updateNote(
       return null;
     }
 
-    return data as NoteItem;
+    return {
+      ...(data as any),
+      folder: (data as any).folder || "General",
+    } as NoteItem;
   } catch (err) {
     console.error("[updateNote] Unexpected error:", err);
     return null;
@@ -168,6 +251,138 @@ export async function deleteNote(
 }
 
 /**
+ * Synchronizes outgoing [[backlinks]] from a source note into the `note_links` table.
+ */
+export async function syncNoteLinks(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  sourceNoteId: string,
+  content: string,
+  allNotes: NoteItem[]
+): Promise<void> {
+  try {
+    const extractedTitles = extractBacklinks(content);
+    if (extractedTitles.length === 0) {
+      // Remove any previously recorded links
+      await supabase.from("note_links").delete().eq("source_note_id", sourceNoteId);
+      return;
+    }
+
+    // Match titles to note IDs (case-insensitive)
+    const titleMap = new Map<string, string>();
+    allNotes.forEach((n) => {
+      if (n.id !== sourceNoteId) {
+        titleMap.set(n.title.toLowerCase().trim(), n.id);
+      }
+    });
+
+    const targetIds: string[] = [];
+    extractedTitles.forEach((t) => {
+      const match = titleMap.get(t.toLowerCase().trim());
+      if (match && !targetIds.includes(match)) {
+        targetIds.push(match);
+      }
+    });
+
+    // Replace links
+    await supabase.from("note_links").delete().eq("source_note_id", sourceNoteId);
+
+    if (targetIds.length > 0) {
+      const rows = targetIds.map((targetId) => ({
+        user_id: userId,
+        source_note_id: sourceNoteId,
+        target_note_id: targetId,
+      }));
+
+      await supabase.from("note_links").insert(rows as any);
+    }
+  } catch (err) {
+    console.warn("[syncNoteLinks] Error updating backlinks:", err);
+  }
+}
+
+/**
+ * Fetches all incoming backlink references pointing to the target note.
+ */
+export async function getBacklinksForNote(
+  supabase: SupabaseClient<Database>,
+  targetNoteId: string,
+  targetNoteTitle: string,
+  allNotes: NoteItem[]
+): Promise<BacklinkReference[]> {
+  try {
+    const { data: links, error } = await supabase
+      .from("note_links")
+      .select("source_note_id")
+      .eq("target_note_id", targetNoteId);
+
+    if (error || !links) return [];
+
+    const notesMap = new Map<string, NoteItem>();
+    allNotes.forEach((n) => notesMap.set(n.id, n));
+
+    const references: BacklinkReference[] = [];
+
+    links.forEach((l) => {
+      const source = notesMap.get(l.source_note_id);
+      if (source) {
+        references.push({
+          sourceNoteId: source.id,
+          sourceNoteTitle: source.title,
+          folder: source.folder,
+          contextExcerpt: extractContextSnippet(source.content, targetNoteTitle),
+        });
+      }
+    });
+
+    return references;
+  } catch (err) {
+    console.error("[getBacklinksForNote] Error:", err);
+    return [];
+  }
+}
+
+/**
+ * Fetches all note links and builds the network graph structure.
+ */
+export async function getNotesGraphData(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  notes: NoteItem[]
+): Promise<NotesGraphData> {
+  try {
+    const { data: links } = await supabase
+      .from("note_links")
+      .select("source_note_id, target_note_id")
+      .eq("user_id", userId);
+
+    const edges: GraphEdge[] = (links || []).map((l) => ({
+      source: l.source_note_id,
+      target: l.target_note_id,
+    }));
+
+    // Count degrees
+    const degreeMap = new Map<string, number>();
+    edges.forEach((e) => {
+      degreeMap.set(e.source, (degreeMap.get(e.source) || 0) + 1);
+      degreeMap.set(e.target, (degreeMap.get(e.target) || 0) + 1);
+    });
+
+    const nodes: GraphNode[] = notes.map((n) => ({
+      id: n.id,
+      title: n.title,
+      folder: n.folder,
+      linkCount: degreeMap.get(n.id) || 0,
+    }));
+
+    return { nodes, edges };
+  } catch (err) {
+    console.error("[getNotesGraphData] Error:", err);
+    return { nodes: [], edges: [] };
+  }
+}
+
+/**
  * Fetches the daily reflection note for a specific IST date "YYYY-MM-DD".
  */
 export async function getDailyNote(
@@ -185,16 +400,14 @@ export async function getDailyNote(
       .order("updated_at", { ascending: false })
       .limit(1);
 
-    if (error) {
-      console.error("[getDailyNote] Error:", error.message);
+    if (error || !data || data.length === 0) {
       return null;
     }
 
-    if (data && data.length > 0) {
-      return data[0] as NoteItem;
-    }
-
-    return null;
+    return {
+      ...(data[0] as any),
+      folder: (data[0] as any).folder || "General",
+    } as NoteItem;
   } catch (err) {
     console.error("[getDailyNote] Unexpected error:", err);
     return null;
@@ -224,6 +437,7 @@ export async function upsertDailyNote(
         userId,
         title: `Reflection: ${dateStr}`,
         content,
+        folder: "Reflections",
         tags: [tag, "daily-reflection"],
         is_pinned: false,
       });

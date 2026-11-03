@@ -1,11 +1,15 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+// ============================================================================
+// Sahil's Shore: Goals Page Route
+// Route: /goals
+// ============================================================================
+
+import { GoalsContainer } from "@/components/goals/GoalsContainer";
 
 export const metadata = {
-  title: "Goals",
+  title: "Goals & Milestones | Sahil's Shore",
+  description: "Long-term aspirations, milestones, and direct linkage to daily tasks and habits.",
 };
 
 export default function GoalsPage() {
-  const currentModule = getModuleByRoute("/goals")!;
-  return <PlaceholderModule module={currentModule} />;
+  return <GoalsContainer />;
 }
