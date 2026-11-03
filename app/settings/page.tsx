@@ -11,10 +11,11 @@ import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { ModuleSettings } from "@/components/settings/ModuleSettings";
 import { PrivacySettings } from "@/components/settings/PrivacySettings";
 import { DriveSettings } from "@/components/settings/DriveSettings";
+import { CoachSettings } from "@/components/settings/CoachSettings";
 import { ThemePreviewPanel } from "@/components/settings/ThemePreviewPanel";
-import { Palette, Grid, Shield, HardDrive, Sparkles, RefreshCw } from "lucide-react";
+import { Palette, Grid, Shield, HardDrive, Sparkles, RefreshCw, Bot } from "lucide-react";
 
-type SettingsTab = "appearance" | "modules" | "privacy" | "drive";
+type SettingsTab = "appearance" | "modules" | "privacy" | "drive" | "coach";
 
 function SettingsContent() {
   const searchParams = useSearchParams();
@@ -36,6 +37,7 @@ function SettingsContent() {
     { id: "modules" as const, label: "Modules & Sidebar", icon: Grid },
     { id: "privacy" as const, label: "Privacy & Vault", icon: Shield },
     { id: "drive" as const, label: "Google Drive Sync", icon: HardDrive },
+    { id: "coach" as const, label: "AI Coach", icon: Bot },
   ];
 
   return (
@@ -106,6 +108,12 @@ function SettingsContent() {
       {activeTab === "drive" && (
         <div className="max-w-3xl">
           <DriveSettings />
+        </div>
+      )}
+
+      {activeTab === "coach" && (
+        <div className="max-w-3xl">
+          <CoachSettings />
         </div>
       )}
     </div>

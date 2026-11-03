@@ -279,3 +279,14 @@ export function formatISTDate(date: Date | string = new Date()): string {
 export function currentYearMonthIST(date: Date | string = new Date()): string {
   return getISTDateString(date).slice(0, 7);
 }
+
+/**
+ * Converts a UTC Date or ISO string into an IST zoned Date object
+ * by adding +330 minutes. Useful for getting getUTCHours(), getUTCDay(), getUTCDate() in IST.
+ */
+export function utcToZonedDate(utcIsoOrDate: string | Date): Date {
+  const d = typeof utcIsoOrDate === "string" ? new Date(utcIsoOrDate) : utcIsoOrDate;
+  return new Date(d.getTime() + IST_OFFSET_MINUTES * 60 * 1000);
+}
+
+export const formatTime12HourIST = formatISTTime;

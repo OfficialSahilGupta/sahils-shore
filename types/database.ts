@@ -58,6 +58,7 @@ export interface Database {
           layout: Json;
           modules_config: Json;
           privacy: Json;
+          ai_coach: Json;
           created_at: string;
           updated_at: string;
         };
@@ -68,6 +69,7 @@ export interface Database {
           layout?: Json;
           modules_config?: Json;
           privacy?: Json;
+          ai_coach?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -78,6 +80,7 @@ export interface Database {
           layout?: Json;
           modules_config?: Json;
           privacy?: Json;
+          ai_coach?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -1893,6 +1896,54 @@ export interface Database {
           status?: ("pending" | "processing" | "completed" | "failed");
           attempts?: number;
           last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_coach_insights: {
+        Row: {
+          id: string;
+          user_id: string;
+          period_date: string;
+          insight_type: string;
+          summary: string;
+          pattern: string;
+          suggested_priorities: Json;
+          gentle_nudge: string;
+          weekly_review: Json | null;
+          raw_stats: Json;
+          provider: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          period_date: string;
+          insight_type?: string;
+          summary: string;
+          pattern: string;
+          suggested_priorities?: Json;
+          gentle_nudge: string;
+          weekly_review?: Json | null;
+          raw_stats?: Json;
+          provider?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          period_date?: string;
+          insight_type?: string;
+          summary?: string;
+          pattern?: string;
+          suggested_priorities?: Json;
+          gentle_nudge?: string;
+          weekly_review?: Json | null;
+          raw_stats?: Json;
+          provider?: string;
           created_at?: string;
           updated_at?: string;
         };

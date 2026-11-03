@@ -35,6 +35,7 @@ import { TimelineWidget } from "./widgets/TimelineWidget";
 import { StreaksWidget } from "./widgets/StreaksWidget";
 import { ActivityChartWidget } from "./widgets/ActivityChartWidget";
 import { QuickNoteWidget } from "./widgets/QuickNoteWidget";
+import { AICoachCard } from "@/components/coach/AICoachCard";
 import { WidgetLibraryModal } from "./WidgetLibraryModal";
 
 import {
@@ -319,6 +320,9 @@ export function TodayDashboard() {
           </div>
         </div>
       )}
+
+      {/* AI Coach Daily Horizon */}
+      <AICoachCard className="mb-2" />
 
       {/* Responsive Grid Container */}
       <div ref={containerRef as any} className="w-full min-h-[500px]">

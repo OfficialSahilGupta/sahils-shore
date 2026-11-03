@@ -167,6 +167,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 8: German Hub + Pronunciation Lab (Completed)
 - [x] Phase 9: Career Hub (Completed)
 - [x] Phase 10: Journal, Notes, Goals, Health (Completed)
+- [x] Phase 11: Analytics + AI Coach (Completed)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -274,4 +275,15 @@ _Update this section after every phase so context survives between sessions._
   - All journal reflections and health logs (water, sleep, workouts, weight) write to `public.timeline_events`.
   - Built Privacy & Vault Protection System (`lib/privacy`): SHA-256 PIN hashing with cryptographic salts, WebAuthn biometric passkey integration (Touch ID / Face ID / Windows Hello), configurable inactivity auto-lock timeouts (Immediate, 5m, 15m, 30m), and reusable `VaultProtectionGate` securing Journal, Expenses, and Media Vault.
   - Wrote 16 unit tests for Phase 10 covering weekly review markdown aggregation, backlink extraction and excerpt parsing, goal progress math, quarterly date mapping, health conversions and averages, and PIN hashing/verification (117 tests passing total).
+  - Built Analytics module (`/analytics`): real data aggregation across tasks, activities, habits, expenses, budgets, meals, places, and journal reflections with IST date range selector (7D, 30D, 90D, Month MTD, Year YTD, Custom).
+  - Implemented transparent Productivity Score formula combining Tasks (40%), Focus Target Adherence (35%), and Habit Consistency (25%), with an interactive formula breakdown modal.
+  - Built Skills & Focus tracking: time per skill breakdown (DSA, Spring Boot, MERN, German, Other) with Recharts daily trend stacked bars, skill streaks, and an interactive 24-hour x 7-day IST focus heatmap.
+  - Built Money Analytics: total spend, daily average, projected monthly burn rate, spend by category/place/weekday, budget adherence progress bars with amber (80%) and danger (100%) thresholds, and month-over-month percentage changes.
+  - Built Life & Correlations: Pearson correlation coefficients for Mood vs. Productivity, Mood vs. Spending, and Productivity vs. Spending, accompanied by a scientific non-causation disclaimer, places visited directory, and home-cooked vs. restaurant dining breakdown.
+  - Built Exportable Monthly Report with 1-click Markdown (.md) download, CSV (.csv) metrics export, and print/PDF-optimized styling.
+  - Built AI Coach system: server-side route (`/api/coach`) supporting Gemini and Anthropic LLM connectors with an offline heuristic synthesizer fallback, reading daily timeline events plus 14-day stats to return a 3-line summary, pattern noticed, 3 suggested priorities for tomorrow, and a gentle nudge.
+  - Implemented strict privacy sanitization (`lib/coach/sanitizer.ts`) automatically stripping GPS coordinates, receipt/image URLs, and private journal notes (unless opted in).
+  - Cached AI Coach insights in `public.ai_coach_insights` table with single-user RLS and automated `timeline_events` writes.
+  - Embedded AI Coach Horizon card on Today Dashboard with 1-click "Add to Tasks", Weekly Review modal, and toggleable settings under Settings > AI Coach.
+  - Wrote 17 unit tests for Phase 11 covering productivity score math, skill normalization and 24x7 heatmap, paise budget thresholds, Pearson correlation, privacy scrubber, heuristic coach generator, and report export (134 tests passing total).
 - Known issues / TODOs: _(none yet)_

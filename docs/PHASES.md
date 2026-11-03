@@ -176,11 +176,18 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 11: Analytics + AI Coach
+### Phase 11: Analytics + AI Coach (Completed)
 
-- Daily productivity score calculation
-- Time allocation per skill and spending insights
-- Cross-correlations: mood vs. focus vs. expenses
+- [x] Transparent 0-100 productivity score formula combining Task Completion (40%), Focus Adherence (35%), and Habit Consistency (25%) with interactive formula inspector
+- [x] Time allocation per skill (DSA, Spring Boot, MERN, German, Other) with Recharts daily trend charts and active streak counters
+- [x] 24-hour x 7-weekday interactive focus heatmap in IST with hover tooltips and intensity scaling
+- [x] Money analytics: total period spend, daily average, projected monthly burn rate in INR, spend by category/place/weekday, budget adherence progress bars, and month-over-month comparisons
+- [x] Life correlations: Pearson correlation coefficients (Mood vs. Productivity, Mood vs. Spending, Productivity vs. Spending) with scientific non-causation disclaimer, places visited, and dining breakdown
+- [x] Exportable monthly reports with 1-click Markdown (.md) download, CSV (.csv) metrics export, and print/PDF styling
+- [x] AI Coach server-side route (`/api/coach`) supporting Gemini and Anthropic LLM connectors with an intelligent offline heuristic synthesizer
+- [x] Strict privacy data sanitizer (`lib/coach/sanitizer.ts`) scrubbing GPS coordinates, media URLs, and private journal text unless opted in
+- [x] AI Coach Horizon card embedded on Today Dashboard with 1-click "+ Add to Tasks" for suggested priorities, Weekly Review retrospective modal, and Settings > AI Coach toggle
+- [x] 17 unit tests for Phase 11 covering productivity formulas, skill normalization and 24x7 heatmap, paise budget thresholds, Pearson correlation, privacy scrubber, heuristic coach generator, and report export (134 tests passing total)
 
 ---
 
