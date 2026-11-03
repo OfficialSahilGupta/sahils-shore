@@ -263,3 +263,17 @@ export function getISTDateRangeUTC(dateStr: string = todayIST()): {
     endUTC: end.toISOString(),
   };
 }
+
+/**
+ * Returns formatted IST date string (YYYY-MM-DD).
+ */
+export function formatISTDate(date: Date | string = new Date()): string {
+  return getISTDateString(date);
+}
+
+/**
+ * Returns current IST Year-Month string (YYYY-MM).
+ */
+export function currentYearMonthIST(date: Date | string = new Date()): string {
+  return getISTDateString(date).slice(0, 7);
+}

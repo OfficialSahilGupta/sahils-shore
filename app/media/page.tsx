@@ -1,11 +1,15 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+// ============================================================================
+// Sahil's Shore: Media Vault Page Route
+// Route: /media
+// ============================================================================
+
+import { MediaVaultContainer } from "@/components/media/MediaVaultContainer";
 
 export const metadata = {
-  title: "Life Log / Media Vault",
+  title: "Media Vault & Memories | Sahil's Shore",
+  description: "Google Drive synchronized photo and video memories vault.",
 };
 
 export default function MediaPage() {
-  const currentModule = getModuleByRoute("/media")!;
-  return <PlaceholderModule module={currentModule} />;
+  return <MediaVaultContainer />;
 }

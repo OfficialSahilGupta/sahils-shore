@@ -1,11 +1,15 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+// ============================================================================
+// Sahil's Shore: Places & Map Page Route
+// Route: /places
+// ============================================================================
+
+import { PlacesContainer } from "@/components/places/PlacesContainer";
 
 export const metadata = {
-  title: "Places & Map",
+  title: "Places & Map | Sahil's Shore",
+  description: "Interactive Leaflet & OpenStreetMap exploration hub.",
 };
 
 export default function PlacesPage() {
-  const currentModule = getModuleByRoute("/places")!;
-  return <PlaceholderModule module={currentModule} />;
+  return <PlacesContainer />;
 }

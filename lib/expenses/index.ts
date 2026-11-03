@@ -53,6 +53,8 @@ export function formatINR(
   return `${isNegative ? "-" : ""}${prefix}${amountStr}`;
 }
 
+export const formatPaiseToINR = formatINR;
+
 /**
  * Converts rupee string or number to integer paise, avoiding IEEE-754 float drift.
  * Example: "10.50" -> 1050, 10.5 -> 1050, "500" -> 50000

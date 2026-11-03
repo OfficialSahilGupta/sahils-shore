@@ -163,6 +163,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 4: Expenses + Food Diary (Completed)
 - [x] Phase 5: Today Dashboard + Unified Timeline (Completed - MVP Complete)
 - [x] Phase 6: DSA + Full-Stack Learning Hub (Completed)
+- [x] Phase 7: Google Drive + Media Vault + Places/Map (Completed)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -213,4 +214,23 @@ _Update this section after every phase so context survives between sessions._
   - Integrated mock technical interview mode with 2-minute countdown timer, answer reveal, and instant confidence scoring.
   - Integrated study session stopwatch syncing directly into Daily Tracker (`activity_logs`) under Spring Boot / MERN and `timeline_events`.
   - Wrote 10 unit tests for Phase 6 covering SM-2 intervals, weak-topic detection, DSA streaks, roadmap progress, and mock interview randomizer (55 tests passing total).
+  - Implemented Google Drive v3 OAuth 2.0 integration with minimal `drive.file` scope, offline access, and AES-256-GCM server-side encryption for refresh tokens stored in `public.drive_credentials`.
+  - Added automatic Google Drive folder hierarchy creation on first connect: `Shore/` root with `Photos/YYYY/MM/`, `Videos/YYYY/MM/`, `Receipts/`, `Voice-Recordings/`, and `Backups/`.
+  - Implemented direct-to-Drive resumable upload sessions (`/api/drive/upload-session`), enabling large videos and high-res photos to stream directly from browser to Google Drive with byte progress, completely bypassing Vercel serverless function size limits.
+  - Built client-side Canvas thumbnail generator (`lib/media/thumbnail.ts`) for photos and `<video>` frame extraction for videos, with optimistic UI previews.
+  - Integrated EXIF metadata extraction (`lib/media/exif.ts` via `exifr`) automatically parsing `DateTimeOriginal` / `CreateDate` for `taken_at` and GPS latitude/longitude.
+  - Implemented sync retry queue (`sync_queue`) with automatic background retry endpoints and manual per-item/bulk retry triggers.
+  - Built Media Vault UI (`/media`) with responsive masonry layout grouped by IST calendar day, swipeable Lightbox with video player and "Open in Drive" links, bidirectional entity link picker (Place, Meal, Expense, Journal), and album management.
+  - Built "On This Day" memories widget querying media taken on today's calendar date in past years.
+  - Added one-time "Import existing Drive photos" notice and multi-file importer explaining privacy isolation of `drive.file` scope.
+  - Built Places & Map module (`/places` and `/places/[id]`) with dynamic Leaflet + OpenStreetMap client rendering, Shore-themed SVG pins with category colors, interactive pin click popups, and click-to-pick coordinate dropping.
+  - Built "Places this month" carousel and vertical Travel Timeline connecting place visits over time.
+  - Built Place Detail Page uniting "Everything from this visit" (linked photos, meals, expenses, and total spend in paise/INR).
+  - Enhanced Expense Tracker receipt capture to upload receipts directly into Google Drive `Shore/Receipts/` with instant preview.
+  - All media and place creations write to `public.timeline_events`.
+  - Enhanced Media Vault Albums: added horizontal album pill tabs (`All Media`, custom albums with count badges, `+ New Album`), album selection dropdown during upload in `MediaUploader`, visual album badges on photo cards, inline album assignment in Lightbox, and dual-mode album deletion ("Keep photos in gallery" vs "Delete album AND all photos inside").
+  - Google Drive Album Folder Synchronization: album folders in Shore are nested strictly under Year -> Month Name -> Folder Name (`Shore/Photos/YYYY/<MonthName>/<Album Title>`, e.g. `Shore/Photos/2026/November/Mahabalipuram Nov 1`). Photos uploaded without an album stay directly in the month folder (`Shore/Photos/2026/November/`).
+  - Added Keyless Place Search & Geocoding via OpenStreetMap Nominatim: `/api/places/geocode` resolves coordinates and place metadata for any query (e.g. "Mahabalipuram beach") with 1-hour caching, auto-suggests categories, drops the map pin automatically, and provides a 1-click fallback banner when saved place search returns 0 results.
+  - Built Bulk Entity Linking & Multi-Select Media Hub: added hover selection checkboxes to media thumbnails, date-group "Select Day" toggle, "Select All" / "Deselect All" controls, floating bulk action bar with primary "Link Entity" (🔗) button, unified 4-tab Link Picker (Place, Album, Meal, Expense) supporting batch updates with partial merges, and clickable cyan badges (`📍 Place Name`) navigating directly into the Place Detail Page.
+  - Wrote 18 unit tests for Phase 7 covering AES-256-GCM encryption/decryption, folder routing, full month naming, album vs month fallback routing, memories date matching, places monthly filtering, visit spend aggregation, geocoded coordinate parsing, and bulk entity link merging (73 tests passing total).
 - Known issues / TODOs: _(none yet)_

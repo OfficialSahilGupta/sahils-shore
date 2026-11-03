@@ -108,11 +108,22 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 7: Google Drive + Media Vault + Places/Map
+### Phase 7: Google Drive + Media Vault + Places/Map (Completed)
 
-- Google Drive v3 OAuth with `drive.file` scope
-- Resumable media upload queue and Google Drive sync
-- Leaflet + OpenStreetMap interactive pin map with photo and expense linkages
+- [x] Google Drive v3 OAuth 2.0 with minimal `drive.file` scope, offline access, and AES-256-GCM encryption for stored refresh tokens
+- [x] Automated Drive folder hierarchy setup: `Shore/` root, `Photos/YYYY/<MonthName>/`, `Videos/YYYY/<MonthName>/`, `Receipts/`, `Voice-Recordings/`, `Backups/`
+- [x] Direct-to-Drive resumable upload sessions (`/api/drive/upload-session`) streaming large files directly to Drive with byte progress, bypassing Vercel limits
+- [x] Client-side Canvas thumbnail generation and video frame extraction with optimistic previews
+- [x] Automatic EXIF extraction for timestamps and GPS latitude/longitude
+- [x] Media Vault UI (`/media`) with responsive masonry layout, swipeable Lightbox with video player, and "On this day" memories widget
+- [x] Media Albums hierarchy with Google Drive folder synchronization (`Shore/Photos/YYYY/<MonthName>/<Album Title>`) and dual-mode deletion
+- [x] Bulk entity linking with hover checkboxes, day-wise "Select Day" toggle, floating bulk action bar, and 4-tab Link Picker (Place, Album, Meal, Expense)
+- [x] Interactive Places & Map module (`/places` & `/places/[id]`) powered by Leaflet + OpenStreetMap with custom Shore teal pins
+- [x] Keyless place search and geocoding via OpenStreetMap Nominatim (`/api/places/geocode`) with 1-hour caching and search fallback banner
+- [x] Place Detail Page uniting "Everything from this visit" (linked photos, meals, expenses, and visit total in paise/INR)
+- [x] Expense Tracker receipt capture uploading directly to Google Drive `Shore/Receipts/`
+- [x] Automatic writes to `timeline_events` for media uploads and place visits
+- [x] 18 unit tests for Phase 7 covering AES encryption, folder routing, memories matching, monthly place filters, visit spend math, OSM geocoding, and bulk link merging (73 tests passing total)
 
 ---
 

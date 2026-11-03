@@ -1601,6 +1601,8 @@ export interface Database {
           user_id: string;
           encrypted_refresh_token: string;
           folder_id: string | null;
+          folder_tree: Json;
+          google_email: string | null;
           last_synced_at: string | null;
           created_at: string;
           updated_at: string;
@@ -1610,6 +1612,8 @@ export interface Database {
           user_id: string;
           encrypted_refresh_token: string;
           folder_id?: string | null;
+          folder_tree?: Json;
+          google_email?: string | null;
           last_synced_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1619,6 +1623,8 @@ export interface Database {
           user_id?: string;
           encrypted_refresh_token?: string;
           folder_id?: string | null;
+          folder_tree?: Json;
+          google_email?: string | null;
           last_synced_at?: string | null;
           created_at?: string;
           updated_at?: string;

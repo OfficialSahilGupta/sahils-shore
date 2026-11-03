@@ -18,6 +18,8 @@ import {
   MapPin,
   Calendar,
   X,
+  Receipt,
+  ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatINR, formatIndianNumber } from "@/lib/expenses";
@@ -335,17 +337,26 @@ export function ExpenseList({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in"
           onClick={() => setPreviewReceiptUrl(null)}
         >
-          <div className="relative max-w-md w-full bg-surface rounded-2xl overflow-hidden p-2 shadow-2xl">
-            <button
-              onClick={() => setPreviewReceiptUrl(null)}
-              className="absolute top-3 right-3 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors z-10"
-            >
-              <X className="h-5 w-5" />
-            </button>
+          <div
+            className="relative max-w-lg w-full bg-surface rounded-2xl overflow-hidden p-4 shadow-2xl space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <span className="text-xs font-semibold text-text flex items-center gap-1.5">
+                <Receipt className="h-4 w-4 text-primary" />
+                Receipt Attachment (Google Drive)
+              </span>
+              <button
+                onClick={() => setPreviewReceiptUrl(null)}
+                className="p-1 rounded-lg text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
             <img
               src={previewReceiptUrl}
               alt="Receipt"
-              className="w-full max-h-[75vh] object-contain rounded-xl"
+              className="w-full max-h-[70vh] object-contain rounded-xl bg-surface-muted"
             />
           </div>
         </div>

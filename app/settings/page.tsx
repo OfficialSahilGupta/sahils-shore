@@ -2,25 +2,40 @@
 
 // ============================================================================
 // Sahil's Shore: Settings Page
-// Appearance, Module Management, and Privacy Security Hub
+// Appearance, Module Management, Privacy Security, and Google Drive Cloud Sync
 // ============================================================================
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { ModuleSettings } from "@/components/settings/ModuleSettings";
 import { PrivacySettings } from "@/components/settings/PrivacySettings";
+import { DriveSettings } from "@/components/settings/DriveSettings";
 import { ThemePreviewPanel } from "@/components/settings/ThemePreviewPanel";
-import { Palette, Grid, Shield, Sparkles } from "lucide-react";
+import { Palette, Grid, Shield, HardDrive, Sparkles, RefreshCw } from "lucide-react";
 
-type SettingsTab = "appearance" | "modules" | "privacy";
+type SettingsTab = "appearance" | "modules" | "privacy" | "drive";
 
-export default function SettingsPage() {
+function SettingsContent() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
+
+  // Automatically activate Drive tab if redirected from OAuth callback or params
+  useEffect(() => {
+    if (
+      searchParams?.get("tab") === "drive" ||
+      searchParams?.has("drive") ||
+      searchParams?.has("drive_error")
+    ) {
+      setActiveTab("drive");
+    }
+  }, [searchParams]);
 
   const tabs = [
     { id: "appearance" as const, label: "Appearance & Theme", icon: Palette },
     { id: "modules" as const, label: "Modules & Sidebar", icon: Grid },
     { id: "privacy" as const, label: "Privacy & Vault", icon: Shield },
+    { id: "drive" as const, label: "Google Drive Sync", icon: HardDrive },
   ];
 
   return (
@@ -87,6 +102,26 @@ export default function SettingsPage() {
           <PrivacySettings />
         </div>
       )}
+
+      {activeTab === "drive" && (
+        <div className="max-w-3xl">
+          <DriveSettings />
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-64 items-center justify-center">
+          <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <SettingsContent />
+    </Suspense>
   );
 }

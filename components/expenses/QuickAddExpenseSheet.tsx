@@ -61,6 +61,7 @@ export function QuickAddExpenseSheet({
   const [notes, setNotes] = useState("");
   const [spentAtDate, setSpentAtDate] = useState("");
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
 
@@ -123,12 +124,46 @@ export function QuickAddExpenseSheet({
     }
   };
 
-  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // In browser preview mode, use object URL
+    if (!file) return;
+
+    setIsUploadingReceipt(true);
+    try {
+      // 1. Generate client-side thumbnail data URL for instant display
+      const { generateImageThumbnail } = await import("@/lib/media/thumbnail");
+      const thumb = await generateImageThumbnail(file, 600);
+      setReceiptUrl(thumb.dataUrl || URL.createObjectURL(file));
+
+      // 2. Initiate direct upload to Google Drive Receipts/ folder
+      fetch("/api/drive/upload-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: `receipt_${Date.now()}_${file.name}`,
+          mimeType: file.type || "image/jpeg",
+          size: file.size,
+          folderType: "receipts",
+        }),
+      })
+        .then(async (res) => {
+          if (res.ok) {
+            const data = await res.json();
+            if (data.uploadUrl) {
+              const xhr = new XMLHttpRequest();
+              xhr.open("PUT", data.uploadUrl, true);
+              xhr.setRequestHeader("Content-Type", file.type || "image/jpeg");
+              xhr.send(file);
+            }
+          }
+        })
+        .catch((err) => console.warn("Receipt Drive sync background upload:", err));
+    } catch (err) {
+      console.warn("Receipt thumbnail fallback:", err);
       const url = URL.createObjectURL(file);
       setReceiptUrl(url);
+    } finally {
+      setIsUploadingReceipt(false);
     }
   };
 
