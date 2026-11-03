@@ -1,11 +1,14 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+import { CareerContainer } from "@/components/career/CareerContainer";
 
 export const metadata = {
-  title: "Resume & Career Hub",
+  title: "Resume & Career Hub | Shore",
+  description: "Job application Kanban pipeline, resume versions, achievement bullet bank, and STAR interview stories.",
 };
 
 export default function CareerPage() {
-  const currentModule = getModuleByRoute("/career")!;
-  return <PlaceholderModule module={currentModule} />;
+  return (
+    <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <CareerContainer />
+    </div>
+  );
 }

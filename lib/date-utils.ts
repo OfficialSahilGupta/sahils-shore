@@ -32,6 +32,8 @@ export function getISTDateString(date: Date | string = new Date()): string {
   return formatter.format(d); // Returns "YYYY-MM-DD"
 }
 
+export const toISTDateString = getISTDateString;
+
 /**
  * Returns the current IST date string "YYYY-MM-DD"
  */

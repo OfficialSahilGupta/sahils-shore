@@ -26,6 +26,7 @@ import {
   Zap,
   TrendingUp,
   FileText,
+  Briefcase,
   Clock,
   Compass,
   Plus,
@@ -102,6 +103,8 @@ export function UnifiedTimeline({
         return <Zap className={`w-3.5 h-3.5 ${colorClass}`} />;
       case "file-text":
         return <FileText className={`w-3.5 h-3.5 ${colorClass}`} />;
+      case "briefcase":
+        return <Briefcase className={`w-3.5 h-3.5 ${colorClass}`} />;
       default:
         return <Sparkles className={`w-3.5 h-3.5 ${colorClass}`} />;
     }

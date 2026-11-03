@@ -15,6 +15,7 @@ export const DRIVE_SUBFOLDERS = {
   RECEIPTS: "Receipts",
   VOICE: "Voice-Recordings",
   BACKUPS: "Backups",
+  RESUMES: "Resumes",
 } as const;
 
 export interface DriveFolderTree {
@@ -26,6 +27,7 @@ export interface DriveFolderTree {
   receipts: string;
   voice: string;
   backups: string;
+  resumes?: string;
 }
 
 export interface DriveConnectionStatus {
@@ -348,10 +350,11 @@ export async function ensureDriveFolderTree(
   const videosYear = await findOrCreateDriveFolder(accessToken, currentYear, videosRoot);
   const videosCurrent = await findOrCreateDriveFolder(accessToken, currentMonthName, videosYear);
 
-  // 4. Receipts/, Voice-Recordings/, Backups/
+  // 4. Receipts/, Voice-Recordings/, Backups/, Resumes/
   const receipts = await findOrCreateDriveFolder(accessToken, DRIVE_SUBFOLDERS.RECEIPTS, root);
   const voice = await findOrCreateDriveFolder(accessToken, DRIVE_SUBFOLDERS.VOICE, root);
   const backups = await findOrCreateDriveFolder(accessToken, DRIVE_SUBFOLDERS.BACKUPS, root);
+  const resumes = await findOrCreateDriveFolder(accessToken, DRIVE_SUBFOLDERS.RESUMES, root);
 
   return {
     root,
@@ -362,6 +365,7 @@ export async function ensureDriveFolderTree(
     receipts,
     voice,
     backups,
+    resumes,
   };
 }
 

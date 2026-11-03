@@ -985,6 +985,9 @@ export interface Database {
           drive_file_id: string | null;
           content: Json;
           is_primary: boolean;
+          notes: string | null;
+          file_size: number;
+          uploaded_date: string;
           created_at: string;
           updated_at: string;
         };
@@ -998,6 +1001,9 @@ export interface Database {
           drive_file_id?: string | null;
           content?: Json;
           is_primary?: boolean;
+          notes?: string | null;
+          file_size?: number;
+          uploaded_date?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -1011,6 +1017,9 @@ export interface Database {
           drive_file_id?: string | null;
           content?: Json;
           is_primary?: boolean;
+          notes?: string | null;
+          file_size?: number;
+          uploaded_date?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -1023,6 +1032,8 @@ export interface Database {
           content: string;
           category: string | null;
           skills: string[];
+          project: string | null;
+          role: string | null;
           metrics: string | null;
           created_at: string;
           updated_at: string;
@@ -1033,6 +1044,8 @@ export interface Database {
           content: string;
           category?: string | null;
           skills?: string[];
+          project?: string | null;
+          role?: string | null;
           metrics?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1043,6 +1056,8 @@ export interface Database {
           content?: string;
           category?: string | null;
           skills?: string[];
+          project?: string | null;
+          role?: string | null;
           metrics?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1059,7 +1074,12 @@ export interface Database {
           stage: "wishlist" | "applied" | "interview" | "offer" | "rejected";
           applied_at: string | null;
           salary_range: string | null;
+          salary_min_paise: number | null;
+          salary_max_paise: number | null;
           job_url: string | null;
+          source: string | null;
+          resume_id: string | null;
+          contacts: Json;
           notes: string | null;
           next_follow_up: string | null;
           created_at: string;
@@ -1074,7 +1094,12 @@ export interface Database {
           stage?: ("wishlist" | "applied" | "interview" | "offer" | "rejected");
           applied_at?: string | null;
           salary_range?: string | null;
+          salary_min_paise?: number | null;
+          salary_max_paise?: number | null;
           job_url?: string | null;
+          source?: string | null;
+          resume_id?: string | null;
+          contacts?: Json;
           notes?: string | null;
           next_follow_up?: string | null;
           created_at?: string;
@@ -1089,7 +1114,12 @@ export interface Database {
           stage?: ("wishlist" | "applied" | "interview" | "offer" | "rejected");
           applied_at?: string | null;
           salary_range?: string | null;
+          salary_min_paise?: number | null;
+          salary_max_paise?: number | null;
           job_url?: string | null;
+          source?: string | null;
+          resume_id?: string | null;
+          contacts?: Json;
           notes?: string | null;
           next_follow_up?: string | null;
           created_at?: string;
@@ -1107,6 +1137,7 @@ export interface Database {
           action: string;
           result: string;
           skills: string[];
+          tags: string[];
           created_at: string;
           updated_at: string;
         };
@@ -1119,6 +1150,7 @@ export interface Database {
           action: string;
           result: string;
           skills?: string[];
+          tags?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -1131,6 +1163,49 @@ export interface Database {
           action?: string;
           result?: string;
           skills?: string[];
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      company_notes: {
+        Row: {
+          id: string;
+          user_id: string;
+          company: string;
+          culture: string | null;
+          tech_stack: string[];
+          interview_process: string | null;
+          questions_asked: string[];
+          prep_checklist: Json;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          company: string;
+          culture?: string | null;
+          tech_stack?: string[];
+          interview_process?: string | null;
+          questions_asked?: string[];
+          prep_checklist?: Json;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          company?: string;
+          culture?: string | null;
+          tech_stack?: string[];
+          interview_process?: string | null;
+          questions_asked?: string[];
+          prep_checklist?: Json;
+          notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };

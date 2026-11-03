@@ -282,23 +282,28 @@ describe("5. Habit Streaks with Skip-Day Support", () => {
   });
 
   test("missing day without skip breaks habit streak", () => {
+    const dToday = todayIST();
+    const dYesterday = addDaysIST(dToday, -1);
+    // dToday - 2 is missing completely
+    const dEarlier = addDaysIST(dToday, -3);
+
     const logs: HabitLog[] = [
       {
         id: "l1",
         user_id: "user-1",
         habit_id: "habit-1",
-        logged_date: "2026-10-29",
+        logged_date: dEarlier,
         completed: true,
         notes: null,
         created_at: "",
         updated_at: "",
       },
-      // Oct 30 is missing completely
+      // dToday - 2 is missing completely
       {
         id: "l3",
         user_id: "user-1",
         habit_id: "habit-1",
-        logged_date: "2026-11-01",
+        logged_date: dYesterday,
         completed: true,
         notes: null,
         created_at: "",
@@ -308,7 +313,7 @@ describe("5. Habit Streaks with Skip-Day Support", () => {
         id: "l4",
         user_id: "user-1",
         habit_id: "habit-1",
-        logged_date: "2026-11-02",
+        logged_date: dToday,
         completed: true,
         notes: null,
         created_at: "",
@@ -317,7 +322,7 @@ describe("5. Habit Streaks with Skip-Day Support", () => {
     ];
 
     const streak = calculateHabitStreak(habit, logs);
-    // Streak only counts Nov 2 and Nov 1 (streak = 2) because Oct 30 was missing
+    // Streak only counts today and yesterday (streak = 2) because day - 2 was missing
     assert.strictEqual(streak.currentStreak, 2);
   });
 });

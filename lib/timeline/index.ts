@@ -172,7 +172,7 @@ export function calculateDayTotals(events: TimelineEvent[]): DayTotals {
 
 export interface EventTypeConfig {
   label: string;
-  iconName: "check" | "book" | "wallet" | "utensils" | "pin" | "image" | "sparkles" | "zap" | "trending-up" | "file-text";
+  iconName: "check" | "book" | "wallet" | "utensils" | "pin" | "image" | "sparkles" | "zap" | "trending-up" | "file-text" | "briefcase";
   colorClass: string;
   bgClass: string;
   borderClass: string;
@@ -304,6 +304,22 @@ export function getEventTypeConfig(type: string): EventTypeConfig {
       bgClass: "bg-accent-warm/10",
       borderClass: "border-accent-warm/20",
       route: "/journal",
+    };
+  }
+
+  if (
+    norm.includes("career") ||
+    norm.includes("application") ||
+    norm.includes("resume") ||
+    norm.includes("interview")
+  ) {
+    return {
+      label: "Career",
+      iconName: "briefcase",
+      colorClass: "text-indigo-500 dark:text-indigo-400",
+      bgClass: "bg-indigo-500/10",
+      borderClass: "border-indigo-500/20",
+      route: "/career",
     };
   }
 

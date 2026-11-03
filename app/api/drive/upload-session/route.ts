@@ -97,6 +97,10 @@ export async function POST(request: NextRequest) {
         targetFolderId = tree.receipts;
       } else if (folderType === "voice" && tree?.voice) {
         targetFolderId = tree.voice;
+      } else if (folderType === "resumes") {
+        targetFolderId =
+          tree?.resumes ||
+          (await findOrCreateDriveFolder(accessToken, "Resumes", tree?.root || creds.folderId || undefined));
       } else if (folderType === "backups" && tree?.backups) {
         targetFolderId = tree.backups;
       }

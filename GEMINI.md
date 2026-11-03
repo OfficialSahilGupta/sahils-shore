@@ -165,6 +165,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 6: DSA + Full-Stack Learning Hub (Completed)
 - [x] Phase 7: Google Drive + Media Vault + Places/Map (Completed)
 - [x] Phase 8: German Hub + Pronunciation Lab (Completed)
+- [x] Phase 9: Career Hub (Completed)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -249,4 +250,14 @@ _Update this section after every phase so context survives between sessions._
   - Built German Writing Prompts workspace with live word counter and past submissions bank.
   - Built built-in German Hub stopwatch timer widget persisting start timestamp in `localStorage` and syncing study sessions directly into Daily Tracker and Unified Timeline.
   - Wrote 17 unit tests for Phase 8 covering pure SM-2 calculations, minimum ease factor clamping, interval previews, CEFR level progress stats, tricky words ranking, improvement analytics, and deterministic daily rotation (90 tests passing total).
+  - Built Resume Version Manager supporting PDF uploads streaming directly to Google Drive `Shore/Resumes/` with version labels, target role tags, file metadata, and a 1-click toggle to set the master/default resume.
+  - Linked resumes bidirectionally to job applications, tracking exactly which resume version was sent to which company with direct PDF and Drive preview links.
+  - Built Achievement Bullet-Point Bank with real-time Action-Verb and Quantifiable Metric impact analyzer, calculating word counts, strength scores, and 1-click clipboard copy.
+  - Built 5-stage Application Kanban pipeline (Wishlist, Applied, Interview, Offer, Rejected) powered by `@dnd-kit/core` with drag overlays, Indian Rupee salary ranges stored in integer paise (`salary_min_paise`, `salary_max_paise`), source tags, contacts list, and automatic `timeline_events` logging for every stage advance.
+  - Built Follow-Up Reminders engine categorizing pending follow-ups into Overdue, Due Today, and Upcoming (next 7 days), with a prominent top alert banner and a 1-click resolution modal to log follow-up messages and reschedule.
+  - Built STAR Interview Story Bank structuring behavioral scenarios into Situation, Task, Action, and Result, tagged by Leadership, Conflict, Failure, High Impact, Technical, and Teamwork.
+  - Built interactive STAR Practice Mode with live countdown timer (1m, 2m, 3m, 5m presets), random behavioral prompt picker, interactive speaking checklist (S, T, A, R), notes peeker, 1-5 star self-rating, and automatic logging to `timeline_events`.
+  - Built Company Intelligence & Notes hub documenting engineering culture, known tech stacks, interview stages, questions asked bank, and interactive checkable prep checklists.
+  - Built Career Analytics & Stage Funnel visualizing weekly/monthly applications velocity, response rates, active interview pipeline, and drop-off conversion rates across all stages.
+  - Wrote 11 unit tests for Phase 9 covering action verb detection, metric regex, paise salary math, follow-up categorizer, career stats & funnel math, and STAR question bank (101 tests passing total).
 - Known issues / TODOs: _(none yet)_
