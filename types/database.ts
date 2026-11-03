@@ -721,6 +721,7 @@ export interface Database {
           plural: string | null;
           example_sentence: string | null;
           cefr_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+          tags: string[];
           repetition: number;
           interval: number;
           ease_factor: number;
@@ -739,6 +740,7 @@ export interface Database {
           plural?: string | null;
           example_sentence?: string | null;
           cefr_level?: ("A1" | "A2" | "B1" | "B2" | "C1" | "C2");
+          tags?: string[];
           repetition?: number;
           interval?: number;
           ease_factor?: number;
@@ -757,6 +759,7 @@ export interface Database {
           plural?: string | null;
           example_sentence?: string | null;
           cefr_level?: ("A1" | "A2" | "B1" | "B2" | "C1" | "C2");
+          tags?: string[];
           repetition?: number;
           interval?: number;
           ease_factor?: number;
@@ -773,6 +776,8 @@ export interface Database {
           user_id: string;
           title: string;
           cefr_level: string;
+          topic: string;
+          tags: string[];
           content: string;
           rules: Json;
           created_at: string;
@@ -783,6 +788,8 @@ export interface Database {
           user_id: string;
           title: string;
           cefr_level?: string;
+          topic?: string;
+          tags?: string[];
           content: string;
           rules?: Json;
           created_at?: string;
@@ -793,6 +800,8 @@ export interface Database {
           user_id?: string;
           title?: string;
           cefr_level?: string;
+          topic?: string;
+          tags?: string[];
           content?: string;
           rules?: Json;
           created_at?: string;
@@ -807,6 +816,11 @@ export interface Database {
           phrase: string;
           audio_url: string;
           reference_audio_url: string | null;
+          drive_file_id: string | null;
+          hard_sounds: string[];
+          speech_rate: number;
+          mode: "standard" | "shadowing";
+          attempt_number: number;
           score: number | null;
           feedback: string | null;
           created_at: string;
@@ -818,6 +832,11 @@ export interface Database {
           phrase: string;
           audio_url: string;
           reference_audio_url?: string | null;
+          drive_file_id?: string | null;
+          hard_sounds?: string[];
+          speech_rate?: number;
+          mode?: "standard" | "shadowing";
+          attempt_number?: number;
           score?: number | null;
           feedback?: string | null;
           created_at?: string;
@@ -829,8 +848,127 @@ export interface Database {
           phrase?: string;
           audio_url?: string;
           reference_audio_url?: string | null;
+          drive_file_id?: string | null;
+          hard_sounds?: string[];
+          speech_rate?: number;
+          mode?: "standard" | "shadowing";
+          attempt_number?: number;
           score?: number | null;
           feedback?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      german_progress: {
+        Row: {
+          id: string;
+          user_id: string;
+          level: "A1" | "A2" | "B1" | "B2";
+          competency_id: string;
+          is_completed: boolean;
+          completed_at: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          level: "A1" | "A2" | "B1" | "B2";
+          competency_id: string;
+          is_completed?: boolean;
+          completed_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          level?: "A1" | "A2" | "B1" | "B2";
+          competency_id?: string;
+          is_completed?: boolean;
+          completed_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      german_listening_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          media_type: string;
+          duration_minutes: number;
+          cefr_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+          notes: string | null;
+          vocabulary_learned: string[];
+          logged_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          media_type?: string;
+          duration_minutes?: number;
+          cefr_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+          notes?: string | null;
+          vocabulary_learned?: string[];
+          logged_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          media_type?: string;
+          duration_minutes?: number;
+          cefr_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+          notes?: string | null;
+          vocabulary_learned?: string[];
+          logged_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      german_writing_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          prompt_id: string | null;
+          prompt_title: string;
+          cefr_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+          content: string;
+          word_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          prompt_id?: string | null;
+          prompt_title: string;
+          cefr_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+          content: string;
+          word_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          prompt_id?: string | null;
+          prompt_title?: string;
+          cefr_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+          content?: string;
+          word_count?: number;
           created_at?: string;
           updated_at?: string;
         };

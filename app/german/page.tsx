@@ -1,11 +1,15 @@
-import { getModuleByRoute } from "@/lib/modules";
-import { PlaceholderModule } from "@/components/common/PlaceholderModule";
+// ============================================================================
+// Sahil's Shore: German Learning Hub & Pronunciation Lab Route
+// ============================================================================
+
+import { GermanContainer } from "@/components/german/GermanContainer";
 
 export const metadata = {
-  title: "German Learning Hub",
+  title: "German Learning Hub | Sahil's Shore",
+  description:
+    "Master German with SM-2 spaced repetition, pronunciation lab with live waveform & shadowing, CEFR progress tracker, and grammar notes.",
 };
 
 export default function GermanPage() {
-  const currentModule = getModuleByRoute("/german")!;
-  return <PlaceholderModule module={currentModule} />;
+  return <GermanContainer />;
 }

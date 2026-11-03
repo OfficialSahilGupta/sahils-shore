@@ -33,6 +33,8 @@ export type TimelineEventType =
   | "media_uploaded"
   | "journal_entry"
   | "vocab_reviewed"
+  | "pronunciation_practiced"
+  | "german_study"
   | "goal_milestone"
   | "health_logged";
 
@@ -65,6 +67,9 @@ export type InterviewQa = Database["public"]["Tables"]["interview_qa"]["Row"];
 export type VocabCard = Database["public"]["Tables"]["vocab_cards"]["Row"];
 export type GrammarNote = Database["public"]["Tables"]["grammar_notes"]["Row"];
 export type PronunciationRecording = Database["public"]["Tables"]["pronunciation_recordings"]["Row"];
+export type GermanProgress = Database["public"]["Tables"]["german_progress"]["Row"];
+export type GermanListeningLog = Database["public"]["Tables"]["german_listening_logs"]["Row"];
+export type GermanWritingEntry = Database["public"]["Tables"]["german_writing_entries"]["Row"];
 export type Resume = Database["public"]["Tables"]["resumes"]["Row"];
 export type BulletBankItem = Database["public"]["Tables"]["bullet_bank"]["Row"];
 export type Application = Database["public"]["Tables"]["applications"]["Row"];

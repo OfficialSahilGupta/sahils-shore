@@ -127,10 +127,24 @@ This document tracks the phased implementation roadmap for **Sahil's Shore**, a 
 
 ---
 
-### Phase 8: German Hub + Pronunciation Lab
+### Phase 8: German Hub + Pronunciation Lab (Completed)
 
-- SM-2 vocab flashcards, daily German word, CEFR levels (A1-B2)
-- Browser microphone recording, audio waveform visualization, reference audio shadowing
+- [x] Pure SuperMemo-2 (SM-2) spaced repetition algorithm (`lib/german/sm2.ts`) with Again, Hard, Good, Easy grades and live interval previews
+- [x] Full CRUD vocab cards with color-coded articles (`der` blue, `die` rose, `das` emerald), plural forms, CEFR level badges, search, and audio synthesis (de-DE)
+- [x] Flashcard review session modal with card flip, progress bar, keyboard shortcuts (Space, 1-4), and review completion screen
+- [x] 60-day review consistency heatmap tracking daily flashcard review volume
+- [x] Deterministic Daily Word & Sentence of the Day rotating on day-of-year in IST with 1-click addition to flashcards
+- [x] CEFR progress tracker (A1 to B2) with 17 competency checklists across Grammar, Speaking, Listening, Reading, and Writing with level & global progress bars
+- [x] Grammar notes hub with markdown support, categorized by CEFR level and topic with rule-example pairs
+- [x] Cross-browser Pronunciation Lab (Safari/iOS compatible) with Web Audio API live waveform visualizer, side-by-side de-DE reference playback with adjustable speed slider (0.5x to 1.25x)
+- [x] 1-5 star self-rating, toggleable tricky sound chips (`ü`, `ö`, `ä`, `ch`, `r`, `sch`, `ß`), and direct audio upload to Google Drive `Shore/Voice-Recordings/`
+- [x] Tricky words directory ranking phrases by lowest average score and hard sounds frequency, plus Recharts pronunciation improvement trend chart
+- [x] Shadowing mode loop: plays native phrase, 3-2-1 countdown, auto-recording, repeat loop (1x-5x), and side-by-side attempt rating
+- [x] German listening log (Podcasts, Easy German, DW, YouTube) with 1-click study time synchronization into Daily Tracker (`activity_logs`)
+- [x] German writing prompts bank categorized by CEFR level with live word counter and past submissions history
+- [x] Built-in study session stopwatch timer persisting start timestamps in `localStorage` and syncing study sessions into Daily Tracker & Timeline
+- [x] Automatic writes to `timeline_events` for vocab creation/reviews, grammar notes, CEFR competency mastery, pronunciation practice, and writing entries
+- [x] 17 unit tests for Phase 8 covering pure SM-2 calculations, ease factor clamping, interval previews, CEFR level progress stats, tricky words ranking, improvement analytics, and deterministic daily rotation (90 tests passing total)
 
 ---
 

@@ -164,6 +164,7 @@ _Update this section after every phase so context survives between sessions._
 - [x] Phase 5: Today Dashboard + Unified Timeline (Completed - MVP Complete)
 - [x] Phase 6: DSA + Full-Stack Learning Hub (Completed)
 - [x] Phase 7: Google Drive + Media Vault + Places/Map (Completed)
+- [x] Phase 8: German Hub + Pronunciation Lab (Completed)
 - Decisions made so far:
   - Initialized Next.js 14 App Router + TypeScript with strict types, absolute imports (`@/`), and ESLint/Prettier.
   - Defined CSS variable palette in `globals.css` with 100% tokenized Tailwind mapping (no hard-coded colors).
@@ -233,4 +234,19 @@ _Update this section after every phase so context survives between sessions._
   - Added Keyless Place Search & Geocoding via OpenStreetMap Nominatim: `/api/places/geocode` resolves coordinates and place metadata for any query (e.g. "Mahabalipuram beach") with 1-hour caching, auto-suggests categories, drops the map pin automatically, and provides a 1-click fallback banner when saved place search returns 0 results.
   - Built Bulk Entity Linking & Multi-Select Media Hub: added hover selection checkboxes to media thumbnails, date-group "Select Day" toggle, "Select All" / "Deselect All" controls, floating bulk action bar with primary "Link Entity" (🔗) button, unified 4-tab Link Picker (Place, Album, Meal, Expense) supporting batch updates with partial merges, and clickable cyan badges (`📍 Place Name`) navigating directly into the Place Detail Page.
   - Wrote 18 unit tests for Phase 7 covering AES-256-GCM encryption/decryption, folder routing, full month naming, album vs month fallback routing, memories date matching, places monthly filtering, visit spend aggregation, geocoded coordinate parsing, and bulk entity link merging (73 tests passing total).
+  - Implemented pure SuperMemo-2 (SM-2) spaced repetition algorithm (`lib/german/sm2.ts`) calculating repetition count, ease factor (min 1.3 floor), interval ladder, and live button previews (`<1d`, `Hard`, `Good`, `Easy`).
+  - Built German Flashcard Review Session modal with front/back flip, de-DE audio playback, keyboard shortcuts (Space, 1-4), and review completion screen.
+  - Built 60-day visual Review Heatmap tracking daily flashcard review intensity and streak continuity.
+  - Built German Vocab Card Manager with color-coded articles (`der` blue, `die` rose, `das` emerald), plural forms, CEFR level badges, search, gender and level filters, and full CRUD.
+  - Built deterministic Daily German Word and Sentence of the Day rotating on day-of-year in IST, with de-DE audio and 1-click "Add to Flashcards".
+  - Built CEFR Progress Tracker (A1 to B2) with 17 competency checklists across Grammar, Speaking, Listening, Reading, and Writing, with level and global mastery percentages.
+  - Built German Grammar Notes Hub with markdown formatting, categorized by CEFR level and topic (Cases, Separable Verbs, Perfekt Tense, Konjunktiv II), with rule-example pairs.
+  - Built Pronunciation Lab with cross-browser MediaRecorder (Safari/iOS compatible), Web Audio API live animated `<canvas>` waveform visualizer, side-by-side comparison with de-DE reference audio with adjustable speed slider (0.5x to 1.25x), and microphone permission error handling.
+  - Implemented 1-5 star self-rating, toggleable tricky German sound chips (`ü`, `ö`, `ä`, `ch`, `r`, `sch`, `ß`), and direct audio upload to Google Drive `Shore/Voice-Recordings/` with metadata stored in `pronunciation_recordings`.
+  - Built Shadowing Mode loop: plays native phrase, counts down (3.. 2.. 1..), auto-starts recording, loops over user-configured repeats (1x-5x), and presents attempts side-by-side for rating.
+  - Built Tricky Words directory ranking phrases by lowest average score and hard sounds frequency, plus Recharts pronunciation improvement trend chart over time.
+  - Built German Listening Practice log (Podcasts, Easy German, DW, YouTube) with 1-click study time synchronization into Daily Tracker (`activity_logs` under "German") and `timeline_events`.
+  - Built German Writing Prompts workspace with live word counter and past submissions bank.
+  - Built built-in German Hub stopwatch timer widget persisting start timestamp in `localStorage` and syncing study sessions directly into Daily Tracker and Unified Timeline.
+  - Wrote 17 unit tests for Phase 8 covering pure SM-2 calculations, minimum ease factor clamping, interval previews, CEFR level progress stats, tricky words ranking, improvement analytics, and deterministic daily rotation (90 tests passing total).
 - Known issues / TODOs: _(none yet)_
