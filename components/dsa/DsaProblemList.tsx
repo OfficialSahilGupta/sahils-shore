@@ -25,6 +25,8 @@ import {
   DSA_DIFFICULTIES,
   DSA_PLATFORMS,
   DSA_STATUSES,
+  canonicalDsaTopic,
+  isSameDsaTopic,
 } from "@/lib/dsa/constants";
 import { formatFriendlyISTDate } from "@/lib/date-utils";
 import { CodeEditor } from "./CodeEditor";
@@ -67,7 +69,7 @@ export function DsaProblemList({
       }
 
       // Topic filter
-      if (selectedTopic && p.topic !== selectedTopic) {
+      if (selectedTopic && selectedTopic !== "all" && !isSameDsaTopic(p.topic, selectedTopic)) {
         return false;
       }
 
@@ -298,7 +300,7 @@ export function DsaProblemList({
                         {problem.platform}
                       </span>
                       <span className="rounded bg-[var(--surface-muted)]/50 px-2 py-0.5 text-[10px] font-medium">
-                        {problem.topic}
+                        {canonicalDsaTopic(problem.topic)}
                       </span>
                       {problem.time_spent_minutes && problem.time_spent_minutes > 0 ? (
                         <span className="flex items-center gap-1 text-[10px] font-medium">

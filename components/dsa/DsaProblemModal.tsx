@@ -20,6 +20,7 @@ import {
   DSA_DIFFICULTIES,
   DSA_STATUSES,
   SUPPORTED_LANGUAGES,
+  canonicalDsaTopic,
   type DsaDifficulty,
   type DsaStatus,
   type SupportedLanguage,
@@ -64,7 +65,7 @@ export function DsaProblemModal({
       setTitle(initialProblem.title || "");
       setLink(initialProblem.link || "");
       setPlatform(initialProblem.platform || "LeetCode");
-      setTopic(initialProblem.topic || "Arrays");
+      setTopic(canonicalDsaTopic(initialProblem.topic || "Arrays"));
       setDifficulty((initialProblem.difficulty as DsaDifficulty) || "Medium");
       setStatus(
         (initialProblem.status as DsaStatus) ||
@@ -80,7 +81,7 @@ export function DsaProblemModal({
       setTitle(prefill.title || "");
       setLink(prefill.link || "");
       setPlatform(prefill.platform || "LeetCode");
-      setTopic(prefill.topic || "Arrays");
+      setTopic(canonicalDsaTopic(prefill.topic || "Arrays"));
       setDifficulty((prefill.difficulty as DsaDifficulty) || "Medium");
       setStatus((prefill.status as DsaStatus) || "Solved");
       setTimeSpentMinutes(prefill.time_spent_minutes || 30);
@@ -122,7 +123,7 @@ export function DsaProblemModal({
           title: title.trim(),
           link: link.trim() || null,
           platform,
-          topic,
+          topic: canonicalDsaTopic(topic),
           difficulty,
           status,
           time_spent_minutes: Number(timeSpentMinutes) || 0,

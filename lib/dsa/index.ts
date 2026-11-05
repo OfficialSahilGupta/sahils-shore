@@ -11,6 +11,8 @@ import {
   DSA_TOPICS,
   SPACING_INTERVALS_DAYS,
   DEFAULT_DAILY_DSA_GOAL,
+  canonicalDsaTopic,
+  isSameDsaTopic,
   type DsaTopic,
   type DsaDifficulty,
   type DsaStatus,
@@ -223,7 +225,10 @@ export function calculateTopicProgress(
 
   problems.forEach((p) => {
     if (!p.topic) return;
-    const cur = map.get(p.topic) || {
+    const canon = canonicalDsaTopic(p.topic);
+    const targetKey = DSA_TOPICS.find((t) => isSameDsaTopic(t, canon)) || canon;
+
+    const cur = map.get(targetKey) || {
       total: 0,
       solved: 0,
       needsRevision: 0,
@@ -238,7 +243,22 @@ export function calculateTopicProgress(
     } else if (s === "stuck") {
       cur.stuck++;
     }
-    map.set(p.topic, cur);
+    map.set(targetKey, cur);
+
+    // If targetKey is HashMap, also mirror to Hashing if present, and vice versa
+    if (targetKey === "HashMap" && map.has("Hashing")) {
+      const hCur = map.get("Hashing")!;
+      hCur.total++;
+      if (s === "solved" || s === "mastered") hCur.solved++;
+      else if (s === "needs revision") hCur.needsRevision++;
+      else if (s === "stuck") hCur.stuck++;
+    } else if (targetKey === "Hashing" && map.has("HashMap")) {
+      const hmCur = map.get("HashMap")!;
+      hmCur.total++;
+      if (s === "solved" || s === "mastered") hmCur.solved++;
+      else if (s === "needs revision") hmCur.needsRevision++;
+      else if (s === "stuck") hmCur.stuck++;
+    }
   });
 
   const list: TopicProgressStat[] = [];
@@ -384,7 +404,16 @@ export async function getDsaProblems(
     return [];
   }
 
-  return (data || []) as DsaProblem[];
+  return ((data || []) as DsaProblem[]).map((p) => ({
+    ...p,
+    status:
+      p.status === "todo"
+        ? "Todo"
+        : p.status === "solved"
+          ? "Solved"
+          : (p.status as DsaStatus),
+    topic: canonicalDsaTopic(p.topic),
+  }));
 }
 
 export async function createDsaProblem(
@@ -395,6 +424,8 @@ export async function createDsaProblem(
   const now = new Date();
   // Initial spaced repetition scheduled 1 day out
   const initialRevisionDate = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const normalizedTopic = canonicalDsaTopic(input.topic);
+  const dbStatus = input.status === "Todo" ? "todo" : input.status;
 
   let problem: DsaProblem | null = null;
 
@@ -407,9 +438,9 @@ export async function createDsaProblem(
         title: input.title,
         link: input.link || null,
         platform: input.platform || "LeetCode",
-        topic: input.topic || "Arrays",
+        topic: normalizedTopic,
         difficulty: input.difficulty,
-        status: input.status,
+        status: dbStatus as any,
         time_spent_minutes: input.time_spent_minutes || 0,
         approach_notes: input.approach_notes || null,
         code_snippet: input.code_snippet || null,
@@ -433,7 +464,7 @@ export async function createDsaProblem(
         title: input.title,
         link: input.link || null,
         platform: input.platform || "LeetCode",
-        topic: input.topic || "Arrays",
+        topic: normalizedTopic,
         difficulty: input.difficulty,
         status: fallbackStatus,
         time_spent_minutes: input.time_spent_minutes || 0,
@@ -454,13 +485,18 @@ export async function createDsaProblem(
         problem = {
           ...(fallbackRes.data as unknown as DsaProblem),
           status: input.status,
+          topic: normalizedTopic,
           time_complexity: input.time_complexity || null,
           space_complexity: input.space_complexity || null,
           revision_interval_days: 1,
         };
       }
     } else if (data) {
-      problem = data as DsaProblem;
+      problem = {
+        ...(data as DsaProblem),
+        status: input.status,
+        topic: normalizedTopic,
+      };
     }
   } catch (err) {
     console.warn("[createDsaProblem] Exception during Supabase insert:", err);
@@ -475,7 +511,7 @@ export async function createDsaProblem(
       title: input.title,
       link: input.link || null,
       platform: input.platform || "LeetCode",
-      topic: input.topic || "Arrays",
+      topic: normalizedTopic,
       difficulty: input.difficulty,
       status: input.status,
       time_spent_minutes: input.time_spent_minutes || 0,
@@ -552,17 +588,25 @@ export async function updateDsaProblem(
   problemId: string,
   updates: Partial<DsaProblem>
 ): Promise<DsaProblem | null> {
+  const payload: Record<string, any> = { ...updates };
+  if (payload.topic) payload.topic = canonicalDsaTopic(payload.topic);
+  if (payload.status === "Todo") payload.status = "todo";
+
   try {
     const { data, error } = await supabase
       .from("dsa_problems")
-      .update(updates)
+      .update(payload as any)
       .eq("id", problemId)
       .eq("user_id", userId)
       .select()
       .single();
 
     if (!error && data) {
-      return data as DsaProblem;
+      return {
+        ...(data as DsaProblem),
+        status: data.status === "todo" ? "Todo" : data.status === "solved" ? "Solved" : data.status,
+        topic: canonicalDsaTopic(data.topic),
+      } as DsaProblem;
     }
   } catch (err) {
     console.warn("[updateDsaProblem] Supabase update warning:", err);
@@ -575,6 +619,7 @@ export async function updateDsaProblem(
     title: updates.title || "DSA Problem",
     difficulty: updates.difficulty || "Medium",
     status: updates.status || "Solved",
+    topic: updates.topic ? canonicalDsaTopic(updates.topic) : "Arrays",
     language: updates.language || "java",
     revision_count: updates.revision_count || 0,
     created_at: new Date().toISOString(),

@@ -26,9 +26,17 @@ import {
   BLIND_150_LIST,
   calculateBlind150Stats,
   findMatchingUserProblem,
+  isBlindProblemSolved,
   type Blind150Problem,
 } from "@/lib/dsa/blind150";
-import { DSA_TOPICS, type DsaTopic, type DsaDifficulty } from "@/lib/dsa/constants";
+import {
+  DSA_TOPICS,
+  canonicalDsaTopic,
+  isSameDsaTopic,
+  type DsaTopic,
+  type DsaDifficulty,
+  type DsaStatus,
+} from "@/lib/dsa/constants";
 import { Select } from "@/components/ui/select";
 import type { CreateDsaProblemInput } from "@/lib/dsa";
 
@@ -73,7 +81,7 @@ export function Blind150Tracker({
       }
 
       // Topic
-      if (topicFilter !== "all" && b.topic !== topicFilter) {
+      if (topicFilter !== "all" && !isSameDsaTopic(b.topic, topicFilter)) {
         return false;
       }
 
@@ -84,10 +92,7 @@ export function Blind150Tracker({
 
       // Status
       const matchedUserProblem = findMatchingUserProblem(b, userProblems);
-      const isSolved =
-        matchedUserProblem &&
-        ((matchedUserProblem.status || "").toLowerCase() === "solved" ||
-          (matchedUserProblem.status || "").toLowerCase() === "mastered");
+      const isSolved = isBlindProblemSolved(matchedUserProblem);
 
       if (statusFilter === "solved" && !isSolved) return false;
       if (statusFilter === "unsolved" && isSolved) return false;
@@ -280,10 +285,7 @@ export function Blind150Tracker({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filteredProblems.map((b) => {
           const userMatch = findMatchingUserProblem(b, userProblems);
-          const isSolved =
-            userMatch &&
-            ((userMatch.status || "").toLowerCase() === "solved" ||
-              (userMatch.status || "").toLowerCase() === "mastered");
+          const isSolved = isBlindProblemSolved(userMatch);
 
           const isHintExpanded = expandedHintId === b.id;
 
@@ -316,7 +318,7 @@ export function Blind150Tracker({
                       {b.difficulty}
                     </span>
                     <span className="truncate rounded-md bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] font-medium">
-                      {b.topic}
+                      {canonicalDsaTopic(b.topic)}
                     </span>
                   </div>
 
@@ -389,9 +391,20 @@ export function Blind150Tracker({
               {/* Bottom Actions */}
               <div className="mt-4 pt-3 border-t border-[var(--border)]/60 flex items-center justify-between gap-2">
                 {isSolved ? (
-                  <div className="flex items-center gap-1 text-[11px] font-medium text-[var(--success)]">
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-[var(--success)]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Mastered</span>
+                    <span>
+                      {userMatch?.status === "Needs revision"
+                        ? "In Revision"
+                        : userMatch?.status === "mastered"
+                          ? "Mastered"
+                          : "Solved"}
+                    </span>
+                  </div>
+                ) : userMatch?.status === "Todo" || userMatch?.status === "todo" ? (
+                  <div className="flex items-center gap-1 text-[11px] font-medium text-[var(--primary)]">
+                    <Circle className="h-3.5 w-3.5" />
+                    <span>In Queue</span>
                   </div>
                 ) : (
                   <span className="text-[11px] text-[var(--text-muted)]">
@@ -402,22 +415,43 @@ export function Blind150Tracker({
                 <button
                   type="button"
                   onClick={() =>
-                    onOpenSolveModal({
-                      title: b.title,
-                      link: b.link,
-                      topic: b.topic,
-                      difficulty: b.difficulty,
-                      platform: "LeetCode",
-                      time_complexity: b.timeComplexity,
-                      space_complexity: b.spaceComplexity,
-                      approach_notes: `${b.pattern}: ${b.hints}`,
-                      status: "Solved",
-                    })
+                    onOpenSolveModal(
+                      userMatch
+                        ? {
+                            title: userMatch.title,
+                            link: userMatch.link || b.link,
+                            topic: canonicalDsaTopic(userMatch.topic || b.topic),
+                            difficulty: userMatch.difficulty || b.difficulty,
+                            platform: userMatch.platform || "LeetCode",
+                            time_complexity: userMatch.time_complexity || b.timeComplexity,
+                            space_complexity: userMatch.space_complexity || b.spaceComplexity,
+                            approach_notes: userMatch.approach_notes || `${b.pattern}: ${b.hints}`,
+                            code_snippet: userMatch.code_snippet || "",
+                            language: userMatch.language || "java",
+                            status:
+                              userMatch.status === "todo" || userMatch.status === "Todo"
+                                ? "Todo"
+                                : userMatch.status === "solved" || userMatch.status === "mastered"
+                                  ? "Solved"
+                                  : (userMatch.status as DsaStatus) || "Solved",
+                          }
+                        : {
+                            title: b.title,
+                            link: b.link,
+                            topic: canonicalDsaTopic(b.topic),
+                            difficulty: b.difficulty,
+                            platform: "LeetCode",
+                            time_complexity: b.timeComplexity,
+                            space_complexity: b.spaceComplexity,
+                            approach_notes: `${b.pattern}: ${b.hints}`,
+                            status: "Solved",
+                          }
+                    )
                   }
                   className="flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity"
                 >
                   <Code2 className="h-3.5 w-3.5" />
-                  <span>{isSolved ? "Edit Code" : "Solve Now"}</span>
+                  <span>{isSolved ? "View / Edit Code" : "Solve Now"}</span>
                 </button>
               </div>
             </div>

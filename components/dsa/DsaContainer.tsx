@@ -23,6 +23,8 @@ import {
   calculateDifficultySplit,
   calculateDsaStreak,
   findMatchingUserProblem,
+  isBlindProblemSolved,
+  canonicalDsaTopic,
   type CreateDsaProblemInput,
   type Blind150Problem,
   type DsaStatus,
@@ -238,11 +240,7 @@ export function DsaContainer() {
   }, [problems]);
 
   const totalSolved = useMemo(() => {
-    return problems.filter(
-      (p) =>
-        (p.status || "").toLowerCase() === "solved" ||
-        (p.status || "").toLowerCase() === "mastered"
-    ).length;
+    return problems.filter((p) => isBlindProblemSolved(p)).length;
   }, [problems]);
 
   // 4. Modal handlers
@@ -439,9 +437,7 @@ export function DsaContainer() {
     currentMatch?: DsaProblem
   ) => {
     if (currentMatch) {
-      const isCurrentlySolved =
-        (currentMatch.status || "").toLowerCase() === "solved" ||
-        (currentMatch.status || "").toLowerCase() === "mastered";
+      const isCurrentlySolved = isBlindProblemSolved(currentMatch);
 
       const nextStatus: DsaStatus = isCurrentlySolved ? "Todo" : "Solved";
 
@@ -450,7 +446,7 @@ export function DsaContainer() {
           title: currentMatch.title,
           link: currentMatch.link,
           platform: currentMatch.platform || "LeetCode",
-          topic: currentMatch.topic || blind.topic,
+          topic: canonicalDsaTopic(currentMatch.topic || blind.topic),
           difficulty: currentMatch.difficulty || blind.difficulty,
           status: nextStatus,
           time_spent_minutes: currentMatch.time_spent_minutes || 30,
@@ -472,7 +468,7 @@ export function DsaContainer() {
         title: blind.title,
         link: blind.link,
         platform: "LeetCode",
-        topic: blind.topic,
+        topic: canonicalDsaTopic(blind.topic),
         difficulty: blind.difficulty,
         status: "Solved",
         time_spent_minutes: 30,

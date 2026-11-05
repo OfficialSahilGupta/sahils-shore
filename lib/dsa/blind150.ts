@@ -1912,6 +1912,42 @@ export interface Blind150Stats {
 }
 
 /**
+ * Strips leading problem numbers e.g. "49. Group Anagrams", "#49: Group Anagrams", "049 - "
+ */
+export function stripProblemNumber(title: string): string {
+  if (!title) return "";
+  return title
+    .replace(/^\s*#?\s*\d+[\s.:)\-–—]*/i, "")
+    .trim();
+}
+
+/**
+ * Extracts LeetCode question slug from URL or title
+ */
+export function extractLeetCodeSlug(urlOrTitle?: string | null): string | null {
+  if (!urlOrTitle) return null;
+  const clean = urlOrTitle.trim().toLowerCase();
+
+  // Extract slug from URL: /problems/slug/
+  const match = clean.match(/leetcode\.[a-z.]+\/problems\/([a-z0-9-]+)/i);
+  if (match && match[1]) {
+    return match[1].replace(/-description$/, "").replace(/-solutions$/, "").replace(/-editorial$/, "");
+  }
+
+  const genericMatch = clean.match(/problems\/([a-z0-9-]+)/i);
+  if (genericMatch && genericMatch[1]) {
+    return genericMatch[1].replace(/-description$/, "").replace(/-solutions$/, "");
+  }
+
+  // If looks like slug already (e.g. "group-anagrams")
+  if (/^[a-z0-9]+(-[a-z0-9]+)+$/.test(clean)) {
+    return clean;
+  }
+
+  return null;
+}
+
+/**
  * Normalizes problem title for fuzzy matching (removes punctuation, lowercase, spaces)
  */
 export function normalizeDsaTitle(title: string): string {
@@ -1921,24 +1957,66 @@ export function normalizeDsaTitle(title: string): string {
 }
 
 /**
+ * Determines whether a user problem record counts as solved in the roadmap
+ */
+export function isBlindProblemSolved(up?: DsaProblem | null): boolean {
+  if (!up) return false;
+  const s = (up.status || "").toLowerCase().trim();
+  // Directly marked Solved or Mastered
+  if (s === "solved" || s === "mastered") return true;
+  // If problem was solved and is currently scheduled in the revision queue
+  if (s === "needs revision" || s === "revisit") return true;
+  // If revision history or revision count > 0 and not marked todo/stuck
+  if (up.last_revised_at && s !== "todo" && s !== "stuck") return true;
+  if (typeof up.revision_count === "number" && up.revision_count > 0 && s !== "todo" && s !== "stuck") return true;
+  return false;
+}
+
+/**
  * Finds user problem that matches a Blind 150 problem
  */
 export function findMatchingUserProblem(
   blind: Blind150Problem,
   userProblems: DsaProblem[]
 ): DsaProblem | undefined {
+  const blindSlug = extractLeetCodeSlug(blind.link);
   const normBlind = normalizeDsaTitle(blind.title);
+  const strippedNormBlind = normalizeDsaTitle(stripProblemNumber(blind.title));
+
   return userProblems.find((up) => {
-    // 1. Check title match
-    if (normalizeDsaTitle(up.title) === normBlind) return true;
-    // 2. Check link match
-    if (
-      up.link &&
-      blind.link &&
-      up.link.toLowerCase().includes(blind.title.toLowerCase().replace(/\s+/g, "-"))
-    ) {
+    // 0. ID match
+    if (up.id === blind.id || (up.id && up.id.startsWith(`blind-${blind.id}`))) {
       return true;
     }
+
+    // 1. LeetCode Slug match (highest precision)
+    if (blindSlug && up.link) {
+      const userSlug = extractLeetCodeSlug(up.link);
+      if (userSlug && userSlug === blindSlug) return true;
+    }
+
+    // 2. Direct normalized title match
+    const normUser = normalizeDsaTitle(up.title);
+    if (normUser && normUser === normBlind) return true;
+
+    // 3. Stripped number title match (e.g. "49. Group Anagrams" -> "groupanagrams")
+    const strippedNormUser = normalizeDsaTitle(stripProblemNumber(up.title));
+    if (strippedNormUser && (strippedNormUser === strippedNormBlind || strippedNormUser === normBlind)) {
+      return true;
+    }
+
+    // 4. User link contains blind slug or clean title
+    if (up.link && blindSlug) {
+      const lowerLink = up.link.toLowerCase();
+      if (lowerLink.includes(`problems/${blindSlug}`)) return true;
+    }
+
+    // 5. User title matches blind slug formatted as words
+    if (blindSlug) {
+      const slugAsWords = normalizeDsaTitle(blindSlug.replace(/-/g, " "));
+      if (strippedNormUser && strippedNormUser === slugAsWords) return true;
+    }
+
     return false;
   });
 }
@@ -1970,10 +2048,7 @@ export function calculateBlind150Stats(userProblems: DsaProblem[]): Blind150Stat
 
     // Check user solved status
     const match = findMatchingUserProblem(b, userProblems);
-    const isSolved =
-      match &&
-      ((match.status || "").toLowerCase() === "solved" ||
-        (match.status || "").toLowerCase() === "mastered");
+    const isSolved = isBlindProblemSolved(match);
 
     if (isSolved) {
       solvedCount++;
