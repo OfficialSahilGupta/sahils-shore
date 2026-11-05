@@ -22,6 +22,7 @@ import type { InterviewQa } from "@/types";
 import type { CreateInterviewQaInput } from "@/lib/learning";
 import { MockInterviewModal } from "./MockInterviewModal";
 import { Select } from "@/components/ui/select";
+import { SafeDeleteModal } from "./SafeDeleteModal";
 
 interface InterviewQaBankProps {
   questions: InterviewQa[];
@@ -53,7 +54,7 @@ export function InterviewQaBank({
   const [tagsInput, setTagsInput] = useState("");
   const [confidence, setConfidence] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [questionToDelete, setQuestionToDelete] = useState<InterviewQa | null>(null);
 
   // Extract all unique tags
   const allTags = Array.from(
@@ -89,14 +90,8 @@ export function InterviewQaBank({
     }
   };
 
-  const handleDelete = async (id: string, qText: string) => {
-    if (!window.confirm(`Delete question "${qText.slice(0, 40)}..."?`)) return;
-    setDeletingId(id);
-    try {
-      await onDeleteQuestion(id);
-    } finally {
-      setDeletingId(null);
-    }
+  const handleDelete = (q: InterviewQa) => {
+    setQuestionToDelete(q);
   };
 
   const filteredQuestions = questions.filter((q) => {
@@ -319,9 +314,9 @@ export function InterviewQaBank({
 
                     <button
                       type="button"
-                      disabled={deletingId === q.id}
-                      onClick={() => handleDelete(q.id, q.question)}
+                      onClick={() => handleDelete(q)}
                       className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] transition-colors"
+                      title="Delete question"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -487,6 +482,24 @@ export function InterviewQaBank({
         questions={questions}
         onUpdateConfidence={onUpdateConfidence}
       />
+
+      {/* Safe Delete Question Modal */}
+      {questionToDelete && (
+        <SafeDeleteModal
+          isOpen={Boolean(questionToDelete)}
+          onClose={() => setQuestionToDelete(null)}
+          onConfirm={async () => {
+            if (questionToDelete) {
+              await onDeleteQuestion(questionToDelete.id);
+              setQuestionToDelete(null);
+            }
+          }}
+          title="Delete Interview Question"
+          itemName={questionToDelete.question}
+          itemType="question"
+          warningText={`This will permanently remove question "${questionToDelete.question.slice(0, 50)}..." from your practice bank.`}
+        />
+      )}
     </div>
   );
 }

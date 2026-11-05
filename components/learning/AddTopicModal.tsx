@@ -4,7 +4,7 @@
 // Sahil's Shore: Add Topic to Roadmap Modal
 // ============================================================================
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Plus, BookOpen } from "lucide-react";
 
 interface AddTopicModalProps {
@@ -31,6 +31,17 @@ export function AddTopicModal({
   const [status, setStatus] = useState<"planned" | "in_progress" | "completed">("planned");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Background scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

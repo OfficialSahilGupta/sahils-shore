@@ -36,12 +36,14 @@ import {
   type TopicSubSection,
 } from "@/lib/learning";
 import { CodeEditor } from "../dsa/CodeEditor";
+import { SafeDeleteModal } from "./SafeDeleteModal";
 
 interface TopicStudyModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: LearningItem | null;
   trackTitle: string;
+  initialSubSectionId?: string;
   onSave: (
     itemId: string,
     updates: {
@@ -60,6 +62,7 @@ export function TopicStudyModal({
   onClose,
   item,
   trackTitle,
+  initialSubSectionId,
   onSave,
   onDeleteTopic,
 }: TopicStudyModalProps) {
@@ -82,6 +85,21 @@ export function TopicStudyModal({
   const [copiedCode, setCopiedCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Safe delete modals state
+  const [isDeleteTopicModalOpen, setIsDeleteTopicModalOpen] = useState(false);
+  const [deleteSubTarget, setDeleteSubTarget] = useState<TopicSubSection | null>(null);
+
+  // Body scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (item) {
       setTopicTitle(item.topic || "");
@@ -90,11 +108,13 @@ export function TopicStudyModal({
 
       const parsed = parseTopicSubSections(item);
       setSubSections(parsed);
-      if (parsed.length > 0) {
+      if (initialSubSectionId && parsed.some((s) => s.id === initialSubSectionId)) {
+        setActiveSubSectionId(initialSubSectionId);
+      } else if (parsed.length > 0) {
         setActiveSubSectionId(parsed[0].id);
       }
     }
-  }, [item, isOpen]);
+  }, [item, isOpen, initialSubSectionId]);
 
   if (!isOpen || !item) return null;
 
@@ -128,10 +148,15 @@ export function TopicStudyModal({
   };
 
   // Delete sub-section (keep at least one)
-  const handleDeleteSubSection = (id: string, e: React.MouseEvent) => {
+  const handleDeleteSubSectionClick = (sub: TopicSubSection, e: React.MouseEvent) => {
     e.stopPropagation();
     if (subSections.length <= 1) return;
+    setDeleteSubTarget(sub);
+  };
 
+  const handleConfirmDeleteSubSection = () => {
+    if (!deleteSubTarget || subSections.length <= 1) return;
+    const id = deleteSubTarget.id;
     setSubSections((prev) => {
       const filtered = prev.filter((s) => s.id !== id);
       if (activeSubSectionId === id && filtered.length > 0) {
@@ -139,6 +164,7 @@ export function TopicStudyModal({
       }
       return filtered;
     });
+    setDeleteSubTarget(null);
   };
 
   const insertTemplate = (template: string) => {
@@ -399,7 +425,7 @@ export function TopicStudyModal({
                   {subSections.length > 1 && (
                     <button
                       type="button"
-                      onClick={(e) => handleDeleteSubSection(sub.id, e)}
+                      onClick={(e) => handleDeleteSubSectionClick(sub, e)}
                       className="opacity-0 group-hover:opacity-100 hover:text-[var(--danger)] transition-opacity p-0.5 ml-0.5"
                       title="Delete this sub-section"
                     >
@@ -694,12 +720,7 @@ export function TopicStudyModal({
             {onDeleteTopic ? (
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm(`Delete topic "${item.topic}" from this roadmap?`)) {
-                    onDeleteTopic(item.id);
-                    onClose();
-                  }
-                }}
+                onClick={() => setIsDeleteTopicModalOpen(true)}
                 className="flex items-center gap-1 rounded-xl border border-[var(--danger)]/30 text-[var(--danger)] hover:bg-[var(--danger)]/10 px-3 py-2 text-xs font-semibold transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -728,6 +749,35 @@ export function TopicStudyModal({
             </div>
           </div>
         </form>
+
+        {/* Safe Deletion Modal for Entire Topic */}
+        {onDeleteTopic && (
+          <SafeDeleteModal
+            isOpen={isDeleteTopicModalOpen}
+            onClose={() => setIsDeleteTopicModalOpen(false)}
+            onConfirm={async () => {
+              await onDeleteTopic(item.id);
+              onClose();
+            }}
+            title="Delete Roadmap Topic"
+            itemName={item.topic}
+            itemType="topic"
+            warningText={`This will permanently remove "${item.topic}" and all its sub-sections, architecture notes, and code snippets from this track.`}
+          />
+        )}
+
+        {/* Safe Deletion Modal for Sub-Section */}
+        {deleteSubTarget && (
+          <SafeDeleteModal
+            isOpen={Boolean(deleteSubTarget)}
+            onClose={() => setDeleteSubTarget(null)}
+            onConfirm={handleConfirmDeleteSubSection}
+            title="Delete Sub-Section"
+            itemName={deleteSubTarget.title}
+            itemType="sub-topic"
+            warningText={`This will permanently delete sub-section "${deleteSubTarget.title}" and its notes, code implementations, and reference links.`}
+          />
+        )}
       </div>
     </div>
   );

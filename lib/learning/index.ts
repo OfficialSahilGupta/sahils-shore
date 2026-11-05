@@ -357,16 +357,17 @@ export function calculateDynamicTrackMastery(
       topicsInProgress++;
       if (completedSubSections > 0 && totalSubSections > 1) {
         const subRatio = completedSubSections / totalSubSections;
-        curriculumPoints += Math.min(95, Math.round(55 + subRatio * 40));
+        curriculumPoints += Math.min(95, Math.round(50 + subRatio * 45));
       } else {
-        curriculumPoints += hasRichNotes ? 75 : hasAnyNotes ? 55 : 35;
+        curriculumPoints += hasRichNotes ? 75 : hasAnyNotes ? 50 : 35;
       }
     } else {
+      // Planned: Only award points if the user has actively worked on and completed sub-sections
       if (completedSubSections > 0 && totalSubSections > 1) {
         const subRatio = completedSubSections / totalSubSections;
-        curriculumPoints += Math.min(60, Math.round(30 + subRatio * 30));
+        curriculumPoints += Math.min(60, Math.round(subRatio * 50));
       } else {
-        curriculumPoints += hasRichNotes ? 30 : hasAnyNotes ? 15 : 0;
+        curriculumPoints += 0;
       }
     }
   });
@@ -374,24 +375,25 @@ export function calculateDynamicTrackMastery(
   const curriculumScore =
     topicsTotal > 0 ? Math.round(curriculumPoints / topicsTotal) : 0;
 
-  // Projects points: up to 100 (e.g. 1 deployed = 60, completed = 40, in_progress = 25, idea = 10)
+  // Projects points: up to 100 (deployed = 60, completed = 40, in_progress = 25)
   const projectPoints = projects.reduce((acc, p) => {
     if (p.status === "deployed") return acc + 60;
     if (p.status === "completed") return acc + 40;
     if (p.status === "in_progress") return acc + 25;
-    return acc + 10;
+    return acc;
   }, 0);
   const projectsScore = Math.min(100, projectPoints);
 
-  // Concepts points: 5 concepts = 100% density
+  // Concepts points: 5 concepts = 100% density (20 points per concept)
   const conceptsScore = Math.min(100, concepts.length * 20);
 
-  // Interview readiness points: average confidence 1-5 mapped to percentage
+  // Interview readiness points: only count questions the user has actively practiced
+  const practicedQuestions = questions.filter((q) => q.last_practiced_at != null);
   const interviewScore =
-    questions.length > 0
+    practicedQuestions.length > 0
       ? Math.round(
-          (questions.reduce((acc, q) => acc + (q.confidence || 3), 0) /
-            (questions.length * 5)) *
+          (practicedQuestions.reduce((acc, q) => acc + (q.confidence || 3), 0) /
+            (practicedQuestions.length * 5)) *
             100
         )
       : 0;
@@ -399,7 +401,9 @@ export function calculateDynamicTrackMastery(
   // Weighted overall score:
   // If user only has curriculum so far, dynamically weight to reward early studying
   const hasAuxiliaryContent =
-    projects.length > 0 || concepts.length > 0 || questions.length > 0;
+    projects.some((p) => p.status !== "idea") ||
+    concepts.length > 0 ||
+    practicedQuestions.length > 0;
 
   let overallScore = 0;
   if (!hasAuxiliaryContent) {
@@ -689,16 +693,33 @@ export async function createLearningTrack(
   }
 
   if (roadmapToSeed && roadmapToSeed.length > 0) {
-    const items = roadmapToSeed.map((item, idx) => ({
-      user_id: userId,
-      track_id: track.id,
-      topic: item.topic,
-      category: item.category || "Core",
-      notes: item.notes || null,
-      status: "planned" as const,
-      order_index: idx,
-      resources: [] as unknown as Json,
-    }));
+    const items = roadmapToSeed.map((item, idx) => {
+      const initialSub = [
+        {
+          id: `sub-init-${idx + 1}`,
+          title: "Overview & Core Architecture",
+          notes: item.notes || "",
+          codeSnippet: "",
+          codeLanguage: "java",
+          resources: [],
+          isCompleted: false,
+        },
+      ];
+
+      return {
+        user_id: userId,
+        track_id: track.id,
+        topic: item.topic,
+        category: item.category || "Core",
+        notes: item.notes || null,
+        status: "planned" as const,
+        order_index: idx,
+        resources: {
+          category: item.category || "Core",
+          subsections: initialSub,
+        } as unknown as Json,
+      };
+    });
     await supabase.from("learning_items").insert(items);
   }
 

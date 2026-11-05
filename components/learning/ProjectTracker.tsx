@@ -23,6 +23,7 @@ import {
 import type { Project } from "@/types";
 import type { CreateProjectInput } from "@/lib/learning";
 import { Select } from "@/components/ui/select";
+import { SafeDeleteModal } from "./SafeDeleteModal";
 
 interface ProjectTrackerProps {
   projects: Project[];
@@ -51,7 +52,7 @@ export function ProjectTracker({
   const [deployedUrl, setDeployedUrl] = useState("");
   const [readmeNotes, setReadmeNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const openAddModal = () => {
     setEditingProject(null);
@@ -107,14 +108,8 @@ export function ProjectTracker({
     }
   };
 
-  const handleDelete = async (id: string, projectTitle: string) => {
-    if (!window.confirm(`Delete project "${projectTitle}"?`)) return;
-    setDeletingId(id);
-    try {
-      await onDeleteProject(id);
-    } finally {
-      setDeletingId(null);
-    }
+  const handleDelete = (project: Project) => {
+    setProjectToDelete(project);
   };
 
   const filteredProjects = projects.filter((p) => {
@@ -211,9 +206,9 @@ export function ProjectTracker({
                       </button>
                       <button
                         type="button"
-                        disabled={deletingId === p.id}
-                        onClick={() => handleDelete(p.id, p.title)}
+                        onClick={() => handleDelete(p)}
                         className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] transition-colors"
+                        title="Delete project"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -457,6 +452,24 @@ export function ProjectTracker({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Safe Delete Modal for Project */}
+      {projectToDelete && (
+        <SafeDeleteModal
+          isOpen={Boolean(projectToDelete)}
+          onClose={() => setProjectToDelete(null)}
+          onConfirm={async () => {
+            if (projectToDelete) {
+              await onDeleteProject(projectToDelete.id);
+              setProjectToDelete(null);
+            }
+          }}
+          title="Delete Project Showcase"
+          itemName={projectToDelete.title}
+          itemType="project"
+          warningText={`This will permanently remove project "${projectToDelete.title}" and its readme documentation from this track.`}
+        />
       )}
     </div>
   );

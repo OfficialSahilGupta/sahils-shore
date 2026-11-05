@@ -376,8 +376,8 @@ describe("7. Dynamic Track Mastery Calculation Engine", () => {
     ];
 
     const questions: InterviewQa[] = [
-      { id: "q1", question: "Explain Paxos vs Raft", technology: "Distributed Systems", confidence: 4 } as InterviewQa,
-      { id: "q2", question: "How does Redis Cluster shard keys?", technology: "Redis", confidence: 5 } as InterviewQa,
+      { id: "q1", question: "Explain Paxos vs Raft", technology: "Distributed Systems", confidence: 4, last_practiced_at: "2026-11-05T12:00:00Z" } as InterviewQa,
+      { id: "q2", question: "How does Redis Cluster shard keys?", technology: "Redis", confidence: 5, last_practiced_at: "2026-11-05T12:00:00Z" } as InterviewQa,
     ];
 
     const mastery = calculateDynamicTrackMastery(items, concepts, projects, questions);
@@ -409,13 +409,27 @@ describe("7. Dynamic Track Mastery Calculation Engine", () => {
     ];
 
     const questions: InterviewQa[] = [
-      { id: "q1", question: "Q1", technology: "System Design", confidence: 5 } as InterviewQa,
-      { id: "q2", question: "Q2", technology: "System Design", confidence: 5 } as InterviewQa,
+      { id: "q1", question: "Q1", technology: "System Design", confidence: 5, last_practiced_at: "2026-11-05T12:00:00Z" } as InterviewQa,
+      { id: "q2", question: "Q2", technology: "System Design", confidence: 5, last_practiced_at: "2026-11-05T12:00:00Z" } as InterviewQa,
     ];
 
     const mastery = calculateDynamicTrackMastery(items, concepts, projects, questions);
     assert.ok(mastery.overallScore >= 85);
     assert.equal(mastery.masteryTier, "Staff Ready");
+  });
+
+  test("returns 0% mastery for unstarted track with unpracticed questions and planned topics", () => {
+    const items: LearningItem[] = [
+      { id: "1", topic: "Spring Core", status: "planned", notes: "Syllabus outline text" } as LearningItem,
+      { id: "2", topic: "Spring Boot", status: "planned", notes: "Syllabus outline text" } as LearningItem,
+    ];
+    const questions: InterviewQa[] = [
+      { id: "q1", question: "Q1", confidence: 3, last_practiced_at: null } as InterviewQa,
+    ];
+    const mastery = calculateDynamicTrackMastery(items, [], [], questions);
+    assert.equal(mastery.overallScore, 0);
+    assert.equal(mastery.interviewScore, 0);
+    assert.equal(mastery.masteryTier, "Beginner");
   });
 });
 

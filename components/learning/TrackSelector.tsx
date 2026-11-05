@@ -4,7 +4,7 @@
 // Sahil's Shore: Learning Track Selector (Multi-Track & Custom Tracks)
 // ============================================================================
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Cpu,
   Layers,
@@ -19,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { LearningTrack } from "@/types";
+import { SafeDeleteModal } from "./SafeDeleteModal";
 
 interface TrackSelectorProps {
   tracks: LearningTrack[];
@@ -51,6 +52,8 @@ export function TrackSelector({
   onOpenCreateTrack,
   onDeleteTrack,
 }: TrackSelectorProps) {
+  const [trackToDelete, setTrackToDelete] = useState<LearningTrack | null>(null);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
       {tracks.map((track) => {
@@ -132,9 +135,7 @@ export function TrackSelector({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (window.confirm(`Delete track "${track.title}" and all its roadmap topics?`)) {
-                      onDeleteTrack(track.id);
-                    }
+                    setTrackToDelete(track);
                   }}
                   className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Delete Track"
@@ -161,6 +162,25 @@ export function TrackSelector({
           System Design, DevOps, Golang, AI...
         </span>
       </button>
+
+      {/* Safe Delete Track Modal with Type Confirmation */}
+      {trackToDelete && onDeleteTrack && (
+        <SafeDeleteModal
+          isOpen={Boolean(trackToDelete)}
+          onClose={() => setTrackToDelete(null)}
+          onConfirm={async () => {
+            if (trackToDelete) {
+              await onDeleteTrack(trackToDelete.id);
+              setTrackToDelete(null);
+            }
+          }}
+          title="Delete Learning Track"
+          itemName={trackToDelete.title}
+          itemType="track"
+          requireTyping={true}
+          warningText={`This will permanently delete the entire "${trackToDelete.title}" track and all its roadmap topics, sub-sections, notes, and code snippets.`}
+        />
+      )}
     </div>
   );
 }
