@@ -1526,6 +1526,7 @@ export interface Database {
           user_id: string;
           title: string;
           description: string | null;
+          album_date: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1534,6 +1535,7 @@ export interface Database {
           user_id: string;
           title: string;
           description?: string | null;
+          album_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1542,6 +1544,7 @@ export interface Database {
           user_id?: string;
           title?: string;
           description?: string | null;
+          album_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };

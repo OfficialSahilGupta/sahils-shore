@@ -309,12 +309,34 @@ export async function ensurePhotosMonthFolder(
   folderTree?: DriveFolderTree | null,
   yearMonth?: string
 ): Promise<string> {
-  const [targetYear, rawMonth] = (yearMonth || currentYearMonthIST()).split("-");
+  const safeYearMonth = (yearMonth || currentYearMonthIST()).substring(0, 7);
+  const [targetYear, rawMonth] = safeYearMonth.split("-");
   const monthName = getMonthName(rawMonth); // Full month name: e.g. "November", "January"
 
   const root =
     folderTree?.photosRoot ||
     (await findOrCreateDriveFolder(accessToken, DRIVE_SUBFOLDERS.PHOTOS, folderTree?.root));
+  const yearFolder = await findOrCreateDriveFolder(accessToken, targetYear, root);
+  const monthFolder = await findOrCreateDriveFolder(accessToken, monthName, yearFolder);
+  return monthFolder;
+}
+
+/**
+ * Ensures Shore/Videos/YYYY/<MonthName> folder exists and returns its Google Drive folder ID.
+ * Hierarchical path: Shore -> Videos -> YYYY -> MonthName (e.g. Shore/Videos/2026/November)
+ */
+export async function ensureVideosMonthFolder(
+  accessToken: string,
+  folderTree?: DriveFolderTree | null,
+  yearMonth?: string
+): Promise<string> {
+  const safeYearMonth = (yearMonth || currentYearMonthIST()).substring(0, 7);
+  const [targetYear, rawMonth] = safeYearMonth.split("-");
+  const monthName = getMonthName(rawMonth); // Full month name: e.g. "November", "January"
+
+  const root =
+    folderTree?.videosRoot ||
+    (await findOrCreateDriveFolder(accessToken, DRIVE_SUBFOLDERS.VIDEOS, folderTree?.root));
   const yearFolder = await findOrCreateDriveFolder(accessToken, targetYear, root);
   const monthFolder = await findOrCreateDriveFolder(accessToken, monthName, yearFolder);
   return monthFolder;

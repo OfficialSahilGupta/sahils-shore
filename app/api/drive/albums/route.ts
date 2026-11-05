@@ -12,6 +12,7 @@ import {
   refreshDriveAccessToken,
   findOrCreateDriveFolder,
   ensurePhotosMonthFolder,
+  ensureVideosMonthFolder,
   trashDriveFolder,
   moveDriveFolderContents,
   moveDriveFolder,
@@ -37,12 +38,11 @@ export async function GET() {
     }
 
     const { accessToken } = await refreshDriveAccessToken(creds.refreshToken);
-    const monthFolderId = await ensurePhotosMonthFolder(accessToken, creds.folderTree);
     const photosRootId = creds.folderTree?.photosRoot;
 
     const { data: albums } = await supabase
       .from("albums")
-      .select("id, title")
+      .select("id, title, album_date, created_at")
       .eq("user_id", user.id);
 
     const results: { id: string; title: string; folderId: string }[] = [];
@@ -50,6 +50,9 @@ export async function GET() {
     for (const album of albums || []) {
       if (!album.title.trim()) continue;
       const safeTitle = album.title.trim().replace(/'/g, "\\'");
+      const albumDateStr = album.album_date || album.created_at;
+      const targetYearMonth = albumDateStr ? String(albumDateStr).substring(0, 7) : undefined;
+      const monthFolderId = await ensurePhotosMonthFolder(accessToken, creds.folderTree, targetYearMonth);
 
       // Check if folder was created directly under photosRoot (legacy)
       if (photosRootId) {
@@ -108,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title } = body;
+    const { title, date, albumDate } = body;
 
     if (!title || typeof title !== "string" || !title.trim()) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
@@ -120,8 +123,11 @@ export async function POST(request: NextRequest) {
     }
 
     const { accessToken } = await refreshDriveAccessToken(creds.refreshToken);
-    // Locate or create the current month folder: Shore/Photos/YYYY/MM/
-    const monthFolderId = await ensurePhotosMonthFolder(accessToken, creds.folderTree);
+    const rawDate = date || albumDate;
+    const targetYearMonth = rawDate ? String(rawDate).substring(0, 7) : undefined;
+
+    // Locate or create the target month folder: Shore/Photos/YYYY/MM/
+    const monthFolderId = await ensurePhotosMonthFolder(accessToken, creds.folderTree, targetYearMonth);
 
     const folderId = await findOrCreateDriveFolder(
       accessToken,

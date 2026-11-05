@@ -125,10 +125,11 @@ export function MediaLightbox({
               href={driveUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20 transition-colors border border-white/10 shadow-xs"
+              title="Open original file in Google Drive"
             >
               <span>Drive</span>
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className="h-3.5 w-3.5 text-emerald-400" />
             </a>
           )}
 
@@ -239,7 +240,7 @@ export function MediaLightbox({
 
             {albums.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <Folder className="h-3.5 w-3.5 text-accent-warm" />
+                <Folder className="h-3.5 w-3.5 text-primary" />
                 <Select
                   value={item.album_id || ""}
                   onChange={(e) => onAssignAlbum?.(item.id, e.target.value || null)}

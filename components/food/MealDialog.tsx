@@ -31,6 +31,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Search,
+  Film,
 } from "lucide-react";
 import { formatINR, rupeesToPaise, paiseToRupees } from "@/lib/expenses";
 import type { MealType, MealLocation, CreateMealInput, MealWithExpense } from "@/lib/food";
@@ -111,7 +112,9 @@ export function MealDialog({
   // Inline Media Vault & URL Picker states
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [mediaPickerTab, setMediaPickerTab] = useState<"vault" | "url">("vault");
-  const [vaultPhotos, setVaultPhotos] = useState<Array<{ id: string; file_name: string; thumb_path: string | null }>>([]);
+  const [vaultPhotos, setVaultPhotos] = useState<
+    Array<{ id: string; file_name: string; thumb_path: string | null; media_type?: string }>
+  >([]);
   const [isLoadingVault, setIsLoadingVault] = useState(false);
   const [vaultSearch, setVaultSearch] = useState("");
   const [urlInput, setUrlInput] = useState("");
@@ -181,11 +184,11 @@ export function MealDialog({
           if (user) {
             const { data } = await supabase
               .from("media_items")
-              .select("id, file_name, thumb_path")
+              .select("id, file_name, thumb_path, media_type")
               .eq("user_id", user.id)
-              .eq("media_type", "photo")
+              .in("media_type", ["photo", "video"])
               .order("taken_at", { ascending: false })
-              .limit(40);
+              .limit(50);
 
             if (data) {
               setVaultPhotos(data);
@@ -697,13 +700,18 @@ export function MealDialog({
                                       ? "border-primary ring-2 ring-primary/40"
                                       : "border-border/60 hover:border-primary cursor-pointer"
                                   }`}
-                                  title={isSelected ? "Remove photo" : "Select photo"}
+                                  title={isSelected ? "Remove media" : "Select media"}
                                 >
                                   <img
                                     src={photoUrl}
                                     alt={p.file_name}
                                     className="h-full w-full object-cover"
                                   />
+                                  {p.media_type === "video" && (
+                                    <div className="absolute top-1 left-1 flex h-4 w-4 items-center justify-center rounded bg-black/60 text-white z-10">
+                                      <Film className="h-2.5 w-2.5" />
+                                    </div>
+                                  )}
                                   {isSelected && (
                                     <div className="absolute inset-0 bg-primary/40 flex items-center justify-center">
                                       <Check className="h-3.5 w-3.5 text-white stroke-[3]" />

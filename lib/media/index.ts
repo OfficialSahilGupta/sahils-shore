@@ -45,6 +45,7 @@ export interface Album {
   user_id: string;
   title: string;
   description: string | null;
+  album_date: string | null;
   created_at: string;
   updated_at: string;
   item_count?: number;
@@ -463,7 +464,7 @@ export async function getAlbums(
     .from("albums")
     .select("*, media_items(count)")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("album_date", { ascending: false, nullsFirst: false });
 
   if (error || !data) {
     return [];
@@ -475,6 +476,7 @@ export async function getAlbums(
       user_id: string;
       title: string;
       description: string | null;
+      album_date: string | null;
       created_at: string;
       updated_at: string;
       media_items?: { count: number }[];
@@ -485,6 +487,7 @@ export async function getAlbums(
       user_id: raw.user_id,
       title: raw.title,
       description: raw.description,
+      album_date: raw.album_date || raw.created_at,
       created_at: raw.created_at,
       updated_at: raw.updated_at,
       item_count: raw.media_items?.[0]?.count ?? 0,
@@ -499,7 +502,8 @@ export async function createAlbum(
   supabase: SupabaseClient<Database>,
   userId: string,
   title: string,
-  description?: string
+  description?: string,
+  albumDate?: string | null
 ): Promise<Album | null> {
   const { data, error } = await supabase
     .from("albums")
@@ -507,12 +511,45 @@ export async function createAlbum(
       user_id: userId,
       title,
       description: description || null,
+      album_date: albumDate || new Date().toISOString(),
     })
     .select()
     .single();
 
   if (error || !data) {
     console.error("[createAlbum] Error:", error?.message);
+    return null;
+  }
+
+  return { ...data, item_count: 0 };
+}
+
+/**
+ * Updates an album's title, description, or album date.
+ */
+export async function updateAlbum(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  albumId: string,
+  updates: {
+    title?: string;
+    description?: string | null;
+    album_date?: string | null;
+  }
+): Promise<Album | null> {
+  const { data, error } = await supabase
+    .from("albums")
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", albumId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error("[updateAlbum] Error:", error?.message);
     return null;
   }
 

@@ -312,9 +312,9 @@ export function MediaLinkPicker({
                 : "border-transparent text-text-muted hover:text-text"
             }`}
           >
-            <Folder className="h-3.5 w-3.5 text-accent-warm" />
+            <Folder className="h-3.5 w-3.5 text-primary" />
             <span>Album</span>
-            {selectedAlbum && <Check className="h-3 w-3 text-accent-warm" />}
+            {selectedAlbum && <Check className="h-3 w-3 text-primary" />}
           </button>
 
           <button
@@ -429,11 +429,11 @@ export function MediaLinkPicker({
           {activeTab === "album" && (
             <>
               {selectedAlbum && (
-                <div className="flex items-center justify-between rounded-xl border border-accent-warm/40 bg-accent-warm/10 p-3 text-xs mb-3">
+                <div className="flex items-center justify-between rounded-xl border border-primary/40 bg-primary/10 p-3 text-xs mb-3">
                   <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-accent-warm" />
+                    <Check className="h-4 w-4 text-primary" />
                     <span className="font-semibold text-text flex items-center gap-1.5">
-                      <Folder className="h-3.5 w-3.5 text-accent-warm" />
+                      <Folder className="h-3.5 w-3.5 text-primary" />
                       <span>Assigned Album: {selectedAlbum.title}</span>
                     </span>
                   </div>
@@ -458,7 +458,7 @@ export function MediaLinkPicker({
                 }}
                 className={`flex w-full items-center justify-between rounded-xl border p-3 text-left text-xs transition-colors mb-2 ${
                   selectedAlbum?.id === "none"
-                    ? "border-accent-warm bg-accent-warm/10 font-medium"
+                    ? "border-primary bg-primary/10 font-medium"
                     : "border-dashed border-border hover:bg-surface-muted text-text-muted"
                 }`}
               >
@@ -471,7 +471,7 @@ export function MediaLinkPicker({
                     </p>
                   </div>
                 </div>
-                {selectedAlbum?.id === "none" && <Check className="h-4 w-4 text-accent-warm" />}
+                {selectedAlbum?.id === "none" && <Check className="h-4 w-4 text-primary" />}
               </button>
 
               {filteredAlbums.length === 0 ? (
@@ -491,21 +491,21 @@ export function MediaLinkPicker({
                       }}
                       className={`flex w-full items-center justify-between rounded-xl border p-3 text-left text-xs transition-colors ${
                         isSelected
-                          ? "border-accent-warm bg-accent-warm/10 text-accent-warm font-medium shadow-xs"
+                          ? "border-primary bg-primary/10 text-primary font-semibold shadow-xs"
                           : "border-border hover:bg-surface-muted text-text"
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <Folder className="h-4 w-4 text-accent-warm" />
+                        <Folder className="h-4 w-4 text-primary" />
                         <div>
-                          <p className="font-medium text-text">{a.title}</p>
+                          <p className="font-semibold text-text">{a.title}</p>
                           <p className="text-[10px] text-text-muted">
                             {a.item_count || 0} {a.item_count === 1 ? "item" : "items"}
                             {a.description ? ` · ${a.description}` : ""}
                           </p>
                         </div>
                       </div>
-                      {isSelected && <Check className="h-4 w-4 text-accent-warm" />}
+                      {isSelected && <Check className="h-4 w-4 text-primary" />}
                     </button>
                   );
                 })
@@ -656,7 +656,7 @@ export function MediaLinkPicker({
           ) : null}
 
           {selectedAlbum ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-accent-warm/15 text-accent-warm px-2 py-0.5 font-medium border border-accent-warm/30">
+            <span className="inline-flex items-center gap-1 rounded-md bg-primary/15 text-primary px-2 py-0.5 font-medium border border-primary/30">
               <Folder className="h-3 w-3" />
               {selectedAlbum.title}
             </span>

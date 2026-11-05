@@ -24,6 +24,13 @@ import {
   Receipt,
   Sparkles,
   RefreshCw,
+  Plus,
+  Film,
+  Check,
+  Search,
+  UploadCloud,
+  Loader2,
+  X,
 } from "lucide-react";
 import {
   getPlaceDetailsWithLinkedData,
@@ -39,7 +46,7 @@ import { formatPaiseToINR } from "@/lib/expenses";
 import { createClient } from "@/lib/supabase/client";
 import { PlaceModal } from "./PlaceModal";
 import { MediaLightbox } from "../media/MediaLightbox";
-import type { MediaItem } from "@/lib/media";
+import { bulkUpdateMediaLinks, updateMediaItem, type MediaItem } from "@/lib/media";
 
 const LeafletMap = dynamic(() => import("./LeafletMap"), {
   ssr: false,
@@ -60,6 +67,14 @@ export function PlaceDetailView({ placeId }: PlaceDetailViewProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [lightboxItem, setLightboxItem] = useState<MediaItem | null>(null);
 
+  // Link Media Modal States
+  const [isLinkMediaModalOpen, setIsLinkMediaModalOpen] = useState(false);
+  const [candidateMedia, setCandidateMedia] = useState<MediaItem[]>([]);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
+  const [mediaSearch, setMediaSearch] = useState("");
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
+  const [isSavingMedia, setIsSavingMedia] = useState(false);
+
   const supabase = createClient();
 
   const loadDetails = async () => {
@@ -77,6 +92,77 @@ export function PlaceDetailView({ placeId }: PlaceDetailViewProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOpenLinkMediaModal = async () => {
+    setIsLinkMediaModalOpen(true);
+    setSelectedCandidateIds([]);
+    setMediaSearch("");
+    setIsLoadingCandidates(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: rows } = await supabase
+        .from("media_items")
+        .select("*")
+        .eq("user_id", user.id)
+        .in("media_type", ["photo", "video"])
+        .order("taken_at", { ascending: false })
+        .limit(60);
+
+      if (rows) {
+        // Exclude items already linked to this place
+        const candidates = (rows as unknown as MediaItem[]).filter(
+          (m) => m.links?.place_id !== placeId
+        );
+        setCandidateMedia(candidates);
+      }
+    } catch (err) {
+      console.warn("Failed to load candidates:", err);
+    } finally {
+      setIsLoadingCandidates(false);
+    }
+  };
+
+  const handleConfirmLinkMedia = async () => {
+    if (!data?.place || selectedCandidateIds.length === 0) return;
+    setIsSavingMedia(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await bulkUpdateMediaLinks(supabase, user.id, selectedCandidateIds, {
+        links: {
+          place_id: data.place.id,
+          place_name: data.place.name,
+        },
+      });
+
+      setIsLinkMediaModalOpen(false);
+      await loadDetails();
+    } catch (err) {
+      console.error("Failed to link media:", err);
+    } finally {
+      setIsSavingMedia(false);
+    }
+  };
+
+  const handleUnlinkMedia = async (mediaId: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await updateMediaItem(supabase, user.id, mediaId, {
+      links: { place_id: null, place_name: null },
+    });
+    setLightboxItem(null);
+    await loadDetails();
   };
 
   useEffect(() => {
@@ -239,6 +325,15 @@ export function PlaceDetailView({ placeId }: PlaceDetailViewProps) {
             <ImageIcon className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-bold text-text">Photos & Videos ({media.length})</h3>
           </div>
+
+          <button
+            type="button"
+            onClick={handleOpenLinkMediaModal}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-all shadow-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Add / Link Media</span>
+          </button>
         </div>
 
         {media.length === 0 ? (
@@ -250,13 +345,19 @@ export function PlaceDetailView({ placeId }: PlaceDetailViewProps) {
                 key={item.id}
                 type="button"
                 onClick={() => setLightboxItem(item)}
-                className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-surface-muted hover:border-primary transition-all"
+                className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-surface-muted hover:border-primary transition-all text-left"
               >
                 <img
                   src={item.thumb_path || ""}
                   alt={item.file_name}
                   className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
+                {item.media_type === "video" && (
+                  <div className="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-md bg-black/60 text-white backdrop-blur-xs z-10">
+                    <Film className="h-3 w-3" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             ))}
           </div>
@@ -357,14 +458,154 @@ export function PlaceDetailView({ placeId }: PlaceDetailViewProps) {
         }}
       />
 
-      {/* Lightbox for Photos */}
+      {/* Link Media to Place Modal */}
+      {isLinkMediaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="relative w-full max-w-xl rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                <h3 className="text-base font-bold text-text">
+                  Link Media to &quot;{place.name}&quot;
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLinkMediaModalOpen(false)}
+                className="rounded-lg p-1.5 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="p-3 border-b border-border bg-surface-muted/30">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                <input
+                  type="text"
+                  placeholder="Search media by file name..."
+                  value={mediaSearch}
+                  onChange={(e) => setMediaSearch(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-surface py-1.5 pl-9 pr-3 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Media Candidates Grid */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {isLoadingCandidates ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-xs text-text-muted gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span>Loading available media...</span>
+                </div>
+              ) : candidateMedia.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-xs text-text-muted">
+                  <ImageIcon className="h-8 w-8 mb-2 opacity-40" />
+                  <span>No unlinked media items found in your vault.</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                  {candidateMedia
+                    .filter((m) =>
+                      mediaSearch
+                        ? m.file_name.toLowerCase().includes(mediaSearch.toLowerCase())
+                        : true
+                    )
+                    .map((item) => {
+                      const isSelected = selectedCandidateIds.includes(item.id);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setSelectedCandidateIds((prev) =>
+                              prev.includes(item.id)
+                                ? prev.filter((id) => id !== item.id)
+                                : [...prev, item.id]
+                            );
+                          }}
+                          className={`group relative aspect-square overflow-hidden rounded-xl border bg-surface-muted cursor-pointer transition-all ${
+                            isSelected
+                              ? "border-primary ring-2 ring-primary/40 scale-[0.98]"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <img
+                            src={item.thumb_path || ""}
+                            alt={item.file_name}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                          <div
+                            className={`absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full border shadow-sm transition-all z-10 ${
+                              isSelected
+                                ? "bg-primary border-primary text-primary-foreground opacity-100"
+                                : "bg-surface/80 border-border text-transparent opacity-80 group-hover:opacity-100"
+                            }`}
+                          >
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </div>
+                          {item.media_type === "video" && (
+                            <div className="absolute top-1.5 left-1.5 flex h-4 w-4 items-center justify-center rounded bg-black/60 text-white z-10">
+                              <Film className="h-2.5 w-2.5" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-border px-5 py-3 bg-surface-muted/30">
+              <span className="text-xs text-text-muted">
+                {selectedCandidateIds.length} selected
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLinkMediaModalOpen(false)}
+                  disabled={isSavingMedia}
+                  className="rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-text hover:bg-surface-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmLinkMedia}
+                  disabled={selectedCandidateIds.length === 0 || isSavingMedia}
+                  className="rounded-xl bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-40 transition-all flex items-center gap-1.5"
+                >
+                  {isSavingMedia ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Linking...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Link to Place</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox for Photos & Videos with Drive link */}
       <MediaLightbox
         item={lightboxItem}
         items={media}
         isOpen={lightboxItem !== null}
         onClose={() => setLightboxItem(null)}
         onSelect={(item) => setLightboxItem(item)}
-        onDelete={async (id) => {}}
+        onDelete={async (id) => {
+          await handleUnlinkMedia(id);
+        }}
         onOpenLinkPicker={() => {}}
       />
     </div>

@@ -311,3 +311,61 @@ describe("7. Multi-Select & Bulk Entity Linking", () => {
     assert.equal(updated[1].links.meal_id, "m1");
   });
 });
+
+describe("8. Album Date Support & Drive Date-Accurate Routing", () => {
+  it("sorts albums chronologically by album_date desc", () => {
+    const mockAlbums = [
+      { id: "a1", title: "Goa 2024", album_date: "2024-11-03T00:00:00.000Z" },
+      { id: "a2", title: "Current Nov 2026", album_date: "2026-11-05T00:00:00.000Z" },
+      { id: "a3", title: "Diwali 2025", album_date: "2025-10-20T00:00:00.000Z" },
+    ];
+
+    const sorted = [...mockAlbums].sort(
+      (a, b) => new Date(b.album_date).getTime() - new Date(a.album_date).getTime()
+    );
+
+    assert.equal(sorted[0].id, "a2"); // 2026
+    assert.equal(sorted[1].id, "a3"); // 2025
+    assert.equal(sorted[2].id, "a1"); // 2024
+  });
+
+  it("extracts year and month name accurately from past timestamps for Drive folders", () => {
+    const rawDate1 = "2024-11-03T12:00:00.000Z";
+    const yearMonth1 = rawDate1.substring(0, 7);
+    const [year1, monthNum1] = yearMonth1.split("-");
+    const monthName1 = getMonthName(monthNum1);
+
+    assert.equal(year1, "2024");
+    assert.equal(monthName1, "November");
+
+    const rawDate2 = "2023-05-14T08:30:00.000Z";
+    const yearMonth2 = rawDate2.substring(0, 7);
+    const [year2, monthNum2] = yearMonth2.split("-");
+    const monthName2 = getMonthName(monthNum2);
+
+    assert.equal(year2, "2023");
+    assert.equal(monthName2, "May");
+  });
+
+  it("links both photo and video items to places and meals cleanly", () => {
+    const items = [
+      { id: "p1", media_type: "photo", file_name: "dish.jpg", links: {} as MediaLinks },
+      { id: "v1", media_type: "video", file_name: "cafe_tour.mp4", links: {} as MediaLinks },
+    ];
+
+    const linkedItems = items.map((i) => ({
+      ...i,
+      links: mergeMediaLinks(i.links, {
+        place_id: "place-101",
+        place_name: "Blue Tokai Cafe",
+        meal_id: "meal-501",
+        meal_name: "Avocado Toast",
+      }),
+    }));
+
+    assert.equal(linkedItems[0].links.place_name, "Blue Tokai Cafe");
+    assert.equal(linkedItems[0].links.meal_name, "Avocado Toast");
+    assert.equal(linkedItems[1].links.place_name, "Blue Tokai Cafe");
+    assert.equal(linkedItems[1].media_type, "video");
+  });
+});

@@ -12,6 +12,7 @@ import {
   initiateResumableUpload,
   findOrCreateDriveFolder,
   ensurePhotosMonthFolder,
+  ensureVideosMonthFolder,
   ensureDriveFolderTree,
   saveDriveCredentials,
 } from "@/lib/drive";
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
       size,
       folderType = "photos",
       albumId,
+      date,
     } = body;
 
     if (!fileName) {
@@ -66,33 +68,48 @@ export async function POST(request: NextRequest) {
     // Refresh Google access token
     const { accessToken } = await refreshDriveAccessToken(creds.refreshToken);
 
-    // Pick target folder ID from folder tree
+    // Pick target folder ID from folder tree based on explicit or EXIF date
     const tree = creds.folderTree;
     let targetFolderId = tree?.photosCurrent || tree?.root || creds.folderId;
 
     if (albumId) {
-      // Find or create the album folder inside Shore/Photos/YYYY/MM/<album.title>
+      // Find or create the album folder inside Shore/Photos/YYYY/MM/<album.title> or Shore/Videos/YYYY/MM/<album.title>
       const { data: album } = await supabase
         .from("albums")
-        .select("title")
+        .select("title, album_date, created_at")
         .eq("id", albumId)
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (album?.title) {
-        const monthFolderId = await ensurePhotosMonthFolder(accessToken, tree);
-        targetFolderId = await findOrCreateDriveFolder(
-          accessToken,
-          album.title.trim(),
-          monthFolderId
-        );
+        const rawDate = date || album.album_date || album.created_at;
+        const targetYearMonth = rawDate ? String(rawDate).substring(0, 7) : undefined;
+
+        if (folderType === "videos") {
+          const monthFolderId = await ensureVideosMonthFolder(accessToken, tree, targetYearMonth);
+          targetFolderId = await findOrCreateDriveFolder(
+            accessToken,
+            album.title.trim(),
+            monthFolderId
+          );
+        } else {
+          const monthFolderId = await ensurePhotosMonthFolder(accessToken, tree, targetYearMonth);
+          targetFolderId = await findOrCreateDriveFolder(
+            accessToken,
+            album.title.trim(),
+            monthFolderId
+          );
+        }
       }
     } else {
-      // No album specified: stays directly in the specific month folder (e.g. 11 for November)
+      const rawDate = date;
+      const targetYearMonth = rawDate ? String(rawDate).substring(0, 7) : undefined;
+
+      // No album specified: stays directly in the specific month folder (e.g. Shore/Photos/YYYY/MM/ or Shore/Videos/YYYY/MM/)
       if (folderType === "photos") {
-        targetFolderId = await ensurePhotosMonthFolder(accessToken, tree);
-      } else if (folderType === "videos" && tree?.videosCurrent) {
-        targetFolderId = tree.videosCurrent;
+        targetFolderId = await ensurePhotosMonthFolder(accessToken, tree, targetYearMonth);
+      } else if (folderType === "videos") {
+        targetFolderId = await ensureVideosMonthFolder(accessToken, tree, targetYearMonth);
       } else if (folderType === "receipts" && tree?.receipts) {
         targetFolderId = tree.receipts;
       } else if (folderType === "voice" && tree?.voice) {

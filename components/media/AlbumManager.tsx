@@ -15,8 +15,11 @@ import {
   Check,
   AlertTriangle,
   Loader2,
+  Calendar,
+  ImagePlus,
 } from "lucide-react";
 import type { Album } from "@/lib/media";
+import { todayIST, formatISTDate } from "@/lib/date-utils";
 
 interface AlbumManagerProps {
   albums: Album[];
@@ -24,8 +27,9 @@ interface AlbumManagerProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectAlbum: (albumId: string | null) => void;
-  onCreateAlbum: (title: string, description?: string) => Promise<void>;
+  onCreateAlbum: (title: string, description?: string, albumDate?: string) => Promise<void>;
   onDeleteAlbum: (albumId: string, deletePhotosInside: boolean) => Promise<void>;
+  onOpenAddPastMedia?: (album: Album) => void;
 }
 
 export function AlbumManager({
@@ -36,9 +40,11 @@ export function AlbumManager({
   onSelectAlbum,
   onCreateAlbum,
   onDeleteAlbum,
+  onOpenAddPastMedia,
 }: AlbumManagerProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newDate, setNewDate] = useState(todayIST());
   const [isCreating, setIsCreating] = useState(false);
   const [albumToDelete, setAlbumToDelete] = useState<Album | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -50,9 +56,11 @@ export function AlbumManager({
     if (!newTitle.trim()) return;
     setIsCreating(true);
     try {
-      await onCreateAlbum(newTitle.trim(), newDesc.trim() || undefined);
+      const isoDate = newDate ? new Date(`${newDate}T12:00:00Z`).toISOString() : undefined;
+      await onCreateAlbum(newTitle.trim(), newDesc.trim() || undefined, isoDate);
       setNewTitle("");
       setNewDesc("");
+      setNewDate(todayIST());
     } finally {
       setIsCreating(false);
     }
@@ -95,18 +103,29 @@ export function AlbumManager({
           <div className="space-y-2">
             <input
               type="text"
-              placeholder="Album title (e.g., Summer Travels, Cafes, Goa 2026)"
+              placeholder="Album title (e.g., Summer Travels, Goa 2024, Cafes)"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-none"
             />
-            <input
-              type="text"
-              placeholder="Optional description"
-              value={newDesc}
-              onChange={(e) => setNewDesc(e.target.value)}
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-none"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input
+                type="text"
+                placeholder="Optional description"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-none"
+              />
+              <div className="relative flex items-center">
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text focus:border-primary focus:outline-none"
+                  title="Album date (past date for retro albums)"
+                />
+              </div>
+            </div>
           </div>
           <button
             type="submit"
@@ -148,6 +167,8 @@ export function AlbumManager({
 
           {albums.map((album) => {
             const isSelected = activeAlbumId === album.id;
+            const formattedDate = album.album_date ? formatISTDate(album.album_date) : null;
+
             return (
               <div
                 key={album.id}
@@ -163,24 +184,45 @@ export function AlbumManager({
                     onSelectAlbum(album.id);
                     onClose();
                   }}
-                  className="flex flex-1 items-center gap-2.5 text-left"
+                  className="flex flex-1 items-center gap-2.5 text-left min-w-0 pr-2"
                 >
-                  <Folder className="h-4 w-4 text-accent-warm" />
-                  <div>
-                    <p className="font-medium text-text">{album.title}</p>
-                    <p className="text-[10px] text-text-muted">
-                      {album.item_count || 0} {album.item_count === 1 ? "item" : "items"}
-                      {album.description ? ` • ${album.description}` : ""}
-                    </p>
+                  <Folder className="h-4 w-4 text-primary shrink-0" />
+                  <div className="truncate">
+                    <p className="font-semibold text-text truncate">{album.title}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-text-muted mt-0.5">
+                      <span>
+                        {album.item_count || 0} {album.item_count === 1 ? "item" : "items"}
+                      </span>
+                      {formattedDate && (
+                        <span className="flex items-center gap-0.5 text-text-muted">
+                          • {formattedDate}
+                        </span>
+                      )}
+                      {album.description && (
+                        <span className="truncate max-w-[120px]">• {album.description}</span>
+                      )}
+                    </div>
                   </div>
                 </button>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   {isSelected && <Check className="h-4 w-4 text-primary mr-1" />}
+                  {onOpenAddPastMedia && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenAddPastMedia(album);
+                      }}
+                      className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors"
+                      title={`Add past pictures to ${album.title}`}
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setAlbumToDelete(album)}
-                    className="p-1 rounded-lg text-text-muted hover:text-danger hover:bg-surface transition-colors"
+                    className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-surface transition-colors"
                     title={`Delete album ${album.title}`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />

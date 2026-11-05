@@ -18,10 +18,12 @@ import {
   Loader2,
   Sparkles,
   Folder,
+  Calendar,
 } from "lucide-react";
 import { generateImageThumbnail, generateVideoThumbnail } from "@/lib/media/thumbnail";
 import { extractExifMetadata } from "@/lib/media/exif";
 import { Select } from "@/components/ui/select";
+import { todayIST } from "@/lib/date-utils";
 import type { MediaItem, MediaType, SyncStatus, Album } from "@/lib/media";
 
 export interface MediaUploadTask {
@@ -50,6 +52,7 @@ export function MediaUploader({ onUploadComplete, albumId, albums = [] }: MediaU
   const [tasks, setTasks] = useState<MediaUploadTask[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [currentAlbumId, setCurrentAlbumId] = useState<string | null>(albumId || null);
+  const [uploadDate, setUploadDate] = useState<string>(todayIST());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -127,6 +130,10 @@ export function MediaUploader({ onUploadComplete, albumId, albums = [] }: MediaU
       let driveErrorMessage: string | undefined;
 
       try {
+        const effectiveTakenAt =
+          exif.takenAt ||
+          (uploadDate ? new Date(`${uploadDate}T12:00:00Z`).toISOString() : new Date().toISOString());
+
         const sessionRes = await fetch("/api/drive/upload-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -136,6 +143,7 @@ export function MediaUploader({ onUploadComplete, albumId, albums = [] }: MediaU
             size: task.file.size,
             folderType: task.mediaType === "video" ? "videos" : "photos",
             albumId: currentAlbumId || null,
+            date: effectiveTakenAt,
           }),
         });
 
@@ -173,13 +181,17 @@ export function MediaUploader({ onUploadComplete, albumId, albums = [] }: MediaU
       }
 
       // 4. Save media item record to Supabase
+      const finalTakenAt =
+        exif.takenAt ||
+        (uploadDate ? new Date(`${uploadDate}T12:00:00Z`).toISOString() : new Date().toISOString());
+
       await onUploadComplete(
         {
           file_name: task.fileName,
           mime_type: task.file.type || (task.mediaType === "video" ? "video/mp4" : "image/jpeg"),
           media_type: task.mediaType,
           thumb_path: thumbDataUrl || null,
-          taken_at: exif.takenAt,
+          taken_at: finalTakenAt,
           lat: exif.lat,
           lng: exif.lng,
           album_id: currentAlbumId || null,
@@ -276,25 +288,37 @@ export function MediaUploader({ onUploadComplete, albumId, albums = [] }: MediaU
         className="hidden"
       />
 
-      {/* Target Album Selection Bar */}
+      {/* Target Album & Date Selection Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/50 p-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-text">
-          <Folder className="h-4 w-4 text-primary" />
-          <span>Destination Album:</span>
-        </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-text">
+            <Folder className="h-4 w-4 text-primary" />
+            <span>Destination:</span>
+          </div>
           <Select
             value={currentAlbumId || ""}
             onChange={(e) => setCurrentAlbumId(e.target.value || null)}
-            containerClassName="w-auto"
-          >
-            <option value="">None (General Media Vault)</option>
-            {albums.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.title} ({a.item_count || 0})
-              </option>
-            ))}
-          </Select>
+            containerClassName="w-56"
+            options={[
+              { value: "", label: "General Media Vault (No Album)" },
+              ...albums.map((a) => ({
+                value: a.id,
+                label: `${a.title} (${a.item_count || 0})`,
+              })),
+            ]}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-text-muted" />
+          <span className="text-xs text-text-muted">Date:</span>
+          <input
+            type="date"
+            value={uploadDate}
+            onChange={(e) => setUploadDate(e.target.value)}
+            className="rounded-xl border border-border bg-surface px-2.5 py-1 text-xs text-text focus:border-primary focus:outline-none"
+            title="Upload/Capture Date (defaults to today; EXIF auto-overrides if present)"
+          />
         </div>
       </div>
 

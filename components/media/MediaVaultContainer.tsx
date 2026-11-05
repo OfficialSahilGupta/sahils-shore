@@ -27,8 +27,11 @@ import {
   X,
   Plus,
   Link as LinkIcon,
+  Calendar,
+  ImagePlus,
 } from "lucide-react";
 import { Select } from "@/components/ui/select";
+import { formatISTDate } from "@/lib/date-utils";
 import {
   getMediaItems,
   getAlbums,
@@ -55,6 +58,7 @@ import { MediaLinkPicker } from "./MediaLinkPicker";
 import { AlbumManager } from "./AlbumManager";
 import { OnThisDayWidget } from "./OnThisDayWidget";
 import { DriveImportModal } from "./DriveImportModal";
+import { AddPastMediaModal } from "./AddPastMediaModal";
 
 export function MediaVaultContainer() {
   const [items, setItems] = useState<MediaItem[]>([]);
@@ -74,6 +78,7 @@ export function MediaVaultContainer() {
   const [activeLightboxItem, setActiveLightboxItem] = useState<MediaItem | null>(null);
   const [activeLinkPickerItem, setActiveLinkPickerItem] = useState<MediaItem | null>(null);
   const [isBulkLinkPickerOpen, setIsBulkLinkPickerOpen] = useState(false);
+  const [albumForAddingPastMedia, setAlbumForAddingPastMedia] = useState<Album | null>(null);
 
   // Album direct deletion confirmation modal
   const [albumToDelete, setAlbumToDelete] = useState<Album | null>(null);
@@ -470,11 +475,11 @@ export function MediaVaultContainer() {
               onClick={() => setSelectedAlbumId(album.id)}
               className={`flex items-center gap-2 shrink-0 rounded-xl px-3.5 py-2 text-xs font-medium transition-all ${
                 isCurrent
-                  ? "bg-accent-warm text-white shadow-sm"
-                  : "border border-border bg-surface text-text hover:bg-surface-muted"
+                  ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/30 font-semibold"
+                  : "border border-border bg-surface text-text hover:bg-surface-muted hover:border-primary/40"
               }`}
             >
-              <Folder className="h-3.5 w-3.5 text-accent-warm" />
+              <Folder className={`h-3.5 w-3.5 ${isCurrent ? "text-primary-foreground" : "text-primary"}`} />
               <span>{album.title}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-full ${
@@ -500,18 +505,24 @@ export function MediaVaultContainer() {
 
       {/* Active Album Banner */}
       {selectedAlbum && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-accent-warm/30 bg-accent-warm/5 p-4 animate-in fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-primary/5 to-surface p-4 animate-in fade-in">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-warm/20 text-accent-warm shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary shrink-0">
               <Folder className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-bold text-text">{selectedAlbum.title}</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-accent-warm/15 text-accent-warm font-semibold">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">
                   {selectedAlbum.item_count || 0}{" "}
                   {selectedAlbum.item_count === 1 ? "item" : "items"}
                 </span>
+                {selectedAlbum.album_date && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-muted flex items-center gap-1 font-medium">
+                    <Calendar className="h-3 w-3 text-primary" />
+                    {formatISTDate(selectedAlbum.album_date)}
+                  </span>
+                )}
               </div>
               {selectedAlbum.description && (
                 <p className="text-xs text-text-muted mt-0.5">{selectedAlbum.description}</p>
@@ -519,11 +530,19 @@ export function MediaVaultContainer() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => setAlbumForAddingPastMedia(selectedAlbum)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-all shadow-xs"
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              <span>Add Past Media</span>
+            </button>
             <button
               type="button"
               onClick={() => setShowUploader(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-accent-warm px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-all shadow-xs"
             >
               <UploadCloud className="h-3.5 w-3.5" />
               <span>Upload to Album</span>
@@ -672,9 +691,9 @@ export function MediaVaultContainer() {
 
             {albums.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <Folder className="h-3.5 w-3.5 text-accent-warm" />
+                <Folder className="h-3.5 w-3.5 text-primary" />
                 <Select
-                  defaultValue=""
+                  value=""
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === "none") {
@@ -683,16 +702,16 @@ export function MediaVaultContainer() {
                       handleBulkAssignAlbum(val);
                     }
                   }}
-                  containerClassName="w-auto"
-                >
-                  <option value="" disabled>Move to album...</option>
-                  <option value="none">Remove from album</option>
-                  {albums.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.title}
-                    </option>
-                  ))}
-                </Select>
+                  containerClassName="w-44"
+                  placeholder="Move to album..."
+                  options={[
+                    { value: "none", label: "Remove from album" },
+                    ...albums.map((a) => ({
+                      value: a.id,
+                      label: a.title,
+                    })),
+                  ]}
+                />
               </div>
             )}
 
@@ -796,24 +815,47 @@ export function MediaVaultContainer() {
         isOpen={showAlbumManager}
         onClose={() => setShowAlbumManager(false)}
         onSelectAlbum={(albumId) => setSelectedAlbumId(albumId)}
-        onCreateAlbum={async (title, desc) => {
+        onCreateAlbum={async (title, desc, albumDate) => {
           const {
             data: { user },
           } = await supabase.auth.getUser();
           if (!user) return;
-          const created = await createAlbum(supabase, user.id, title, desc);
+          const created = await createAlbum(supabase, user.id, title, desc, albumDate);
           if (created) {
             setAlbums((prev) => [created, ...prev]);
             // Create matching folder in Google Drive under Shore/Photos/
             fetch("/api/drive/albums", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ title: created.title }),
+              body: JSON.stringify({
+                title: created.title,
+                albumDate: created.album_date,
+              }),
             }).catch((e) => console.warn("Drive album creation background error:", e));
           }
         }}
         onDeleteAlbum={handleDeleteAlbum}
+        onOpenAddPastMedia={(album) => setAlbumForAddingPastMedia(album)}
       />
+
+      {/* Add Past Media to Album Modal */}
+      {albumForAddingPastMedia && (
+        <AddPastMediaModal
+          album={albumForAddingPastMedia}
+          isOpen={!!albumForAddingPastMedia}
+          onClose={() => setAlbumForAddingPastMedia(null)}
+          onAddItems={async (albumId, itemIds) => {
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) return;
+            const ok = await bulkAssignAlbum(supabase, user.id, itemIds, albumId);
+            if (ok) {
+              await loadData();
+            }
+          }}
+        />
+      )}
 
       {/* Direct Album Deletion Dialog from Active Banner */}
       {albumToDelete && (
