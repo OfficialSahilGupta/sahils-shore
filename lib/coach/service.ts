@@ -4,22 +4,22 @@
 // ============================================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Json } from "@/types/database";
+import type { Database, Json } from "../../types/database.ts";
 import type {
   CoachDailyInsight,
   CoachWeeklyReview,
   CoachSettingsConfig,
-} from "./types";
+} from "./types.ts";
 import {
   todayIST,
   addDaysIST,
   getISTDateRangeUTC,
   utcToZonedDate,
-} from "@/lib/date-utils";
-import { sanitizeContextForCoach } from "./sanitizer";
-import { generateCoachInsight, generateWeeklyReview } from "./providers";
-import { writeTimelineEvent } from "@/lib/timeline";
-import { paiseToRupees } from "@/lib/expenses";
+} from "../date-utils.ts";
+import { sanitizeContextForCoach } from "./sanitizer.ts";
+import { generateCoachInsight, generateWeeklyReview } from "./providers.ts";
+import { writeTimelineEvent } from "../timeline/index.ts";
+import { paiseToRupees } from "../expenses/index.ts";
 
 export const DEFAULT_COACH_SETTINGS: CoachSettingsConfig = {
   enabled: true,
@@ -28,30 +28,110 @@ export const DEFAULT_COACH_SETTINGS: CoachSettingsConfig = {
 };
 
 /**
+ * Safely parses and validates coach settings object or JSON string.
+ */
+export function parseCoachSettings(data: unknown): CoachSettingsConfig {
+  if (!data) return { ...DEFAULT_COACH_SETTINGS };
+
+  let raw = data;
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return { ...DEFAULT_COACH_SETTINGS };
+    }
+  }
+
+  if (typeof raw !== "object" || raw === null) {
+    return { ...DEFAULT_COACH_SETTINGS };
+  }
+
+  const obj = raw as Record<string, any>;
+
+  // Strict boolean resolution for enabled
+  let enabled = DEFAULT_COACH_SETTINGS.enabled;
+  if (obj.enabled !== undefined && obj.enabled !== null) {
+    if (typeof obj.enabled === "boolean") {
+      enabled = obj.enabled;
+    } else if (typeof obj.enabled === "string") {
+      const lower = obj.enabled.trim().toLowerCase();
+      if (lower === "false" || lower === "0" || lower === "off") {
+        enabled = false;
+      } else if (lower === "true" || lower === "1" || lower === "on") {
+        enabled = true;
+      }
+    }
+  }
+
+  // Strict boolean resolution for opt_in_journal
+  let opt_in_journal = DEFAULT_COACH_SETTINGS.opt_in_journal;
+  if (obj.opt_in_journal !== undefined && obj.opt_in_journal !== null) {
+    if (typeof obj.opt_in_journal === "boolean") {
+      opt_in_journal = obj.opt_in_journal;
+    } else if (typeof obj.opt_in_journal === "string") {
+      const lower = obj.opt_in_journal.trim().toLowerCase();
+      if (lower === "true" || lower === "1" || lower === "on") {
+        opt_in_journal = true;
+      } else if (lower === "false" || lower === "0" || lower === "off") {
+        opt_in_journal = false;
+      }
+    }
+  }
+
+  // Provider resolution
+  let provider: "auto" | "gemini" | "anthropic" | "heuristic" = "auto";
+  if (["auto", "gemini", "anthropic", "heuristic"].includes(obj.provider)) {
+    provider = obj.provider;
+  }
+
+  return {
+    enabled,
+    opt_in_journal,
+    provider,
+  };
+}
+
+/**
  * Loads AI Coach settings for a user.
+ * Supports dedicated settings.ai_coach column and backward-compatible settings.modules_config._ai_coach.
  */
 export async function getCoachSettings(
   supabase: SupabaseClient<Database>,
   userId: string
 ): Promise<CoachSettingsConfig> {
-  const { data } = await supabase
-    .from("settings")
-    .select("ai_coach")
-    .eq("user_id", userId)
-    .maybeSingle();
+  try {
+    // 1. Attempt reading dedicated ai_coach column first
+    const { data: dedicatedData, error: dedicatedError } = await (supabase as any)
+      .from("settings")
+      .select("ai_coach")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (data?.ai_coach && typeof data.ai_coach === "object") {
-    return {
-      ...DEFAULT_COACH_SETTINGS,
-      ...(data.ai_coach as any),
-    };
+    if (!dedicatedError && dedicatedData?.ai_coach) {
+      return parseCoachSettings(dedicatedData.ai_coach);
+    }
+
+    // 2. Fallback: check modules_config._ai_coach
+    const { data: modulesData } = await supabase
+      .from("settings")
+      .select("modules_config")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const modulesObj = modulesData?.modules_config as Record<string, any> | null;
+    if (modulesObj?._ai_coach) {
+      return parseCoachSettings(modulesObj._ai_coach);
+    }
+  } catch (err) {
+    console.warn("Unexpected error fetching coach settings:", err);
   }
 
-  return DEFAULT_COACH_SETTINGS;
+  return { ...DEFAULT_COACH_SETTINGS };
 }
 
 /**
  * Updates AI Coach settings in database.
+ * Dual-persists to dedicated ai_coach column (if present) and modules_config._ai_coach.
  */
 export async function saveCoachSettings(
   supabase: SupabaseClient<Database>,
@@ -59,12 +139,52 @@ export async function saveCoachSettings(
   config: Partial<CoachSettingsConfig>
 ): Promise<CoachSettingsConfig> {
   const current = await getCoachSettings(supabase, userId);
-  const updated = { ...current, ...config };
+  const updated: CoachSettingsConfig = parseCoachSettings({
+    ...current,
+    ...config,
+  });
 
-  await supabase
+  // Fetch current modules_config to safely merge
+  const { data: settingsRow } = await supabase
     .from("settings")
-    .update({ ai_coach: updated as unknown as Json })
-    .eq("user_id", userId);
+    .select("modules_config")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const currentModules = (settingsRow?.modules_config as Record<string, any>) || {};
+  const updatedModules = { ...currentModules, _ai_coach: updated };
+
+  // Try saving to dedicated column first
+  const { error: dedicatedError } = await (supabase as any)
+    .from("settings")
+    .upsert(
+      {
+        user_id: userId,
+        ai_coach: updated as unknown as Json,
+        modules_config: updatedModules as unknown as Json,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    );
+
+  // If dedicated column does not exist on remote schema (e.g. migration pending), update modules_config
+  if (dedicatedError) {
+    const { error: fallbackError } = await supabase
+      .from("settings")
+      .upsert(
+        {
+          user_id: userId,
+          modules_config: updatedModules as unknown as Json,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+
+    if (fallbackError) {
+      console.error("Failed to save coach settings fallback to Supabase:", fallbackError.message);
+      throw fallbackError;
+    }
+  }
 
   return updated;
 }

@@ -10,6 +10,7 @@ import {
   getOrGenerateDailyInsight,
   getOrGenerateWeeklyReview,
   getCoachSettings,
+  saveCoachSettings,
 } from "@/lib/coach/service";
 import { todayIST } from "@/lib/date-utils";
 
@@ -81,5 +82,26 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("AI Coach POST error:", err);
     return NextResponse.json({ error: err.message || "Failed to generate AI coach insight" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const updated = await saveCoachSettings(supabase, user.id, body);
+    return NextResponse.json({ success: true, settings: updated });
+  } catch (err: any) {
+    console.error("AI Coach PATCH error:", err);
+    return NextResponse.json({ error: err.message || "Failed to update AI coach settings" }, { status: 500 });
   }
 }

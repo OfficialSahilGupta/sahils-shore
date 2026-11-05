@@ -30,6 +30,10 @@ import {
   generateMonthlyMarkdownReport,
   generateDailyAnalyticsCsv,
 } from "../lib/analytics/export.ts";
+import {
+  parseCoachSettings,
+  DEFAULT_COACH_SETTINGS,
+} from "../lib/coach/service.ts";
 import type { AnalyticsBundle } from "../lib/analytics/types.ts";
 
 describe("1. Transparent Productivity Score Formula", () => {
@@ -417,5 +421,46 @@ describe("7. Exportable Monthly Report Engine", () => {
     const csv = generateDailyAnalyticsCsv(dummyBundle);
     assert.ok(csv.startsWith("Date (IST),Productivity Score,Focus Minutes"));
     assert.ok(csv.includes("2026-10-01,85,120"));
+  });
+});
+
+describe("8. AI Coach Settings Parsing & Toggle State Resolution", () => {
+  test("resolves boolean false correctly for enabled toggle", () => {
+    const res = parseCoachSettings({ enabled: false });
+    assert.equal(res.enabled, false);
+  });
+
+  test("resolves string 'false', '0', and 'off' to boolean false", () => {
+    assert.equal(parseCoachSettings({ enabled: "false" }).enabled, false);
+    assert.equal(parseCoachSettings({ enabled: "0" }).enabled, false);
+    assert.equal(parseCoachSettings({ enabled: "off" }).enabled, false);
+  });
+
+  test("resolves boolean true and truthy strings to boolean true", () => {
+    assert.equal(parseCoachSettings({ enabled: true }).enabled, true);
+    assert.equal(parseCoachSettings({ enabled: "true" }).enabled, true);
+    assert.equal(parseCoachSettings({ enabled: "1" }).enabled, true);
+    assert.equal(parseCoachSettings({ enabled: "on" }).enabled, true);
+  });
+
+  test("parses JSON stringified settings correctly", () => {
+    const jsonStr = JSON.stringify({ enabled: false, opt_in_journal: true, provider: "heuristic" });
+    const res = parseCoachSettings(jsonStr);
+    assert.equal(res.enabled, false);
+    assert.equal(res.opt_in_journal, true);
+    assert.equal(res.provider, "heuristic");
+  });
+
+  test("falls back safely to default settings on null, undefined, or corrupt json", () => {
+    assert.deepEqual(parseCoachSettings(null), DEFAULT_COACH_SETTINGS);
+    assert.deepEqual(parseCoachSettings(undefined), DEFAULT_COACH_SETTINGS);
+    assert.deepEqual(parseCoachSettings("{corrupt json"), DEFAULT_COACH_SETTINGS);
+  });
+
+  test("validates provider preference securely", () => {
+    assert.equal(parseCoachSettings({ provider: "gemini" }).provider, "gemini");
+    assert.equal(parseCoachSettings({ provider: "anthropic" }).provider, "anthropic");
+    assert.equal(parseCoachSettings({ provider: "heuristic" }).provider, "heuristic");
+    assert.equal(parseCoachSettings({ provider: "invalid_hacker_engine" }).provider, "auto");
   });
 });

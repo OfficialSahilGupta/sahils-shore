@@ -11,6 +11,10 @@ import { createClient } from "@/lib/supabase/client";
 import { tomorrowIST, todayIST } from "@/lib/date-utils";
 import { useToast } from "@/components/ui/toast";
 import {
+  SHORE_AI_COACH_STORAGE_KEY,
+  SHORE_AI_COACH_EVENT,
+} from "@/components/settings/CoachSettings";
+import {
   Sparkles,
   RefreshCw,
   Compass,
@@ -40,6 +44,20 @@ export function AICoachCard({ initialDate, className = "" }: AICoachCardProps) {
   const dateToQuery = initialDate || todayIST();
 
   const fetchInsight = useCallback(async (forceRefresh = false) => {
+    // If explicitly disabled in localStorage, avoid network requests
+    try {
+      const cached = localStorage.getItem(SHORE_AI_COACH_STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.enabled === false) {
+          setEnabled(false);
+          setIsLoading(false);
+          setIsRefreshing(false);
+          return;
+        }
+      }
+    } catch {}
+
     try {
       if (forceRefresh) setIsRefreshing(true);
       else setIsLoading(true);
@@ -51,11 +69,35 @@ export function AICoachCard({ initialDate, className = "" }: AICoachCardProps) {
       });
 
       if (!res.ok) {
+        // If unauthenticated or offline, verify against localStorage
+        try {
+          const cached = localStorage.getItem(SHORE_AI_COACH_STORAGE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.enabled === false) {
+              setEnabled(false);
+              return;
+            }
+          }
+        } catch {}
         throw new Error("Failed to fetch AI coach insight");
       }
 
       const data = await res.json();
-      setEnabled(data.enabled !== false);
+      const isCoachEnabled = data.enabled !== false;
+      setEnabled(isCoachEnabled);
+
+      if (!isCoachEnabled) {
+        try {
+          const cached = localStorage.getItem(SHORE_AI_COACH_STORAGE_KEY);
+          const existing = cached ? JSON.parse(cached) : {};
+          localStorage.setItem(
+            SHORE_AI_COACH_STORAGE_KEY,
+            JSON.stringify({ ...existing, enabled: false })
+          );
+        } catch {}
+      }
+
       if (data.insight) {
         setInsight(data.insight);
       }
@@ -68,7 +110,44 @@ export function AICoachCard({ initialDate, className = "" }: AICoachCardProps) {
   }, [dateToQuery]);
 
   useEffect(() => {
-    fetchInsight();
+    // 1. Check local cache immediately on mount
+    let isCurrentlyEnabled = true;
+    try {
+      const cached = localStorage.getItem(SHORE_AI_COACH_STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed.enabled === "boolean") {
+          isCurrentlyEnabled = parsed.enabled;
+          setEnabled(parsed.enabled);
+          if (!parsed.enabled) {
+            setIsLoading(false);
+          }
+        }
+      }
+    } catch {}
+
+    // 2. Fetch fresh insight only if coach is enabled
+    if (isCurrentlyEnabled) {
+      fetchInsight();
+    }
+
+    // 3. Listen for real-time config changes across the app
+    const handleConfigChange = (e: any) => {
+      const newConfig = e?.detail;
+      if (newConfig && typeof newConfig.enabled === "boolean") {
+        setEnabled(newConfig.enabled);
+        if (newConfig.enabled) {
+          fetchInsight();
+        } else {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    window.addEventListener(SHORE_AI_COACH_EVENT, handleConfigChange);
+    return () => {
+      window.removeEventListener(SHORE_AI_COACH_EVENT, handleConfigChange);
+    };
   }, [fetchInsight]);
 
   const handleAddPriorityToTasks = async (priorityText: string) => {
