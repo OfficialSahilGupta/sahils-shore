@@ -17,6 +17,7 @@ import {
   Loader2,
   Calendar,
   ImagePlus,
+  Edit2,
 } from "lucide-react";
 import type { Album } from "@/lib/media";
 import { todayIST, formatISTDate } from "@/lib/date-utils";
@@ -28,6 +29,7 @@ interface AlbumManagerProps {
   onClose: () => void;
   onSelectAlbum: (albumId: string | null) => void;
   onCreateAlbum: (title: string, description?: string, albumDate?: string) => Promise<void>;
+  onUpdateAlbum?: (albumId: string, updates: { title?: string; albumDate?: string }) => Promise<void>;
   onDeleteAlbum: (albumId: string, deletePhotosInside: boolean) => Promise<void>;
   onOpenAddPastMedia?: (album: Album) => void;
 }
@@ -39,6 +41,7 @@ export function AlbumManager({
   onClose,
   onSelectAlbum,
   onCreateAlbum,
+  onUpdateAlbum,
   onDeleteAlbum,
   onOpenAddPastMedia,
 }: AlbumManagerProps) {
@@ -49,6 +52,12 @@ export function AlbumManager({
   const [createError, setCreateError] = useState<string | null>(null);
   const [albumToDelete, setAlbumToDelete] = useState<Album | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Editing state for existing albums
+  const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingDate, setEditingDate] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   if (!isOpen) return null;
 
@@ -68,6 +77,23 @@ export function AlbumManager({
       setCreateError(msg);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleSaveEdit = async (albumId: string) => {
+    if (!editingTitle.trim() || !onUpdateAlbum) return;
+    setIsSavingEdit(true);
+    try {
+      const isoDate = editingDate ? new Date(`${editingDate}T12:00:00Z`).toISOString() : undefined;
+      await onUpdateAlbum(albumId, {
+        title: editingTitle.trim(),
+        albumDate: isoDate,
+      });
+      setEditingAlbumId(null);
+    } catch (err: unknown) {
+      console.error("Failed to update album:", err);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -178,7 +204,64 @@ export function AlbumManager({
 
           {albums.map((album) => {
             const isSelected = activeAlbumId === album.id;
-            const formattedDate = album.album_date ? formatISTDate(album.album_date) : null;
+            const isEditing = editingAlbumId === album.id;
+            const rawDate = album.album_date || album.created_at;
+            const formattedDate = rawDate ? formatISTDate(rawDate) : null;
+
+            if (isEditing) {
+              return (
+                <div
+                  key={album.id}
+                  className="rounded-xl border border-primary/50 bg-primary/5 p-3 text-xs space-y-2.5 animate-in fade-in"
+                >
+                  <div className="flex items-center gap-1.5 font-semibold text-primary text-xs">
+                    <Edit2 className="h-3.5 w-3.5" />
+                    <span>Edit Album</span>
+                  </div>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      placeholder="Album title"
+                      className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-text focus:border-primary focus:outline-none"
+                    />
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="date"
+                          value={editingDate}
+                          onChange={(e) => setEditingDate(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-text focus:border-primary focus:outline-none"
+                          title="Preferred album date (past or present)"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!editingTitle.trim() || isSavingEdit}
+                        onClick={() => handleSaveEdit(album.id)}
+                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40 transition-all flex items-center gap-1 shrink-0"
+                      >
+                        {isSavingEdit ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                        <span>Save</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSavingEdit}
+                        onClick={() => setEditingAlbumId(null)}
+                        className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-text-muted hover:text-text hover:bg-surface-muted transition-colors shrink-0"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div
@@ -228,6 +311,21 @@ export function AlbumManager({
                       title={`Add past pictures to ${album.title}`}
                     >
                       <ImagePlus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {onUpdateAlbum && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const effectiveDateStr = album.album_date || album.created_at;
+                        setEditingAlbumId(album.id);
+                        setEditingTitle(album.title);
+                        setEditingDate(effectiveDateStr ? effectiveDateStr.slice(0, 10) : todayIST());
+                      }}
+                      className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface transition-colors"
+                      title={`Edit album ${album.title}`}
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
                     </button>
                   )}
                   <button

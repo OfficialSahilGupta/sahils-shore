@@ -512,25 +512,25 @@ export async function createAlbum(
   description?: string,
   albumDate?: string | null
 ): Promise<Album | null> {
+  const effectiveDate = albumDate || new Date().toISOString();
   const insertPayload: Record<string, unknown> = {
     user_id: userId,
     title,
     description: description || null,
+    created_at: effectiveDate,
+    album_date: effectiveDate,
   };
-  if (albumDate) {
-    insertPayload.album_date = albumDate;
-  }
 
-  // 1. Try inserting with album_date
+  // 1. Try inserting with both album_date and created_at
   let { data, error } = await supabase
     .from("albums")
     .insert(insertPayload as any)
     .select()
     .single();
 
-  // 2. If album_date column is not yet migrated in Supabase, fall back seamlessly to base columns
+  // 2. If album_date column is not yet migrated in Supabase, fall back seamlessly while preserving created_at = effectiveDate
   if (error && (error.message?.includes("album_date") || error.code === "PGRST204" || error.code === "42703")) {
-    console.warn("[createAlbum] album_date not present in schema, falling back to base insert:", error.message);
+    console.warn("[createAlbum] album_date not present in schema, falling back with created_at:", error.message);
     delete insertPayload.album_date;
     const fallbackRes = await supabase
       .from("albums")
@@ -549,7 +549,8 @@ export async function createAlbum(
   const raw = data as any;
   return {
     ...raw,
-    album_date: raw.album_date || raw.created_at,
+    album_date: raw.album_date || raw.created_at || effectiveDate,
+    created_at: raw.created_at || effectiveDate,
     item_count: 0,
   };
 }
@@ -571,6 +572,9 @@ export async function updateAlbum(
     ...updates,
     updated_at: new Date().toISOString(),
   };
+  if (updates.album_date) {
+    payload.created_at = updates.album_date;
+  }
 
   let { data, error } = await supabase
     .from("albums")
@@ -602,6 +606,7 @@ export async function updateAlbum(
   return {
     ...raw,
     album_date: raw.album_date || raw.created_at,
+    created_at: raw.created_at,
     item_count: 0,
   };
 }

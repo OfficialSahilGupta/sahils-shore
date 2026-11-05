@@ -29,6 +29,7 @@ import {
   Link as LinkIcon,
   Calendar,
   ImagePlus,
+  Edit2,
 } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { formatISTDate } from "@/lib/date-utils";
@@ -36,6 +37,7 @@ import {
   getMediaItems,
   getAlbums,
   createAlbum,
+  updateAlbum,
   deleteAlbum,
   saveMediaItem,
   deleteMediaItem,
@@ -244,6 +246,34 @@ export function MediaVaultContainer() {
     }
   };
 
+  // Album update (title or date)
+  const handleUpdateAlbum = async (
+    albumId: string,
+    updates: { title?: string; albumDate?: string }
+  ) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const updated = await updateAlbum(supabase, user.id, albumId, {
+      title: updates.title,
+      album_date: updates.albumDate,
+    });
+
+    if (updated) {
+      setAlbums((prev) =>
+        prev
+          .map((a) => (a.id === albumId ? { ...a, ...updated } : a))
+          .sort((a, b) => {
+            const timeA = new Date(a.album_date || a.created_at).getTime();
+            const timeB = new Date(b.album_date || b.created_at).getTime();
+            return timeB - timeA;
+          })
+      );
+    }
+  };
+
   // Assign individual photo to album from Lightbox
   const handleAssignAlbum = async (itemId: string, albumId: string | null) => {
     const {
@@ -414,7 +444,7 @@ export function MediaVaultContainer() {
             onClick={() => setShowImportModal(true)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-text hover:bg-surface-muted transition-all"
           >
-            <FolderSync className="h-3.5 w-3.5 text-accent-warm" />
+            <FolderSync className="h-3.5 w-3.5 text-primary" />
             <span>Import Photos</span>
           </button>
 
@@ -423,7 +453,7 @@ export function MediaVaultContainer() {
             onClick={() => setShowAlbumManager(true)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-text hover:bg-surface-muted transition-all"
           >
-            <Folder className="h-3.5 w-3.5 text-accent-warm" />
+            <Folder className="h-3.5 w-3.5 text-primary" />
             <span>Manage Albums</span>
           </button>
 
@@ -517,10 +547,10 @@ export function MediaVaultContainer() {
                   {selectedAlbum.item_count || 0}{" "}
                   {selectedAlbum.item_count === 1 ? "item" : "items"}
                 </span>
-                {selectedAlbum.album_date && (
+                {(selectedAlbum.album_date || selectedAlbum.created_at) && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-muted flex items-center gap-1 font-medium">
                     <Calendar className="h-3 w-3 text-primary" />
-                    {formatISTDate(selectedAlbum.album_date)}
+                    {formatISTDate(selectedAlbum.album_date || selectedAlbum.created_at)}
                   </span>
                 )}
               </div>
@@ -538,6 +568,15 @@ export function MediaVaultContainer() {
             >
               <ImagePlus className="h-3.5 w-3.5" />
               <span>Add Past Media</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAlbumManager(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text hover:bg-surface-muted transition-all"
+              title="Edit album title or date"
+            >
+              <Edit2 className="h-3.5 w-3.5 text-primary" />
+              <span>Edit Album</span>
             </button>
             <button
               type="button"
@@ -824,7 +863,14 @@ export function MediaVaultContainer() {
           }
           const created = await createAlbum(supabase, user.id, title, desc, albumDate);
           if (created) {
-            setAlbums((prev) => [created, ...prev]);
+            setAlbums((prev) => {
+              const next = [created, ...prev.filter((a) => a.id !== created.id)];
+              return next.sort((a, b) => {
+                const timeA = new Date(a.album_date || a.created_at).getTime();
+                const timeB = new Date(b.album_date || b.created_at).getTime();
+                return timeB - timeA;
+              });
+            });
             setSelectedAlbumId(created.id);
             // Create matching folder in Google Drive under Shore/Photos/
             fetch("/api/drive/albums", {
@@ -839,6 +885,7 @@ export function MediaVaultContainer() {
             throw new Error("Unable to create album. Please try again.");
           }
         }}
+        onUpdateAlbum={handleUpdateAlbum}
         onDeleteAlbum={handleDeleteAlbum}
         onOpenAddPastMedia={(album) => setAlbumForAddingPastMedia(album)}
       />
