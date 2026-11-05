@@ -6,6 +6,7 @@
 // ============================================================================
 
 import React, { useEffect, useRef } from "react";
+import { MapPin } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import type { Place, PlaceCategory } from "@/lib/places";
 import { PLACE_CATEGORIES } from "@/lib/places";
@@ -140,7 +141,7 @@ export default function LeafletMap({
             align-items: center;
             justify-content: center;
           ">
-            ★
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="#ffffff" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </div>
         </div>
       `;
@@ -162,8 +163,8 @@ export default function LeafletMap({
             <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; background: ${categoryConfig.color}22; color: ${categoryConfig.color}; padding: 2px 6px; border-radius: 6px;">
               ${place.category}
             </span>
-            <span style="color: #E0A458; font-weight: bold;">
-              ${place.rating ? "★ ".repeat(place.rating) : ""}
+            <span style="color: #E0A458; font-weight: bold; font-size: 11px;">
+              ${place.rating ? `Rating: ${place.rating}/5` : ""}
             </span>
           </div>
           <h4 style="font-size: 14px; font-weight: 700; margin: 0 0 4px 0; color: #14232E;">
@@ -212,7 +213,9 @@ export default function LeafletMap({
           box-shadow: 0 6px 14px rgba(209,73,91,0.5);
           animation: bounce 0.8s infinite alternate;
         ">
-          <div style="transform: rotate(45deg); color: #ffffff; font-size: 14px;">📍</div>
+          <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center; height: 100%; width: 100%;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
         </div>
       `;
 
@@ -256,7 +259,8 @@ export default function LeafletMap({
       {/* Floating map hint */}
       {isPickerMode && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 rounded-xl bg-surface/90 px-3 py-1.5 text-xs font-semibold text-text shadow-md backdrop-blur-md border border-border flex items-center gap-1.5">
-          <span>📍 Click anywhere on the map or drag the pin to set location</span>
+          <MapPin className="h-3.5 w-3.5 text-primary" />
+          <span>Click anywhere on the map or drag the pin to set location</span>
         </div>
       )}
     </div>

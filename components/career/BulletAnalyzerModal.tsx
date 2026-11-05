@@ -179,7 +179,7 @@ export function BulletAnalyzerModal({
                   }`}
                 >
                   {analysis.strength === "strong"
-                    ? "★ Strong Bullet"
+                    ? "Strong Bullet"
                     : analysis.strength === "good"
                     ? "Good (Can Improve)"
                     : "Needs Metric or Action Verb"}

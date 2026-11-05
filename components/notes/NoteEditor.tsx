@@ -25,6 +25,7 @@ import {
   Plus,
   CheckCircle2,
   Clock,
+  X,
 } from "lucide-react";
 
 interface NoteEditorProps {
@@ -341,9 +342,10 @@ export function NoteEditor({
               </button>
               <button
                 onClick={() => setIsCreatingFolder(false)}
-                className="text-[11px] text-text-muted"
+                className="text-[11px] text-text-muted p-0.5 hover:text-text"
+                aria-label="Cancel"
               >
-                ✕
+                <X className="h-3 w-3" />
               </button>
             </div>
           ) : (

@@ -14,7 +14,7 @@ import { todayIST, getISTDateRangeUTC } from "@/lib/date-utils";
 import { formatINR } from "@/lib/expenses";
 import { useQuickCapture } from "@/lib/quick-capture/QuickCaptureContext";
 import type { WidgetId } from "@/lib/dashboard/types";
-import { Utensils, Plus, CheckCircle2, ArrowRight } from "lucide-react";
+import { Utensils, Plus, CheckCircle2, ArrowRight, Star } from "lucide-react";
 
 interface MealsWidgetProps {
   isEditMode?: boolean;
@@ -120,8 +120,9 @@ export function MealsWidget({ isEditMode, onRemove }: MealsWidgetProps) {
                         <span>{meal.location_type === "restaurant" ? meal.restaurant_name || "Dine out" : "Home"}</span>
                       )}
                       {meal.rating && (
-                        <span className="text-accent-warm font-semibold">
-                          ★ {meal.rating}
+                        <span className="text-accent-warm font-semibold inline-flex items-center gap-0.5">
+                          <Star className="h-3 w-3 fill-accent-warm text-accent-warm" />
+                          <span>{meal.rating}</span>
                         </span>
                       )}
                     </div>

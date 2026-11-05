@@ -19,6 +19,7 @@ import {
   Search,
   Loader2,
   Check,
+  Lightbulb,
 } from "lucide-react";
 import type { Place, PlaceCategory, PlaceInput } from "@/lib/places";
 import { PLACE_CATEGORIES } from "@/lib/places";
@@ -443,8 +444,9 @@ export function PlaceModal({
                   }}
                   className="h-56 w-full"
                 />
-                <p className="bg-surface p-2 text-center text-[10px] text-text-muted border-t border-border">
-                  💡 Tip: Click anywhere on the map to fine-tune the exact pin location.
+                <p className="bg-surface p-2 text-center text-[10px] text-text-muted border-t border-border flex items-center justify-center gap-1">
+                  <Lightbulb className="h-3 w-3 text-primary shrink-0" />
+                  <span>Tip: Click anywhere on the map to fine-tune the exact pin location.</span>
                 </p>
               </div>
             )}

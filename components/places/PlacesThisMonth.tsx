@@ -60,7 +60,10 @@ export function PlacesThisMonth({ places, onSelectPlace }: PlacesThisMonthProps)
               <div className="mt-2 flex items-center justify-between text-[10px] text-text-muted">
                 <span>{formatISTDate(place.visited_at)}</span>
                 {place.rating && (
-                  <span className="text-accent-warm font-semibold">★ {place.rating}</span>
+                  <span className="text-accent-warm font-semibold flex items-center gap-0.5">
+                    <Star className="h-3 w-3 fill-accent-warm text-accent-warm" />
+                    <span>{place.rating}</span>
+                  </span>
                 )}
               </div>
             </Link>

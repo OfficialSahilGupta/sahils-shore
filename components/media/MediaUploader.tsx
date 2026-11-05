@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { generateImageThumbnail, generateVideoThumbnail } from "@/lib/media/thumbnail";
 import { extractExifMetadata } from "@/lib/media/exif";
+import { Select } from "@/components/ui/select";
 import type { MediaItem, MediaType, SyncStatus, Album } from "@/lib/media";
 
 export interface MediaUploadTask {
@@ -282,18 +283,18 @@ export function MediaUploader({ onUploadComplete, albumId, albums = [] }: MediaU
           <span>Destination Album:</span>
         </div>
         <div className="flex items-center gap-2">
-          <select
+          <Select
             value={currentAlbumId || ""}
             onChange={(e) => setCurrentAlbumId(e.target.value || null)}
-            className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text font-medium focus:border-primary focus:outline-none shadow-xs"
+            containerClassName="w-auto"
           >
             <option value="">None (General Media Vault)</option>
             {albums.map((a) => (
               <option key={a.id} value={a.id}>
-                📁 {a.title} ({a.item_count || 0})
+                {a.title} ({a.item_count || 0})
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 

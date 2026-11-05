@@ -288,7 +288,10 @@ export function PlaceDetailView({ placeId }: PlaceDetailViewProps) {
                   </p>
                 </div>
                 {meal.rating && (
-                  <span className="text-accent-warm font-bold">★ {meal.rating}</span>
+                  <span className="text-accent-warm font-bold flex items-center gap-1">
+                    <Star className="h-3.5 w-3.5 fill-accent-warm text-accent-warm" />
+                    <span>{meal.rating}</span>
+                  </span>
                 )}
               </div>
             ))}

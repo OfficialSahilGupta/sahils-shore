@@ -28,6 +28,7 @@ import {
   Plus,
   Link as LinkIcon,
 } from "lucide-react";
+import { Select } from "@/components/ui/select";
 import {
   getMediaItems,
   getAlbums,
@@ -672,7 +673,7 @@ export function MediaVaultContainer() {
             {albums.length > 0 && (
               <div className="flex items-center gap-1.5">
                 <Folder className="h-3.5 w-3.5 text-accent-warm" />
-                <select
+                <Select
                   defaultValue=""
                   onChange={(e) => {
                     const val = e.target.value;
@@ -682,16 +683,16 @@ export function MediaVaultContainer() {
                       handleBulkAssignAlbum(val);
                     }
                   }}
-                  className="rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs text-text focus:border-primary focus:outline-none"
+                  containerClassName="w-auto"
                 >
                   <option value="" disabled>Move to album...</option>
                   <option value="none">Remove from album</option>
                   {albums.map((a) => (
                     <option key={a.id} value={a.id}>
-                      📁 {a.title}
+                      {a.title}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 

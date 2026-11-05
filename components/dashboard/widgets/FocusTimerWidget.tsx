@@ -84,7 +84,7 @@ export function FocusTimerWidget({ isEditMode, onRemove }: FocusTimerWidgetProps
           setSecondsLeft((prev) => {
             if (prev <= 1) {
               setIsRunning(false);
-              toast({ title: "Pomodoro session complete! ☕", type: "success" });
+              toast({ title: "Pomodoro session complete", type: "success" });
               return 0;
             }
             return prev - 1;

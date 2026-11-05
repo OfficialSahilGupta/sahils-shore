@@ -90,7 +90,7 @@ export function HabitsWidget({ isEditMode, onRemove }: HabitsWidgetProps) {
     await logHabitDay(supabase, userId, habit, today, nextAction);
 
     toast({
-      title: nextAction === "complete" ? "Habit checked! 🔥" : "Habit unchecked",
+      title: nextAction === "complete" ? "Habit checked!" : "Habit unchecked",
       description: habit.title,
       type: "success",
     });
@@ -171,7 +171,7 @@ export function HabitsWidget({ isEditMode, onRemove }: HabitsWidgetProps) {
         <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[11px]">
           <span className="text-text-muted">
             {completedCount === habits.length && habits.length > 0
-              ? "All habits crushed! 🎉"
+              ? "All habits completed!"
               : `${habits.length - completedCount} habits left`}
           </span>
           <Link href="/tracker" className="text-primary font-semibold hover:underline flex items-center gap-1">

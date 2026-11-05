@@ -183,10 +183,10 @@ export function InterviewQaBank({
               {cf === "all"
                 ? `All (${questions.length})`
                 : cf === "low"
-                  ? "Needs Practice (≤2★)"
+                  ? "Needs Practice (1-2 Stars)"
                   : cf === "medium"
-                    ? "Medium (3★)"
-                    : "Confident (4-5★)"}
+                    ? "Medium (3 Stars)"
+                    : "Confident (4-5 Stars)"}
             </button>
           ))}
         </div>

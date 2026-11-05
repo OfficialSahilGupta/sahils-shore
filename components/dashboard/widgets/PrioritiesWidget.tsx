@@ -124,7 +124,7 @@ export function PrioritiesWidget({
       toast({ title: "Task reopened", type: "info" });
     } else {
       await completeTask(supabase, userId || "anonymous", task as any);
-      toast({ title: "Priority completed! 🎯", type: "success" });
+      toast({ title: "Priority completed", type: "success" });
     }
 
     if (typeof window !== "undefined") {
@@ -246,7 +246,7 @@ export function PrioritiesWidget({
         )}
 
         <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[11px] text-text-muted">
-          <span>{completedCount === 3 ? "All priorities cleared! 🎉" : `${3 - completedCount} remaining`}</span>
+          <span>{completedCount === 3 ? "All priorities cleared" : `${3 - completedCount} remaining`}</span>
           <Link href="/todos" className="text-primary font-semibold hover:underline flex items-center gap-1">
             <span>All Tasks</span>
             <ArrowRight className="w-3 h-3" />

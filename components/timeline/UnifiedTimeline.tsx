@@ -31,6 +31,7 @@ import {
   Compass,
   Plus,
   ArrowRight,
+  Star,
 } from "lucide-react";
 
 interface UnifiedTimelineProps {
@@ -234,8 +235,9 @@ export function UnifiedTimeline({
                       </span>
                     )}
                     {meta.rating !== undefined && (
-                      <span className="text-accent-warm font-semibold">
-                        ★ {String(meta.rating)}
+                      <span className="text-accent-warm font-semibold inline-flex items-center gap-0.5">
+                        <Star className="h-3 w-3 fill-accent-warm text-accent-warm" />
+                        <span>{String(meta.rating)}</span>
                       </span>
                     )}
                   </div>

@@ -280,7 +280,7 @@ export async function summarizeDayFromTimeline(
     });
 
     const lines: string[] = [];
-    lines.push(`### 🌅 Daily Timeline Highlights (${formatFriendlyISTDate(dateStr)})`);
+    lines.push(`### Daily Timeline Highlights (${formatFriendlyISTDate(dateStr)})`);
 
     if (completedTasks.length > 0) {
       lines.push(`- **Tasks Finished (${completedTasks.length}):** ${completedTasks.slice(0, 4).join(", ")}${completedTasks.length > 4 ? "..." : ""}`);
@@ -417,9 +417,9 @@ export function generateWeeklyReviewMarkdown(
   const studyFormatted = `${hrs}h ${mins}m`;
   const spendFormatted = formatINR(stats.spentPaise);
 
-  return `# 🌊 Weekly Review: ${formatFriendlyISTDate(weekStartDate)} - ${formatFriendlyISTDate(weekEndDate)}
+  return `# Weekly Review: ${formatFriendlyISTDate(weekStartDate)} - ${formatFriendlyISTDate(weekEndDate)}
 
-### 📊 Week at a Glance (Auto-Aggregated)
+### Week at a Glance (Auto-Aggregated)
 - **Deep Work & Study:** ${studyFormatted}
 - **DSA Problems Solved:** ${stats.dsaSolvedCount}
 - **Total Expenditure:** ${spendFormatted}
@@ -428,16 +428,16 @@ export function generateWeeklyReviewMarkdown(
 
 ---
 
-### 🌟 Wins & Milestones This Week
+### Wins & Milestones This Week
 - 
 
-### 💡 Key Lessons & Takeaways
+### Key Lessons & Takeaways
 - 
 
-### 🧭 What Needs Adjustment Next Week
+### What Needs Adjustment Next Week
 - 
 
-### 🎯 Top 3 Priorities for Next Week
+### Top 3 Priorities for Next Week
 1. 
 2. 
 3. 

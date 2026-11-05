@@ -247,7 +247,7 @@ export function MediaLightbox({
                   <option value="" className="bg-surface text-text">No Album</option>
                   {albums.map((a) => (
                     <option key={a.id} value={a.id} className="bg-surface text-text">
-                      📁 {a.title}
+                      {a.title}
                     </option>
                   ))}
                 </select>

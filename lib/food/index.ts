@@ -311,7 +311,7 @@ export async function createMeal(
   };
 
   // 3. Write Timeline Event: meal_logged
-  const ratingText = createdMeal.rating ? ` ★${createdMeal.rating}` : "";
+  const ratingText = createdMeal.rating ? ` (${createdMeal.rating}/5 stars)` : "";
   const costText = costPaise > 0 ? ` (${formatINR(costPaise)})` : "";
   await writeTimelineEvent(supabase, {
     userId,

@@ -18,6 +18,7 @@ import {
   Inbox,
   ArchiveX,
   Target,
+  Lightbulb,
 } from "lucide-react";
 
 interface CareerStatsPanelProps {
@@ -154,7 +155,10 @@ export function CareerStatsPanel({ applications }: CareerStatsPanelProps) {
 
       {/* Career Pipeline Advice */}
       <div className="p-4 rounded-2xl bg-surface-muted/50 border border-border/70 text-xs text-text-muted space-y-1.5">
-        <span className="font-bold text-text block">💡 Job Hunt Strategy Tip</span>
+        <span className="font-bold text-text flex items-center gap-1.5">
+          <Lightbulb className="h-4 w-4 text-primary" />
+          <span>Job Hunt Strategy Tip</span>
+        </span>
         <p className="leading-relaxed">
           Maintain 8-12 applications per week with customized bullet points from your Bullet Bank.
           Always schedule a follow-up 5-7 business days after applying to increase response rates by up to 35%.

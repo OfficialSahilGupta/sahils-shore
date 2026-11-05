@@ -20,6 +20,7 @@ import {
   Square,
   Clock,
   MoreVertical,
+  X,
 } from "lucide-react";
 
 interface GoalCardProps {
@@ -224,8 +225,9 @@ export function GoalCard({
                 type="button"
                 onClick={() => setIsAddingMilestone(false)}
                 className="text-xs text-text-muted hover:text-text px-1"
+                aria-label="Cancel"
               >
-                ✕
+                <X className="h-3.5 w-3.5" />
               </button>
             </form>
           )}

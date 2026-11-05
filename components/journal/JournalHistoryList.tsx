@@ -8,7 +8,7 @@
 import React, { useState } from "react";
 import type { JournalEntry } from "@/lib/journal";
 import { formatFriendlyISTDate } from "@/lib/date-utils";
-import { Search, Calendar, Smile, Zap, Tag, ArrowRight } from "lucide-react";
+import { Search, Calendar, Smile, Zap, Tag, ArrowRight, Heart } from "lucide-react";
 
 interface JournalHistoryListProps {
   entries: JournalEntry[];
@@ -16,12 +16,12 @@ interface JournalHistoryListProps {
   onSelectDate: (date: string) => void;
 }
 
-const MOOD_EMOJIS: Record<number, string> = {
-  1: "😞 Rough",
-  2: "😐 Meh",
-  3: "🙂 Good",
-  4: "😊 Great",
-  5: "🌟 Wonderful",
+const MOOD_LABELS: Record<number, string> = {
+  1: "Rough",
+  2: "Meh",
+  3: "Good",
+  4: "Great",
+  5: "Wonderful",
 };
 
 export function JournalHistoryList({
@@ -97,12 +97,13 @@ export function JournalHistoryList({
                   <div className="flex items-center gap-2">
                     {item.mood && (
                       <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                        {MOOD_EMOJIS[item.mood] || `Mood ${item.mood}`}
+                        {MOOD_LABELS[item.mood] || `Mood ${item.mood}`}
                       </span>
                     )}
                     {item.energy && (
-                      <span className="rounded-md bg-accent-warm/10 px-2 py-0.5 text-[10px] font-medium text-accent-warm">
-                        ⚡ {item.energy}/5
+                      <span className="rounded-md bg-accent-warm/10 px-2 py-0.5 text-[10px] font-medium text-accent-warm inline-flex items-center gap-1">
+                        <Zap className="h-3 w-3" />
+                        <span>{item.energy}/5</span>
                       </span>
                     )}
                     <ArrowRight className="h-3.5 w-3.5 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -111,8 +112,9 @@ export function JournalHistoryList({
 
                 {/* Gratitude / Wins preview */}
                 {item.gratitude?.length > 0 && (
-                  <p className="text-[11px] text-text-muted line-clamp-1">
-                    ❤️ <span className="italic">{item.gratitude.join(" • ")}</span>
+                  <p className="text-[11px] text-text-muted line-clamp-1 inline-flex items-center gap-1.5">
+                    <Heart className="h-3 w-3 text-rose-500 shrink-0" />
+                    <span className="italic">{item.gratitude.join(" • ")}</span>
                   </p>
                 )}
 

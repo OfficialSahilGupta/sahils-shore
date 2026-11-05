@@ -165,7 +165,7 @@ export function TodayDashboard() {
 
     setLayouts(nextLayouts);
     persistLayout(nextLayouts, nextActive, pinnedPriorities);
-    toast({ title: "Widget added to dashboard! ✨", type: "success" });
+    toast({ title: "Widget added to dashboard", type: "success" });
   };
 
   const handleResetDefaults = () => {

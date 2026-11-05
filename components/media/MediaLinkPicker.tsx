@@ -297,7 +297,8 @@ export function MediaLinkPicker({
             }`}
           >
             <MapPin className="h-3.5 w-3.5 text-cyan-500" />
-            <span>Place {selectedPlace ? "✓" : ""}</span>
+            <span>Place</span>
+            {selectedPlace && <Check className="h-3 w-3 text-primary" />}
           </button>
 
           <button
@@ -312,7 +313,8 @@ export function MediaLinkPicker({
             }`}
           >
             <Folder className="h-3.5 w-3.5 text-accent-warm" />
-            <span>Album {selectedAlbum ? "✓" : ""}</span>
+            <span>Album</span>
+            {selectedAlbum && <Check className="h-3 w-3 text-accent-warm" />}
           </button>
 
           <button
@@ -327,7 +329,8 @@ export function MediaLinkPicker({
             }`}
           >
             <Utensils className="h-3.5 w-3.5 text-rose-500" />
-            <span>Meal {selectedMeal ? "✓" : ""}</span>
+            <span>Meal</span>
+            {selectedMeal && <Check className="h-3 w-3 text-rose-500" />}
           </button>
 
           <button
@@ -342,7 +345,8 @@ export function MediaLinkPicker({
             }`}
           >
             <Wallet className="h-3.5 w-3.5 text-amber-500" />
-            <span>Expense {selectedExpense ? "✓" : ""}</span>
+            <span>Expense</span>
+            {selectedExpense && <Check className="h-3 w-3 text-amber-500" />}
           </button>
         </div>
 
@@ -369,8 +373,9 @@ export function MediaLinkPicker({
                 <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs mb-3">
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
-                    <span className="font-semibold text-text">
-                      📍 Linked to Place: {selectedPlace.name}
+                    <span className="font-semibold text-text flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-cyan-500" />
+                      <span>Linked to Place: {selectedPlace.name}</span>
                     </span>
                   </div>
                   <button
@@ -427,8 +432,9 @@ export function MediaLinkPicker({
                 <div className="flex items-center justify-between rounded-xl border border-accent-warm/40 bg-accent-warm/10 p-3 text-xs mb-3">
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-accent-warm" />
-                    <span className="font-semibold text-text">
-                      📁 Assigned Album: {selectedAlbum.title}
+                    <span className="font-semibold text-text flex items-center gap-1.5">
+                      <Folder className="h-3.5 w-3.5 text-accent-warm" />
+                      <span>Assigned Album: {selectedAlbum.title}</span>
                     </span>
                   </div>
                   <button
@@ -514,8 +520,9 @@ export function MediaLinkPicker({
                 <div className="flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/5 p-3 text-xs mb-3">
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-rose-500" />
-                    <span className="font-semibold text-text">
-                      🍽️ Linked to Meal: {selectedMeal.name}
+                    <span className="font-semibold text-text flex items-center gap-1.5">
+                      <Utensils className="h-3.5 w-3.5 text-rose-500" />
+                      <span>Linked to Meal: {selectedMeal.name}</span>
                     </span>
                   </div>
                   <button
@@ -572,8 +579,9 @@ export function MediaLinkPicker({
                 <div className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs mb-3">
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-amber-500" />
-                    <span className="font-semibold text-text">
-                      💳 Linked to Expense: {selectedExpense.note}
+                    <span className="font-semibold text-text flex items-center gap-1.5">
+                      <Wallet className="h-3.5 w-3.5 text-amber-500" />
+                      <span>Linked to Expense: {selectedExpense.note}</span>
                     </span>
                   </div>
                   <button

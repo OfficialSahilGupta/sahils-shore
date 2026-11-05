@@ -23,6 +23,7 @@ import {
   Layers,
   Wand2,
   Filter,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -207,7 +208,7 @@ export function BulletPointBank({
                         }`}
                       >
                         {analysis.strength === "strong"
-                          ? "★ Strong"
+                          ? "Strong"
                           : analysis.strength === "good"
                           ? "Good"
                           : "Needs Metric"}
@@ -280,12 +281,14 @@ export function BulletPointBank({
                 <div className="mt-2 pt-2.5 border-t border-border/60 flex items-center justify-between">
                   <div className="text-[11px] text-text-muted">
                     {analysis.hasMetric ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                        ✓ {analysis.metricsFound[0]}
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        <span>{analysis.metricsFound[0]}</span>
                       </span>
                     ) : (
-                      <span className="text-amber-600 dark:text-amber-400">
-                        ⚠ Add a number
+                      <span className="text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>Add a number</span>
                       </span>
                     )}
                   </div>

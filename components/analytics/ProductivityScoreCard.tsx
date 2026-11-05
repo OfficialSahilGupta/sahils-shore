@@ -17,6 +17,7 @@ import {
   HelpCircle,
   X,
   TrendingUp,
+  Lightbulb,
 } from "lucide-react";
 
 interface ProductivityScoreCardProps {
@@ -226,8 +227,9 @@ export function ProductivityScoreCard({ data }: ProductivityScoreBreakdownProps)
                 </div>
               </div>
 
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-text-muted">
-                💡 Rest days with zero scheduled tasks or habit skips are protected from artificial score penalization.
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-text-muted flex items-start gap-2">
+                <Lightbulb className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <span>Rest days with zero scheduled tasks or habit skips are protected from artificial score penalization.</span>
               </div>
             </div>
 

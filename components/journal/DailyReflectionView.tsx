@@ -22,6 +22,14 @@ import {
   Eye,
   Edit3,
   Calendar,
+  Frown,
+  Meh,
+  Laugh,
+  Sun,
+  BatteryLow,
+  BatteryMedium,
+  Battery,
+  Flame,
 } from "lucide-react";
 
 interface DailyReflectionViewProps {
@@ -32,19 +40,19 @@ interface DailyReflectionViewProps {
 }
 
 const MOOD_OPTIONS = [
-  { val: 1, emoji: "😞", label: "Rough", color: "text-rose-500" },
-  { val: 2, emoji: "😐", label: "Meh", color: "text-amber-500" },
-  { val: 3, emoji: "🙂", label: "Good", color: "text-blue-500" },
-  { val: 4, emoji: "😊", label: "Great", color: "text-emerald-500" },
-  { val: 5, emoji: "🌟", label: "Wonderful", color: "text-yellow-500" },
+  { val: 1, icon: Frown, label: "Rough", color: "text-rose-500" },
+  { val: 2, icon: Meh, label: "Meh", color: "text-amber-500" },
+  { val: 3, icon: Smile, label: "Good", color: "text-blue-500" },
+  { val: 4, icon: Laugh, label: "Great", color: "text-emerald-500" },
+  { val: 5, icon: Sun, label: "Wonderful", color: "text-yellow-500" },
 ];
 
 const ENERGY_OPTIONS = [
-  { val: 1, icon: "🪫", label: "Drained" },
-  { val: 2, icon: "🔋", label: "Low" },
-  { val: 3, icon: "⚡", label: "Balanced" },
-  { val: 4, icon: "🔥", label: "High" },
-  { val: 5, icon: "🚀", label: "Peak" },
+  { val: 1, icon: BatteryLow, label: "Drained", color: "text-rose-500" },
+  { val: 2, icon: BatteryMedium, label: "Low", color: "text-amber-500" },
+  { val: 3, icon: Battery, label: "Balanced", color: "text-blue-500" },
+  { val: 4, icon: Zap, label: "High", color: "text-emerald-500" },
+  { val: 5, icon: Flame, label: "Peak", color: "text-amber-500" },
 ];
 
 export function DailyReflectionView({
@@ -202,6 +210,7 @@ export function DailyReflectionView({
           <div className="grid grid-cols-5 gap-1.5">
             {MOOD_OPTIONS.map((opt) => {
               const isSelected = mood === opt.val;
+              const IconComp = opt.icon;
               return (
                 <button
                   key={opt.val}
@@ -213,7 +222,7 @@ export function DailyReflectionView({
                       : "border-border bg-surface-muted/30 hover:bg-surface-muted/70 opacity-80"
                   }`}
                 >
-                  <span className="text-2xl">{opt.emoji}</span>
+                  <IconComp className={`h-6 w-6 ${isSelected ? "text-primary" : opt.color}`} />
                   <span className={`text-[10px] mt-1 font-medium ${isSelected ? "text-primary font-bold" : "text-text-muted"}`}>
                     {opt.label}
                   </span>
@@ -239,6 +248,7 @@ export function DailyReflectionView({
           <div className="grid grid-cols-5 gap-1.5">
             {ENERGY_OPTIONS.map((opt) => {
               const isSelected = energy === opt.val;
+              const IconComp = opt.icon;
               return (
                 <button
                   key={opt.val}
@@ -250,7 +260,7 @@ export function DailyReflectionView({
                       : "border-border bg-surface-muted/30 hover:bg-surface-muted/70 opacity-80"
                   }`}
                 >
-                  <span className="text-2xl">{opt.icon}</span>
+                  <IconComp className={`h-6 w-6 ${isSelected ? "text-accent-warm" : opt.color}`} />
                   <span className={`text-[10px] mt-1 font-medium ${isSelected ? "text-accent-warm font-bold" : "text-text-muted"}`}>
                     {opt.label}
                   </span>

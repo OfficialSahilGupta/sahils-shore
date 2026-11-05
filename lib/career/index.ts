@@ -856,7 +856,7 @@ export async function recordPracticeSession(
   await writeTimelineEvent(supabase, {
     userId,
     type: "career_practice",
-    summary: `Practiced STAR behavioral story: "${storyTitle}" (${durationMins}m, ${rating}★)`,
+    summary: `Practiced STAR behavioral story: "${storyTitle}" (${durationMins}m, ${rating}/5 stars)`,
     meta: {
       story_title: storyTitle,
       duration_seconds: durationSeconds,
