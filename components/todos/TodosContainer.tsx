@@ -25,6 +25,7 @@ import { KanbanBoard, type KanbanColumnId } from "./KanbanBoard";
 import { CalendarView } from "./CalendarView";
 import { DayPlanner } from "./DayPlanner";
 import { useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import {
   getTasks,
@@ -535,9 +536,9 @@ export function TodosContainer() {
           </div>
 
           {/* Search & Extra Filters */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-1 max-w-sm">
-              <div className="relative flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-3 min-w-0 max-w-full">
+            <div className="flex items-center gap-2 flex-1 min-w-0 max-w-sm">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[var(--text-muted)]" />
                 <input
                   type="text"
@@ -549,17 +550,17 @@ export function TodosContainer() {
               </div>
 
               {/* Priority Select */}
-              <select
+              <Select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+                containerClassName="w-auto shrink-0"
               >
                 <option value="all">Priority: All</option>
                 <option value="urgent">Urgent</option>
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
                 <option value="low">Low</option>
-              </select>
+              </Select>
             </div>
 
             {/* New Task Button */}

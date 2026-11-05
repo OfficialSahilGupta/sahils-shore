@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { Project } from "@/types";
 import type { CreateProjectInput } from "@/lib/learning";
+import { Select } from "@/components/ui/select";
 
 interface ProjectTrackerProps {
   projects: Project[];
@@ -336,16 +337,17 @@ export function ProjectTracker({
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
                     Status
                   </label>
-                  <select
+                  <Select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as Project["status"])}
-                    className="w-full rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+                    size="md"
+                    containerClassName="w-full"
                   >
                     <option value="idea">Idea</option>
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                     <option value="deployed">Deployed</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>

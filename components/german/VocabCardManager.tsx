@@ -23,6 +23,7 @@ import type { VocabCard } from "@/types";
 import { type CreateVocabCardInput } from "@/lib/german";
 import { playGermanSpeech } from "@/lib/german/speech";
 import { CEFR_LEVELS, type CefrLevel } from "@/lib/german/constants";
+import { Select } from "@/components/ui/select";
 import { formatIntervalLabel } from "@/lib/german/sm2";
 import { getISTDateString } from "@/lib/date-utils";
 
@@ -396,16 +397,17 @@ export function VocabCardManager({
                   <label className="text-xs font-semibold text-text-muted block mb-1">
                     Gender (Article)
                   </label>
-                  <select
+                  <Select
                     value={formGender}
                     onChange={(e) => setFormGender(e.target.value as any)}
-                    className="w-full px-3 py-2 text-sm rounded-xl bg-surface-muted border border-surface-muted text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                    size="md"
+                    containerClassName="w-full"
                   >
                     <option value="">None / Verb</option>
                     <option value="der">der (m)</option>
                     <option value="die">die (f)</option>
                     <option value="das">das (n)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="col-span-2">
@@ -441,17 +443,18 @@ export function VocabCardManager({
                   <label className="text-xs font-semibold text-text-muted block mb-1">
                     CEFR Level
                   </label>
-                  <select
+                  <Select
                     value={formLevel}
                     onChange={(e) => setFormLevel(e.target.value as CefrLevel)}
-                    className="w-full px-3 py-2 text-sm rounded-xl bg-surface-muted border border-surface-muted text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                    size="md"
+                    containerClassName="w-full"
                   >
                     {CEFR_LEVELS.map((lvl) => (
                       <option key={lvl} value={lvl}>
                         {lvl}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 

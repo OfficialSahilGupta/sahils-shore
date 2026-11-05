@@ -21,6 +21,7 @@ import {
 import type { InterviewQa } from "@/types";
 import type { CreateInterviewQaInput } from "@/lib/learning";
 import { MockInterviewModal } from "./MockInterviewModal";
+import { Select } from "@/components/ui/select";
 
 interface InterviewQaBankProps {
   questions: InterviewQa[];
@@ -155,8 +156,8 @@ export function InterviewQaBank({
       </div>
 
       {/* Search & Confidence Filter */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between min-w-0 max-w-full">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
           <input
             type="text"
@@ -167,7 +168,7 @@ export function InterviewQaBank({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
           {(["all", "low", "medium", "high"] as const).map((cf) => (
             <button
               key={cf}
@@ -378,15 +379,16 @@ export function InterviewQaBank({
                   <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
                     Difficulty
                   </label>
-                  <select
+                  <Select
                     value={difficulty}
                     onChange={(e) => setDifficulty(e.target.value)}
-                    className="w-full rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+                    size="md"
+                    containerClassName="w-full"
                   >
                     <option value="Easy">Easy</option>
                     <option value="Medium">Medium</option>
                     <option value="Hard">Hard</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 

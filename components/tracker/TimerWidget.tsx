@@ -20,6 +20,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { CircularProgress } from "@/components/ui/circular-progress";
+import { Select } from "@/components/ui/select";
 import type { Activity } from "@/types";
 
 interface TimerWidgetProps {
@@ -340,18 +341,19 @@ export function TimerWidget({
             <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
               Focus Activity
             </label>
-            <select
+            <Select
               value={selectedActivityId}
               onChange={(e) => onSelectActivity(e.target.value)}
               disabled={isRunning}
-              className="w-full md:w-64 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--text)] focus:border-[var(--primary)] focus:outline-none disabled:opacity-60"
+              size="md"
+              containerClassName="w-full md:w-64"
             >
               {activities.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name} ({a.daily_target_minutes}m target)
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Pomodoro Configuration (25/5 or customizable) */}

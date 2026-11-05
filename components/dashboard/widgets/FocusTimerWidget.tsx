@@ -11,6 +11,7 @@ import { WidgetContainer } from "../WidgetContainer";
 import { createClient } from "@/lib/supabase/client";
 import { getActivities, logActivityTime } from "@/lib/tracker";
 import { useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
 import type { Activity } from "@/types";
 import type { WidgetId } from "@/lib/dashboard/types";
 import { Clock, Play, Pause, RotateCcw, Check, ArrowRight } from "lucide-react";
@@ -212,10 +213,10 @@ export function FocusTimerWidget({ isEditMode, onRemove }: FocusTimerWidgetProps
       <div className="flex flex-col justify-between h-full space-y-3">
         {/* Activity Selector */}
         <div>
-          <select
+          <Select
             value={selectedActivityId}
             onChange={(e) => setSelectedActivityId(e.target.value)}
-            className="w-full px-2.5 py-1 text-xs rounded-xl border border-border bg-surface text-text focus:outline-hidden focus:ring-1 focus:ring-primary font-medium"
+            containerClassName="w-full"
           >
             {activities.map((a) => (
               <option key={a.id} value={a.id}>
@@ -223,7 +224,7 @@ export function FocusTimerWidget({ isEditMode, onRemove }: FocusTimerWidgetProps
               </option>
             ))}
             {activities.length === 0 && <option value="">General Focus</option>}
-          </select>
+          </Select>
         </div>
 
         {/* Large Time Display */}

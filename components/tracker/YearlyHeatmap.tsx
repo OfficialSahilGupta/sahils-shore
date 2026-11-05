@@ -9,6 +9,7 @@ import React, { useState, useMemo } from "react";
 import type { Activity, ActivityLog } from "@/types";
 import { generateYearlyHeatmapData, type HeatmapDay } from "@/lib/tracker";
 import { formatFriendlyISTDate } from "@/lib/date-utils";
+import { Select } from "@/components/ui/select";
 
 interface YearlyHeatmapProps {
   logs: ActivityLog[];
@@ -66,12 +67,12 @@ export function YearlyHeatmap({ logs, activities }: YearlyHeatmapProps) {
         </div>
 
         {/* Activity Filter Dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-muted)] font-medium">Filter:</span>
-          <select
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs text-[var(--text-muted)] font-medium shrink-0">Filter:</span>
+          <Select
             value={selectedActivityId}
             onChange={(e) => setSelectedActivityId(e.target.value)}
-            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+            containerClassName="w-auto max-w-[220px]"
           >
             <option value="all">Combined (All Activities)</option>
             {activities.map((a) => (
@@ -79,7 +80,7 @@ export function YearlyHeatmap({ logs, activities }: YearlyHeatmapProps) {
                 {a.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 
 interface BulletPointBankProps {
   bullets: BulletPoint[];
@@ -126,8 +127,8 @@ export function BulletPointBank({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between min-w-0 max-w-full">
+        <div className="relative min-w-0 flex-1 max-w-md">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-text-muted" />
           <input
             type="text"
@@ -138,31 +139,31 @@ export function BulletPointBank({
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-          <select
+        <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
+          <Select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            containerClassName="w-auto max-w-[170px]"
           >
             {categories.map((c) => (
               <option key={c} value={c}>
                 Category: {c}
               </option>
             ))}
-          </select>
+          </Select>
 
           {allSkills.length > 1 && (
-            <select
+            <Select
               value={selectedSkill}
               onChange={(e) => setSelectedSkill(e.target.value)}
-              className="rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              containerClassName="w-auto max-w-[170px]"
             >
               {allSkills.map((s) => (
                 <option key={s} value={s}>
                   Skill: {s}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </div>
       </div>

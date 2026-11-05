@@ -58,6 +58,19 @@
     border-color: var(--border);
   }
 
+  /* Safe container & dropdown controls */
+  select {
+    background-color: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+    max-width: 100%;
+  }
+
+  select option {
+    background-color: var(--surface);
+    color: var(--text);
+  }
+
   body {
     background-color: var(--background);
     color: var(--text);

@@ -22,6 +22,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { formatINR, formatIndianNumber } from "@/lib/expenses";
 import {
   getISTDateString,
@@ -179,12 +180,12 @@ export function ExpenseList({
       </div>
 
       {/* Secondary Dropdown Filters */}
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2 text-xs min-w-0 max-w-full">
         {/* Category Dropdown */}
-        <select
+        <Select
           value={selectedCategoryId}
           onChange={(e) => setSelectedCategoryId(e.target.value)}
-          className="px-3 py-1.5 rounded-lg bg-surface border border-border/70 text-text text-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
+          containerClassName="w-auto max-w-[170px]"
         >
           <option value="all">All Categories</option>
           {categories.map((c) => (
@@ -192,13 +193,13 @@ export function ExpenseList({
               {c.name}
             </option>
           ))}
-        </select>
+        </Select>
 
         {/* Payment Method Dropdown */}
-        <select
+        <Select
           value={selectedMethod}
           onChange={(e) => setSelectedMethod(e.target.value)}
-          className="px-3 py-1.5 rounded-lg bg-surface border border-border/70 text-text text-xs focus:outline-hidden focus:ring-1 focus:ring-primary"
+          containerClassName="w-auto max-w-[170px]"
         >
           <option value="all">All Payment Methods</option>
           <option value="UPI">UPI</option>
@@ -206,7 +207,7 @@ export function ExpenseList({
           <option value="Card">Card</option>
           <option value="Net Banking">Net Banking</option>
           <option value="Other">Other</option>
-        </select>
+        </Select>
 
         <span className="text-text-muted ml-auto font-mono text-[11px]">
           {filteredExpenses.length} {filteredExpenses.length === 1 ? "expense" : "expenses"}
