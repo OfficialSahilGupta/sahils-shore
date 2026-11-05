@@ -20,9 +20,10 @@ import {
   FolderGit2,
   HelpCircle,
   Lightbulb,
+  FolderTree,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
-import type { TrackMasteryBreakdown } from "@/lib/learning";
+import { type TrackMasteryBreakdown, parseTopicSubSections } from "@/lib/learning";
 import { TopicStudyModal } from "./TopicStudyModal";
 import { AddTopicModal } from "./AddTopicModal";
 
@@ -206,16 +207,19 @@ export function RoadmapChecklist({
       ) : (
         <div className="divide-y divide-[var(--border)] w-full">
           {filteredItems.map((item, index) => {
-            const hasNotes = Boolean(item.notes && item.notes.trim().length > 0);
-            let hasCode = false;
-            let linkCount = 0;
-
-            if (Array.isArray(item.resources)) {
-              item.resources.forEach((r: any) => {
-                if (r?.code_snippet) hasCode = true;
-                if (r?.url) linkCount++;
-              });
-            }
+            const subSections = parseTopicSubSections(item);
+            const hasMultipleSubSections = subSections.length > 1;
+            const completedSubSections = subSections.filter((s) => s.isCompleted).length;
+            const hasNotes =
+              subSections.some((s) => s.notes && s.notes.trim().length > 0) ||
+              Boolean(item.notes && item.notes.trim().length > 0);
+            const hasCode = subSections.some(
+              (s) => s.codeSnippet && s.codeSnippet.trim().length > 0
+            );
+            const totalLinks = subSections.reduce(
+              (acc, s) => acc + (s.resources?.length || 0),
+              0
+            );
 
             const itemCategory =
               item.category ||
@@ -276,6 +280,16 @@ export function RoadmapChecklist({
                           {item.status.replace("_", " ")}
                         </span>
 
+                        {/* Sub-sections count badge */}
+                        {hasMultipleSubSections && (
+                          <span className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--primary)] border border-[var(--primary)]/20 shrink-0">
+                            <FolderTree className="h-2.5 w-2.5" />
+                            <span>
+                              {completedSubSections}/{subSections.length} sub-sections
+                            </span>
+                          </span>
+                        )}
+
                         {/* Badges for notes, code, links */}
                         {hasNotes && (
                           <span className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[10px] font-medium text-[var(--primary)] shrink-0">
@@ -289,10 +303,10 @@ export function RoadmapChecklist({
                             <span>Code</span>
                           </span>
                         )}
-                        {linkCount > 0 && (
+                        {totalLinks > 0 && (
                           <span className="flex items-center gap-1 rounded bg-[var(--surface-muted)] px-1.5 py-0.2 text-[10px] font-medium text-[var(--text-muted)] shrink-0">
                             <ExternalLink className="h-2.5 w-2.5" />
-                            <span>{linkCount} docs</span>
+                            <span>{totalLinks} docs</span>
                           </span>
                         )}
                       </div>

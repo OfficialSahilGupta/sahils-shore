@@ -19,6 +19,9 @@ import {
   calculateDynamicTrackMastery,
   selectMockInterviewQuestions,
   PRESET_TRACK_TEMPLATES,
+  parseTopicSubSections,
+  packTopicSubSections,
+  type TopicSubSection,
 } from "../lib/learning/index.ts";
 import { todayIST, yesterdayIST } from "../lib/date-utils.ts";
 import type { DsaProblem, LearningItem, InterviewQa, LearningConcept, Project } from "../types/index.ts";
@@ -437,4 +440,150 @@ describe("8. Preset Track Templates Integrity", () => {
     }
   });
 });
+
+describe("9. Topic Sub-Sections Parser & Serializer", () => {
+  test("synthesizes default sub-section from legacy flat notes and resources without data loss", () => {
+    const legacyItem = {
+      notes: "Legacy architecture notes on Redis caching and cache stampede.",
+      resources: [
+        { title: "Redis Docs", url: "https://redis.io/docs" },
+        { code_snippet: "const client = createClient();", language: "typescript" },
+      ],
+      status: "in_progress",
+    } as unknown as LearningItem;
+
+    const subSections = parseTopicSubSections(legacyItem);
+    assert.equal(subSections.length, 1);
+    assert.equal(subSections[0].title, "Overview & Core Architecture");
+    assert.equal(subSections[0].notes, legacyItem.notes);
+    assert.equal(subSections[0].codeSnippet, "const client = createClient();");
+    assert.equal(subSections[0].codeLanguage, "typescript");
+    assert.equal(subSections[0].resources.length, 1);
+    assert.equal(subSections[0].resources[0].title, "Redis Docs");
+    assert.equal(subSections[0].resources[0].url, "https://redis.io/docs");
+  });
+
+  test("parses packed multi-section JSON preserving notes, code, languages, and links", () => {
+    const packedItem = {
+      notes: "Combined markdown preview text...",
+      resources: {
+        category: "Caching",
+        subsections: [
+          {
+            id: "sub-1",
+            title: "Cache-Aside Pattern",
+            notes: "Application directly talks to cache and database.",
+            codeSnippet: "public Object get(String key) { ... }",
+            codeLanguage: "java",
+            resources: [{ title: "Cache Aside RFC", url: "https://example.com/cache" }],
+            isCompleted: true,
+          },
+          {
+            id: "sub-2",
+            title: "Redis Eviction & LRU",
+            notes: "maxmemory-policy volatile-lru vs allkeys-lru trade-offs.",
+            codeSnippet: "CONFIG SET maxmemory-policy allkeys-lru",
+            codeLanguage: "sql",
+            resources: [{ title: "Redis Memory", url: "https://redis.io/memory" }],
+            isCompleted: false,
+          },
+        ],
+      },
+      status: "in_progress",
+    } as unknown as LearningItem;
+
+    const subSections = parseTopicSubSections(packedItem);
+    assert.equal(subSections.length, 2);
+    assert.equal(subSections[0].id, "sub-1");
+    assert.equal(subSections[0].title, "Cache-Aside Pattern");
+    assert.equal(subSections[0].isCompleted, true);
+    assert.equal(subSections[0].codeLanguage, "java");
+    assert.equal(subSections[1].id, "sub-2");
+    assert.equal(subSections[1].title, "Redis Eviction & LRU");
+    assert.equal(subSections[1].isCompleted, false);
+    assert.equal(subSections[1].codeLanguage, "sql");
+  });
+
+  test("packTopicSubSections creates valid synthesized markdown and packed JSON", () => {
+    const subs: TopicSubSection[] = [
+      {
+        id: "s1",
+        title: "Architecture & Core Model",
+        notes: "Detailed architecture explanation here.",
+        codeSnippet: "function test() { return 42; }",
+        codeLanguage: "typescript",
+        resources: [{ title: "MDN", url: "https://developer.mozilla.org" }],
+        isCompleted: true,
+      },
+      {
+        id: "s2",
+        title: "Edge Cases & Gotchas",
+        notes: "Beware of connection leak when timeout occurs.",
+        codeSnippet: "",
+        codeLanguage: "java",
+        resources: [],
+        isCompleted: false,
+      },
+    ];
+
+    const packed = packTopicSubSections(subs, "Distributed Systems");
+    assert.ok(packed.notes.includes("### Architecture & Core Model"));
+    assert.ok(packed.notes.includes("### Edge Cases & Gotchas"));
+    assert.ok(packed.notes.includes("```typescript"));
+    assert.ok(packed.notes.includes("https://developer.mozilla.org"));
+
+    const json = packed.resources as any;
+    assert.equal(json.category, "Distributed Systems");
+    assert.equal(json.subsections.length, 2);
+    assert.equal(json.links.length, 1);
+  });
+
+  test("boosts track mastery when sub-sections are completed within in_progress topics", () => {
+    const itemWithSubsections = {
+      id: "item-1",
+      topic: "Caching Strategies",
+      status: "in_progress",
+      notes: "Combined notes...",
+      resources: {
+        subsections: [
+          {
+            id: "s1",
+            title: "Sub 1",
+            notes: "Notes 1 with rich content exceeding 30 characters.",
+            codeSnippet: "code 1",
+            codeLanguage: "java",
+            resources: [],
+            isCompleted: true,
+          },
+          {
+            id: "s2",
+            title: "Sub 2",
+            notes: "Notes 2 with rich content exceeding 30 characters.",
+            codeSnippet: "code 2",
+            codeLanguage: "java",
+            resources: [],
+            isCompleted: true,
+          },
+          {
+            id: "s3",
+            title: "Sub 3",
+            notes: "Notes 3 in progress.",
+            codeSnippet: "",
+            codeLanguage: "java",
+            resources: [],
+            isCompleted: false,
+          },
+        ],
+      },
+    } as unknown as LearningItem;
+
+    const mastery = calculateDynamicTrackMastery([itemWithSubsections], [], [], []);
+    assert.ok(mastery.overallScore > 0);
+    assert.ok(
+      mastery.curriculumScore >= 75,
+      `Curriculum score (${mastery.curriculumScore}) should be rewarded for 2/3 completed sub-sections`
+    );
+  });
+});
+
 

@@ -157,6 +157,135 @@ export interface CreateResourceLinkInput {
 }
 
 // ----------------------------------------------------------------------------
+// Topic Sub-Section Structures & Serializers
+// Allows multiple modular sub-sections per topic with dedicated notes, code, and doc links
+// ----------------------------------------------------------------------------
+
+export interface TopicSubSectionResource {
+  title: string;
+  url: string;
+  category?: string;
+}
+
+export interface TopicSubSection {
+  id: string;
+  title: string;
+  notes: string;
+  codeSnippet: string;
+  codeLanguage: string;
+  resources: TopicSubSectionResource[];
+  isCompleted?: boolean;
+}
+
+/**
+ * Parses all sub-sections for a topic from stored JSON or synthesizes from legacy fields.
+ */
+export function parseTopicSubSections(
+  item: { notes?: string | null; resources?: Json; status?: string } | null | undefined
+): TopicSubSection[] {
+  if (!item) return [];
+
+  const resourcesData = item.resources as any;
+
+  // 1. Direct subsections array inside object
+  if (resourcesData && typeof resourcesData === "object" && !Array.isArray(resourcesData)) {
+    if (Array.isArray(resourcesData.subsections) && resourcesData.subsections.length > 0) {
+      return resourcesData.subsections.map((sub: any, idx: number) => ({
+        id: sub.id || `sub-${idx + 1}-${Date.now()}`,
+        title: sub.title || `Sub-Section ${idx + 1}`,
+        notes: typeof sub.notes === "string" ? sub.notes : "",
+        codeSnippet:
+          typeof (sub.codeSnippet || sub.code_snippet) === "string"
+            ? sub.codeSnippet || sub.code_snippet
+            : "",
+        codeLanguage: sub.codeLanguage || sub.language || "java",
+        resources: Array.isArray(sub.resources)
+          ? sub.resources.map((r: any) => ({
+              title: r.title || r.category || "Documentation",
+              url: r.url || "",
+              category: r.category || "Docs",
+            }))
+          : [],
+        isCompleted: Boolean(sub.isCompleted),
+      }));
+    }
+  }
+
+  // 2. Fallback: Parse from legacy flat item.notes and item.resources
+  const parsedLinks: TopicSubSectionResource[] = [];
+  let parsedSnippet = "";
+  let parsedLang = "java";
+
+  if (Array.isArray(resourcesData)) {
+    resourcesData.forEach((r: any) => {
+      if (r && r.url) {
+        parsedLinks.push({
+          title: r.title || r.category || "Documentation",
+          url: r.url,
+          category: r.category || "Docs",
+        });
+      } else if (r && (r.code_snippet || r.codeSnippet)) {
+        parsedSnippet = r.code_snippet || r.codeSnippet;
+        parsedLang = r.language || r.codeLanguage || "java";
+      }
+    });
+  }
+
+  return [
+    {
+      id: "sub-default-1",
+      title: "Overview & Core Architecture",
+      notes: item.notes || "",
+      codeSnippet: parsedSnippet,
+      codeLanguage: parsedLang,
+      resources: parsedLinks,
+      isCompleted: item.status === "completed",
+    },
+  ];
+}
+
+/**
+ * Packs multiple sub-sections into synthesized markdown notes and packed JSON resources.
+ */
+export function packTopicSubSections(
+  subSections: TopicSubSection[],
+  primaryCategory?: string | null
+): { notes: string; resources: Json } {
+  const formattedSections = subSections.map((s, idx) => {
+    const header = `### ${s.title || `Sub-Section ${idx + 1}`}`;
+    const statusNote = s.isCompleted ? "*(Status: Completed)*" : "";
+    const notesContent = s.notes?.trim() || "";
+    const codeBlock = s.codeSnippet?.trim()
+      ? `\`\`\`${s.codeLanguage || "text"}\n${s.codeSnippet.trim()}\n\`\`\``
+      : "";
+    const linksList = s.resources?.length
+      ? `**Resources:**\n` +
+        s.resources
+          .filter((r) => r.url)
+          .map((r) => `- [${r.title || "Link"}](${r.url})`)
+          .join("\n")
+      : "";
+
+    return [header, statusNote, notesContent, codeBlock, linksList]
+      .filter(Boolean)
+      .join("\n\n");
+  });
+
+  const combinedNotes = formattedSections.join("\n\n---\n\n");
+
+  const packedData = {
+    category: primaryCategory || "General",
+    subsections: subSections,
+    links: subSections.flatMap((s) => s.resources || []),
+  };
+
+  return {
+    notes: combinedNotes,
+    resources: packedData as unknown as Json,
+  };
+}
+
+// ----------------------------------------------------------------------------
 // Domain Calculations
 // ----------------------------------------------------------------------------
 
@@ -206,18 +335,39 @@ export function calculateDynamicTrackMastery(
   let curriculumPoints = 0;
 
   items.forEach((item) => {
-    const hasNotes = Boolean(item.notes && item.notes.trim().length > 20);
-    const hasRichNotes = Boolean(item.notes && item.notes.trim().length > 60);
-    if (hasNotes) topicsNoted++;
+    const subSections = parseTopicSubSections(item);
+    const totalSubSections = subSections.length;
+    const completedSubSections = subSections.filter((s) => s.isCompleted).length;
+    const hasAnyNotes =
+      subSections.some((s) => s.notes && s.notes.trim().length > 15) ||
+      Boolean(item.notes && item.notes.trim().length > 20);
+    const hasRichNotes =
+      subSections.some((s) => s.notes && s.notes.trim().length > 50) ||
+      Boolean(item.notes && item.notes.trim().length > 60);
+    const hasCodeSnippet = subSections.some(
+      (s) => s.codeSnippet && s.codeSnippet.trim().length > 10
+    );
+
+    if (hasAnyNotes || hasCodeSnippet) topicsNoted++;
 
     if (item.status === "completed") {
       topicsMastered++;
       curriculumPoints += 100;
     } else if (item.status === "in_progress") {
       topicsInProgress++;
-      curriculumPoints += hasRichNotes ? 75 : hasNotes ? 55 : 35;
+      if (completedSubSections > 0 && totalSubSections > 1) {
+        const subRatio = completedSubSections / totalSubSections;
+        curriculumPoints += Math.min(95, Math.round(55 + subRatio * 40));
+      } else {
+        curriculumPoints += hasRichNotes ? 75 : hasAnyNotes ? 55 : 35;
+      }
     } else {
-      curriculumPoints += hasRichNotes ? 30 : hasNotes ? 15 : 0;
+      if (completedSubSections > 0 && totalSubSections > 1) {
+        const subRatio = completedSubSections / totalSubSections;
+        curriculumPoints += Math.min(60, Math.round(30 + subRatio * 30));
+      } else {
+        curriculumPoints += hasRichNotes ? 30 : hasAnyNotes ? 15 : 0;
+      }
     }
   });
 

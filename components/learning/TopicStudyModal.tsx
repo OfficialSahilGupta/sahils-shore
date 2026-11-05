@@ -2,8 +2,8 @@
 
 // ============================================================================
 // Sahil's Shore: Topic Study & Engineering Notes Workspace Modal
-// Deep-dive topic study environment with rich markdown architecture notes,
-// code snippets, gotchas, interview insights, and attached documentation links.
+// Deep-dive topic study environment supporting multiple sub-sections per topic.
+// In each sub-section: Architecture & Notes, Code Implementation, and Doc & Resource Links.
 // ============================================================================
 
 import React, { useState, useEffect } from "react";
@@ -25,8 +25,16 @@ import {
   Link as LinkIcon,
   Plus,
   Trash2,
+  Edit3,
+  FolderTree,
+  ChevronRight,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
+import {
+  parseTopicSubSections,
+  packTopicSubSections,
+  type TopicSubSection,
+} from "@/lib/learning";
 import { CodeEditor } from "../dsa/CodeEditor";
 
 interface TopicStudyModalProps {
@@ -58,70 +66,111 @@ export function TopicStudyModal({
   const [topicTitle, setTopicTitle] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState<"planned" | "in_progress" | "completed">("planned");
-  const [notes, setNotes] = useState("");
-  const [codeSnippet, setCodeSnippet] = useState("");
-  const [codeLanguage, setCodeLanguage] = useState("java");
-  const [resourceUrls, setResourceUrls] = useState<Array<{ title: string; url: string }>>([]);
+
+  // Sub-sections array
+  const [subSections, setSubSections] = useState<TopicSubSection[]>([]);
+  const [activeSubSectionId, setActiveSubSectionId] = useState<string>("");
+
+  // Sub-section active pillar: notes | code | resources
+  const [activePillar, setActivePillar] = useState<"notes" | "code" | "resources">("notes");
+
+  // Links input state for active sub-section
   const [newUrlTitle, setNewUrlTitle] = useState("");
   const [newUrl, setNewUrl] = useState("");
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<"notes" | "code" | "resources">("notes");
 
   useEffect(() => {
     if (item) {
       setTopicTitle(item.topic || "");
       setCategory(item.category || "General");
       setStatus(item.status || "planned");
-      setNotes(item.notes || "");
 
-      // Parse resources JSON if it contains code or custom links
-      let parsedLinks: Array<{ title: string; url: string }> = [];
-      let parsedSnippet = "";
-      let parsedLang = "java";
-
-      if (Array.isArray(item.resources)) {
-        item.resources.forEach((r: any) => {
-          if (r && r.url) {
-            parsedLinks.push({ title: r.title || r.category || "Docs", url: r.url });
-          } else if (r && r.code_snippet) {
-            parsedSnippet = r.code_snippet;
-            parsedLang = r.language || "java";
-          }
-        });
+      const parsed = parseTopicSubSections(item);
+      setSubSections(parsed);
+      if (parsed.length > 0) {
+        setActiveSubSectionId(parsed[0].id);
       }
-      setResourceUrls(parsedLinks);
-      setCodeSnippet(parsedSnippet);
-      setCodeLanguage(parsedLang);
     }
   }, [item, isOpen]);
 
   if (!isOpen || !item) return null;
 
+  // Active sub-section
+  const activeSubSection =
+    subSections.find((s) => s.id === activeSubSectionId) || subSections[0];
+
+  const updateActiveSubSection = (updates: Partial<TopicSubSection>) => {
+    if (!activeSubSection) return;
+    setSubSections((prev) =>
+      prev.map((s) => (s.id === activeSubSection.id ? { ...s, ...updates } : s))
+    );
+  };
+
+  // Add new sub-section
+  const handleAddSubSection = () => {
+    const newId = `sub-${Date.now()}`;
+    const newNumber = subSections.length + 1;
+    const newSub: TopicSubSection = {
+      id: newId,
+      title: `Sub-Section ${newNumber}`,
+      notes: "",
+      codeSnippet: "",
+      codeLanguage: activeSubSection?.codeLanguage || "java",
+      resources: [],
+      isCompleted: false,
+    };
+    setSubSections((prev) => [...prev, newSub]);
+    setActiveSubSectionId(newId);
+    setActivePillar("notes");
+  };
+
+  // Delete sub-section (keep at least one)
+  const handleDeleteSubSection = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (subSections.length <= 1) return;
+
+    setSubSections((prev) => {
+      const filtered = prev.filter((s) => s.id !== id);
+      if (activeSubSectionId === id && filtered.length > 0) {
+        setActiveSubSectionId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
+
   const insertTemplate = (template: string) => {
-    setNotes((prev) => (prev ? `${prev.trim()}\n\n${template}` : template));
+    if (!activeSubSection) return;
+    const existing = activeSubSection.notes || "";
+    const updated = existing ? `${existing.trim()}\n\n${template}` : template;
+    updateActiveSubSection({ notes: updated });
   };
 
   const handleAddLink = () => {
-    if (!newUrl.trim()) return;
+    if (!activeSubSection || !newUrl.trim()) return;
     const itemToAdd = {
       title: newUrlTitle.trim() || "Documentation",
       url: newUrl.trim().startsWith("http") ? newUrl.trim() : `https://${newUrl.trim()}`,
+      category: "Docs",
     };
-    setResourceUrls((prev) => [...prev, itemToAdd]);
+    const updatedLinks = [...(activeSubSection.resources || []), itemToAdd];
+    updateActiveSubSection({ resources: updatedLinks });
     setNewUrlTitle("");
     setNewUrl("");
   };
 
   const handleRemoveLink = (index: number) => {
-    setResourceUrls((prev) => prev.filter((_, i) => i !== index));
+    if (!activeSubSection) return;
+    const updatedLinks = (activeSubSection.resources || []).filter((_, i) => i !== index);
+    updateActiveSubSection({ resources: updatedLinks });
   };
 
   const handleCopyCode = async () => {
-    if (!codeSnippet) return;
+    if (!activeSubSection?.codeSnippet) return;
     try {
-      await navigator.clipboard.writeText(codeSnippet);
+      await navigator.clipboard.writeText(activeSubSection.codeSnippet);
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
     } catch (e) {
@@ -134,21 +183,16 @@ export function TopicStudyModal({
     setIsSubmitting(true);
 
     try {
-      // Pack resources JSON with links and code
-      const packedResources: any[] = [...resourceUrls];
-      if (codeSnippet.trim()) {
-        packedResources.push({
-          code_snippet: codeSnippet.trim(),
-          language: codeLanguage,
-        });
-      }
+      // Pack all sub-sections into markdown notes and JSON resources
+      const { notes: synthesizedNotes, resources: packedResources } =
+        packTopicSubSections(subSections, category);
 
       await onSave(item.id, {
         topic: topicTitle.trim(),
         category: category.trim() || null,
         status,
-        notes: notes.trim() || null,
-        resources: packedResources as unknown as Json,
+        notes: synthesizedNotes || null,
+        resources: packedResources,
       });
 
       onClose();
@@ -160,16 +204,16 @@ export function TopicStudyModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className={`relative w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-2xl transition-all flex flex-col ${
+        className={`relative w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 shadow-2xl transition-all flex flex-col ${
           isFullscreen
-            ? "max-w-[98vw] h-[95vh] overflow-y-auto"
+            ? "max-w-[99vw] h-[96vh] overflow-y-auto"
             : "max-w-5xl max-h-[92vh] overflow-y-auto"
         }`}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] pb-4 mb-4 gap-3 shrink-0">
+        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-3 gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
               <BookOpen className="h-5 w-5" />
@@ -184,13 +228,12 @@ export function TopicStudyModal({
                 </span>
               </div>
               <p className="text-xs text-[var(--text-muted)] truncate">
-                Architecture mental model, implementation code, edge cases, and documentation
+                Modular sub-sections: Architecture notes, code implementation, and resource links
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Fullscreen Toggle */}
             <button
               type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
@@ -204,7 +247,6 @@ export function TopicStudyModal({
               )}
             </button>
 
-            {/* Close Button */}
             <button
               type="button"
               onClick={onClose}
@@ -216,7 +258,7 @@ export function TopicStudyModal({
         </div>
 
         {/* Status & Category Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-4 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3 shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3 shrink-0">
           <div className="sm:col-span-6 flex flex-col justify-center">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">
               Topic Name & Category
@@ -241,7 +283,7 @@ export function TopicStudyModal({
           {/* Mastery Status Selector */}
           <div className="sm:col-span-6 flex flex-col justify-center">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">
-              Mastery Stage
+              Overall Topic Mastery Stage
             </label>
             <div className="grid grid-cols-3 gap-1.5">
               <button
@@ -286,62 +328,192 @@ export function TopicStudyModal({
           </div>
         </div>
 
-        {/* Tab Switcher on mobile/desktop */}
+        {/* Sub-Section Navigator Strip */}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 mb-3 shrink-0">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
+              <FolderTree className="h-3.5 w-3.5 text-[var(--primary)]" />
+              <span>Topic Sub-Sections ({subSections.length})</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddSubSection}
+              className="flex items-center gap-1 rounded-lg bg-[var(--primary)] px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity"
+            >
+              <Plus className="h-3 w-3" />
+              <span>Add Sub-Section</span>
+            </button>
+          </div>
+
+          {/* Sub-section horizontal pill list */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+            {subSections.map((sub, idx) => {
+              const isActive = sub.id === (activeSubSection?.id || "");
+              const hasNotes = Boolean(sub.notes && sub.notes.trim().length > 0);
+              const hasCode = Boolean(sub.codeSnippet && sub.codeSnippet.trim().length > 0);
+              const linkCount = (sub.resources || []).length;
+
+              return (
+                <div
+                  key={sub.id}
+                  onClick={() => setActiveSubSectionId(sub.id)}
+                  className={`group flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium cursor-pointer transition-all shrink-0 border ${
+                    isActive
+                      ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] font-semibold shadow-2xs"
+                      : "border-[var(--border)] bg-[var(--surface-muted)]/20 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {sub.isCompleted ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)] shrink-0" />
+                    ) : (
+                      <span className="h-4 w-4 rounded-full bg-[var(--border)] text-[var(--text-muted)] flex items-center justify-center text-[10px] font-mono shrink-0">
+                        {idx + 1}
+                      </span>
+                    )}
+                    <span className="truncate max-w-[150px] sm:max-w-[190px]">
+                      {sub.title || `Sub-Section ${idx + 1}`}
+                    </span>
+                  </div>
+
+                  {/* Indicator badges */}
+                  <div className="flex items-center gap-0.5 shrink-0 opacity-70">
+                    {hasNotes && (
+                      <span title="Has Architecture Notes">
+                        <BookOpen className="h-2.5 w-2.5" />
+                      </span>
+                    )}
+                    {hasCode && (
+                      <span title="Has Code Snippet">
+                        <Code2 className="h-2.5 w-2.5" />
+                      </span>
+                    )}
+                    {linkCount > 0 && (
+                      <span title={`${linkCount} doc links`}>
+                        <LinkIcon className="h-2.5 w-2.5" />
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Delete button (if more than 1 subsection) */}
+                  {subSections.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteSubSection(sub.id, e)}
+                      className="opacity-0 group-hover:opacity-100 hover:text-[var(--danger)] transition-opacity p-0.5 ml-0.5"
+                      title="Delete this sub-section"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Active Sub-Section Header: Title & Completion */}
+        {activeSubSection && (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 p-2.5 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] shrink-0 flex items-center gap-1">
+                <Edit3 className="h-3 w-3 text-[var(--primary)]" />
+                <span>Sub-Section Title:</span>
+              </span>
+              <input
+                type="text"
+                value={activeSubSection.title}
+                onChange={(e) => updateActiveSubSection({ title: e.target.value })}
+                placeholder="e.g. Cache Invalidation & Eviction Strategies"
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--text)] font-semibold focus:border-[var(--primary)] focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                updateActiveSubSection({ isCompleted: !activeSubSection.isCompleted })
+              }
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all shrink-0 border ${
+                activeSubSection.isCompleted
+                  ? "bg-[var(--success)]/15 border-[var(--success)]/30 text-[var(--success)]"
+                  : "bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]"
+              }`}
+            >
+              {activeSubSection.isCompleted ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)]" />
+              ) : (
+                <Circle className="h-3.5 w-3.5" />
+              )}
+              <span>
+                {activeSubSection.isCompleted ? "Sub-Section Completed" : "Mark as Completed"}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* 3 Pillar Tabs for Active Sub-Section */}
         <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2 mb-3 shrink-0">
           <button
             type="button"
-            onClick={() => setActiveTab("notes")}
+            onClick={() => setActivePillar("notes")}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-              activeTab === "notes"
+              activePillar === "notes"
                 ? "bg-[var(--primary)] text-white shadow-xs"
                 : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
             }`}
           >
             <BookOpen className="h-3.5 w-3.5" />
             <span>Architecture & Notes</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("code")}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-              activeTab === "code"
-                ? "bg-[var(--primary)] text-white shadow-xs"
-                : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
-            }`}
-          >
-            <Code2 className="h-3.5 w-3.5" />
-            <span>Code Implementation</span>
-            {codeSnippet.trim() && (
+            {activeSubSection?.notes?.trim() && (
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
             )}
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab("resources")}
+            onClick={() => setActivePillar("code")}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-              activeTab === "resources"
+              activePillar === "code"
+                ? "bg-[var(--primary)] text-white shadow-xs"
+                : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
+            }`}
+          >
+            <Code2 className="h-3.5 w-3.5" />
+            <span>Code Implementation</span>
+            {activeSubSection?.codeSnippet?.trim() && (
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActivePillar("resources")}
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              activePillar === "resources"
                 ? "bg-[var(--primary)] text-white shadow-xs"
                 : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
             }`}
           >
             <LinkIcon className="h-3.5 w-3.5" />
-            <span>Doc & Resource Links ({resourceUrls.length})</span>
+            <span>
+              Doc & Resource Links ({activeSubSection?.resources?.length || 0})
+            </span>
           </button>
         </div>
 
+        {/* Main Workspace Form */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between space-y-4">
-          {/* Tab 1: Architecture Notes */}
-          {activeTab === "notes" && (
+          {/* Pillar 1: Architecture Notes */}
+          {activePillar === "notes" && (
             <div className="flex-1 flex flex-col space-y-2.5 min-h-[300px]">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 text-[var(--primary)]" />
-                  <span>Deep-Dive Engineering Notes</span>
+                  <span>Architecture, Trade-offs & Engineering Mental Model</span>
                 </span>
 
-                {/* Quick Template Chips */}
+                {/* Quick Template Insertion Chips */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
@@ -380,17 +552,17 @@ export function TopicStudyModal({
               </div>
 
               <textarea
-                rows={14}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Write your comprehensive technical notes, design patterns, failure modes, and code walkthroughs here..."
-                className="w-full flex-1 min-h-[280px] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3.5 text-xs text-[var(--text)] font-sans leading-relaxed placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-none"
+                rows={13}
+                value={activeSubSection?.notes || ""}
+                onChange={(e) => updateActiveSubSection({ notes: e.target.value })}
+                placeholder={`Write detailed architecture notes, trade-offs, and mental models for "${activeSubSection?.title || "this sub-section"}"...`}
+                className="w-full flex-1 min-h-[260px] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3.5 text-xs text-[var(--text)] font-sans leading-relaxed placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-none"
               />
             </div>
           )}
 
-          {/* Tab 2: Code Implementation */}
-          {activeTab === "code" && (
+          {/* Pillar 2: Code Implementation */}
+          {activePillar === "code" && (
             <div className="flex-1 flex flex-col space-y-2.5 min-h-[300px]">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
@@ -402,7 +574,7 @@ export function TopicStudyModal({
                   <button
                     type="button"
                     onClick={handleCopyCode}
-                    disabled={!codeSnippet}
+                    disabled={!activeSubSection?.codeSnippet}
                     className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40"
                   >
                     {copiedCode ? (
@@ -414,8 +586,8 @@ export function TopicStudyModal({
                   </button>
 
                   <select
-                    value={codeLanguage}
-                    onChange={(e) => setCodeLanguage(e.target.value)}
+                    value={activeSubSection?.codeLanguage || "java"}
+                    onChange={(e) => updateActiveSubSection({ codeLanguage: e.target.value })}
                     className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
                   >
                     <option value="java">Java</option>
@@ -423,28 +595,31 @@ export function TopicStudyModal({
                     <option value="javascript">JavaScript</option>
                     <option value="python">Python</option>
                     <option value="go">Go</option>
+                    <option value="sql">SQL</option>
+                    <option value="rust">Rust</option>
+                    <option value="cpp">C++</option>
                   </select>
                 </div>
               </div>
 
-              <div className="flex-1 min-h-[280px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+              <div className="flex-1 min-h-[260px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
                 <CodeEditor
-                  value={codeSnippet}
-                  onChange={(val) => setCodeSnippet(val)}
-                  language={codeLanguage as any}
-                  minHeight="280px"
-                  maxHeight={isFullscreen ? "65vh" : "380px"}
+                  value={activeSubSection?.codeSnippet || ""}
+                  onChange={(val) => updateActiveSubSection({ codeSnippet: val })}
+                  language={(activeSubSection?.codeLanguage as any) || "java"}
+                  minHeight="260px"
+                  maxHeight={isFullscreen ? "65vh" : "360px"}
                 />
               </div>
             </div>
           )}
 
-          {/* Tab 3: Resource Links */}
-          {activeTab === "resources" && (
+          {/* Pillar 3: Resource Links */}
+          {activePillar === "resources" && (
             <div className="flex-1 flex flex-col space-y-3 min-h-[300px]">
               <span className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
                 <LinkIcon className="h-3.5 w-3.5 text-[var(--primary)]" />
-                <span>Reference Links & Official Documentation</span>
+                <span>Reference Links & Official Documentation for this Sub-Section</span>
               </span>
 
               {/* Add New Link Row */}
@@ -453,7 +628,7 @@ export function TopicStudyModal({
                   type="text"
                   value={newUrlTitle}
                   onChange={(e) => setNewUrlTitle(e.target.value)}
-                  placeholder="Link Title (e.g. Spring Docs, RFC 7519)"
+                  placeholder="Link Title (e.g. Redis Docs, Spring Reference)"
                   className="w-full sm:w-1/3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
                 />
                 <input
@@ -475,12 +650,12 @@ export function TopicStudyModal({
 
               {/* Links List */}
               <div className="space-y-2 pt-2">
-                {resourceUrls.length === 0 ? (
+                {(!activeSubSection?.resources || activeSubSection.resources.length === 0) ? (
                   <p className="text-xs text-[var(--text-muted)] italic text-center py-6">
-                    No reference links attached yet. Add official docs, deep-dive articles, or repos above.
+                    No reference links attached to this sub-section yet. Add official docs, deep-dive articles, or RFCs above.
                   </p>
                 ) : (
-                  resourceUrls.map((r, i) => (
+                  activeSubSection.resources.map((r, i) => (
                     <div
                       key={i}
                       className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3 py-2 text-xs"
@@ -515,7 +690,7 @@ export function TopicStudyModal({
           )}
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-between border-t border-[var(--border)] pt-4 shrink-0">
+          <div className="flex items-center justify-between border-t border-[var(--border)] pt-3 shrink-0">
             {onDeleteTopic ? (
               <button
                 type="button"
