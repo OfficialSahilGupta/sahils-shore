@@ -28,6 +28,98 @@ export interface RoadmapProgress {
   percentage: number;
 }
 
+export interface TrackTemplate {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  slug: string;
+  roadmap: Array<{ topic: string; category: string; notes?: string }>;
+}
+
+export interface CreateTrackInput {
+  title: string;
+  description?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  slug?: string | null;
+  templateId?: string | null;
+  initialRoadmap?: Array<{ topic: string; category?: string; notes?: string }>;
+}
+
+export interface TrackMasteryBreakdown {
+  overallScore: number; // 0 - 100
+  curriculumScore: number;
+  projectsScore: number;
+  conceptsScore: number;
+  interviewScore: number;
+  topicsTotal: number;
+  topicsMastered: number;
+  topicsInProgress: number;
+  topicsNoted: number;
+  conceptsCount: number;
+  projectsCount: number;
+  interviewCount: number;
+  masteryTier: "Beginner" | "Apprentice" | "Practitioner" | "Advanced" | "Staff Ready";
+}
+
+export const PRESET_TRACK_TEMPLATES: TrackTemplate[] = [
+  {
+    id: "system-design",
+    title: "System Design & Distributed Systems",
+    description: "High-level architecture, scalability, consistency, microservices, and design patterns",
+    icon: "Server",
+    color: "#E0A458",
+    slug: "system-design",
+    roadmap: [
+      { topic: "HLD Fundamentals & Requirement Gathering", category: "Core Principles", notes: "Functional vs non-functional requirements, back-of-the-envelope estimations." },
+      { topic: "CAP & PACELC Theorems", category: "Distributed Theory", notes: "Consistency vs Availability under network partitions. Trade-offs in Cassandra vs MongoDB." },
+      { topic: "Caching Strategies (Redis & Memcached)", category: "Data Tier", notes: "Cache-Aside, Write-Through, Write-Behind, Eviction policies (LRU/LFU), Cache Stampede prevention." },
+      { topic: "Load Balancing & Consistent Hashing", category: "Networking", notes: "L4 vs L7 load balancing, health checks, virtual nodes in consistent hashing rings." },
+      { topic: "Message Queues & Event Streaming (Kafka)", category: "Asynchronous Architecture", notes: "Producers, Consumer Groups, partitions, exactly-once semantics vs at-least-once." },
+      { topic: "Database Sharding & Replication", category: "Data Tier", notes: "Horizontal partitioning, master-replica sync/async replication, split-brain resolution." },
+      { topic: "Rate Limiting & API Gateways", category: "Traffic & Security", notes: "Token bucket, Leaky bucket, sliding window counter algorithms. Reverse proxying." },
+      { topic: "Microservices Resiliency & Circuit Breakers", category: "Resilience", notes: "Resilience4j / Istio, timeout, retry with exponential backoff, bulkheads." },
+    ],
+  },
+  {
+    id: "devops-cloud",
+    title: "DevOps & Cloud Architecture",
+    description: "Docker, Kubernetes, CI/CD, Terraform, AWS, and enterprise observability",
+    icon: "Cloud",
+    color: "#BFDBF7",
+    slug: "devops-cloud",
+    roadmap: [
+      { topic: "Docker Multi-stage Builds & Optimization", category: "Containers", notes: "Minimizing image size, layer caching, non-root users, security scanning." },
+      { topic: "Docker Compose & Local Microservices Mesh", category: "Containers", notes: "Service orchestration, named networks, persistent volumes, environment configs." },
+      { topic: "Kubernetes Core: Pods, Services & Deployments", category: "Kubernetes", notes: "Rolling updates, readiness/liveness probes, ClusterIP vs NodePort vs LoadBalancer." },
+      { topic: "Kubernetes ConfigMaps, Secrets & Ingress", category: "Kubernetes", notes: "Decoupling config from pods, secret encryption at rest, NGINX Ingress Controller." },
+      { topic: "CI/CD Automation with GitHub Actions", category: "Pipelines", notes: "Automated linting, test runners, Docker build-and-push, semantic release workflows." },
+      { topic: "Terraform Infrastructure as Code (IaC)", category: "Cloud & IaC", notes: "HCL syntax, state management, remote backends (S3/GCS), plan/apply cycles." },
+      { topic: "AWS Core: EC2, S3, RDS & VPCs", category: "Cloud & IaC", notes: "Subnets, Security Groups, IAM least-privilege policies, managed databases." },
+      { topic: "Observability: Prometheus, Grafana & Logs", category: "Monitoring", notes: "RED & USE metrics, log aggregation, alerting thresholds, distributed tracing." },
+    ],
+  },
+  {
+    id: "golang-backend",
+    title: "Golang Backend Engineering",
+    description: "High-concurrency servers, goroutines, channels, interfaces, and microservices in Go",
+    icon: "Terminal",
+    color: "#2E9E6B",
+    slug: "golang-backend",
+    roadmap: [
+      { topic: "Go Fundamentals, Pointers & Memory Model", category: "Go Core", notes: "Stack vs Heap allocations, escape analysis, value vs pointer semantics." },
+      { topic: "Interfaces & Implicit Composition", category: "Go Core", notes: "Duck typing, empty interface (any), type assertions and type switches." },
+      { topic: "Goroutines, Channels & Select", category: "Concurrency", notes: "CSP concurrency model, buffered vs unbuffered channels, closing channels safely." },
+      { topic: "Sync Package: Mutex, RWMutex & WaitGroup", category: "Concurrency", notes: "Preventing race conditions, go test -race, sync.Once for singleton instances." },
+      { topic: "High-Performance REST APIs (Gin / Chi)", category: "Web Services", notes: "Middleware chaining, routing performance, request validation, structured JSON errors." },
+      { topic: "Database Persistence (GORM & pgx)", category: "Data Tier", notes: "Connection pooling, context cancellation propagation in SQL queries, migrations." },
+      { topic: "gRPC & Protocol Buffers in Go", category: "Microservices", notes: "Defining .proto schemas, streaming RPCs, binary serialization vs JSON." },
+    ],
+  },
+];
+
 export interface CreateConceptInput {
   track_id?: string | null;
   title: string;
@@ -91,6 +183,110 @@ export function calculateRoadmapProgress(items: LearningItem[]): RoadmapProgress
     inProgress,
     planned,
     percentage,
+  };
+}
+
+/**
+ * Calculates holistic Track Mastery Score across:
+ * - 40% Curriculum progression (status + notes depth)
+ * - 25% Hands-on projects implementation
+ * - 20% Logged knowledge concepts
+ * - 15% Interview Q&A confidence & readiness
+ */
+export function calculateDynamicTrackMastery(
+  items: LearningItem[] = [],
+  concepts: LearningConcept[] = [],
+  projects: Project[] = [],
+  questions: InterviewQa[] = []
+): TrackMasteryBreakdown {
+  const topicsTotal = items.length;
+  let topicsMastered = 0;
+  let topicsInProgress = 0;
+  let topicsNoted = 0;
+  let curriculumPoints = 0;
+
+  items.forEach((item) => {
+    const hasNotes = Boolean(item.notes && item.notes.trim().length > 20);
+    const hasRichNotes = Boolean(item.notes && item.notes.trim().length > 60);
+    if (hasNotes) topicsNoted++;
+
+    if (item.status === "completed") {
+      topicsMastered++;
+      curriculumPoints += 100;
+    } else if (item.status === "in_progress") {
+      topicsInProgress++;
+      curriculumPoints += hasRichNotes ? 75 : hasNotes ? 55 : 35;
+    } else {
+      curriculumPoints += hasRichNotes ? 30 : hasNotes ? 15 : 0;
+    }
+  });
+
+  const curriculumScore =
+    topicsTotal > 0 ? Math.round(curriculumPoints / topicsTotal) : 0;
+
+  // Projects points: up to 100 (e.g. 1 deployed = 60, completed = 40, in_progress = 25, idea = 10)
+  const projectPoints = projects.reduce((acc, p) => {
+    if (p.status === "deployed") return acc + 60;
+    if (p.status === "completed") return acc + 40;
+    if (p.status === "in_progress") return acc + 25;
+    return acc + 10;
+  }, 0);
+  const projectsScore = Math.min(100, projectPoints);
+
+  // Concepts points: 5 concepts = 100% density
+  const conceptsScore = Math.min(100, concepts.length * 20);
+
+  // Interview readiness points: average confidence 1-5 mapped to percentage
+  const interviewScore =
+    questions.length > 0
+      ? Math.round(
+          (questions.reduce((acc, q) => acc + (q.confidence || 3), 0) /
+            (questions.length * 5)) *
+            100
+        )
+      : 0;
+
+  // Weighted overall score:
+  // If user only has curriculum so far, dynamically weight to reward early studying
+  const hasAuxiliaryContent =
+    projects.length > 0 || concepts.length > 0 || questions.length > 0;
+
+  let overallScore = 0;
+  if (!hasAuxiliaryContent) {
+    overallScore = curriculumScore;
+  } else {
+    overallScore = Math.round(
+      curriculumScore * 0.4 +
+        projectsScore * 0.25 +
+        conceptsScore * 0.2 +
+        interviewScore * 0.15
+    );
+    // Smooth floor: curriculum progress should never be excessively degraded
+    overallScore = Math.max(overallScore, Math.round(curriculumScore * 0.65));
+  }
+
+  overallScore = Math.min(100, Math.max(0, overallScore));
+
+  let masteryTier: TrackMasteryBreakdown["masteryTier"] = "Beginner";
+  if (overallScore >= 85) masteryTier = "Staff Ready";
+  else if (overallScore >= 65) masteryTier = "Advanced";
+  else if (overallScore >= 40) masteryTier = "Practitioner";
+  else if (overallScore >= 15) masteryTier = "Apprentice";
+
+  return {
+    overallScore,
+    curriculumScore,
+    projectsScore,
+    conceptsScore,
+    interviewScore,
+    topicsTotal,
+    topicsMastered,
+    topicsInProgress,
+    topicsNoted,
+    conceptsCount: concepts.length,
+    projectsCount: projects.length,
+    interviewCount: questions.length,
+    masteryTier,
   };
 }
 
@@ -305,9 +501,187 @@ export async function ensureDefaultLearningTracks(
   return tracks;
 }
 
+export async function createLearningTrack(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  input: CreateTrackInput
+): Promise<LearningTrack | null> {
+  const slug =
+    input.slug ||
+    input.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+
+  const { data: track, error } = await supabase
+    .from("learning_tracks")
+    .insert({
+      user_id: userId,
+      title: input.title.trim(),
+      description: input.description?.trim() || null,
+      icon: input.icon || "Layers",
+      color: input.color || "var(--primary)",
+      slug,
+    })
+    .select()
+    .single();
+
+  if (error || !track) {
+    console.error("[createLearningTrack] Error creating track:", error);
+    return null;
+  }
+
+  // If a preset template was selected or initial roadmap provided, seed topics
+  let roadmapToSeed = input.initialRoadmap;
+  if (!roadmapToSeed && input.templateId) {
+    const template = PRESET_TRACK_TEMPLATES.find((t) => t.id === input.templateId);
+    if (template) roadmapToSeed = template.roadmap;
+  }
+
+  if (roadmapToSeed && roadmapToSeed.length > 0) {
+    const items = roadmapToSeed.map((item, idx) => ({
+      user_id: userId,
+      track_id: track.id,
+      topic: item.topic,
+      category: item.category || "Core",
+      notes: item.notes || null,
+      status: "planned" as const,
+      order_index: idx,
+      resources: [] as unknown as Json,
+    }));
+    await supabase.from("learning_items").insert(items);
+  }
+
+  await writeTimelineEvent(supabase, {
+    userId,
+    type: "study_session",
+    summary: `Started learning track: ${track.title}`,
+    refTable: "learning_tracks",
+    refId: track.id,
+    meta: { title: track.title, slug: track.slug },
+  });
+
+  return track as LearningTrack;
+}
+
+export async function updateLearningTrack(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  trackId: string,
+  updates: Database["public"]["Tables"]["learning_tracks"]["Update"]
+): Promise<LearningTrack | null> {
+  const { data, error } = await supabase
+    .from("learning_tracks")
+    .update(updates)
+    .eq("id", trackId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error("[updateLearningTrack] Error:", error);
+    return null;
+  }
+  return data as LearningTrack;
+}
+
+export async function deleteLearningTrack(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  trackId: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("learning_tracks")
+    .delete()
+    .eq("id", trackId)
+    .eq("user_id", userId);
+
+  return !error;
+}
+
 // ----------------------------------------------------------------------------
 // Roadmap Checklist CRUD
 // ----------------------------------------------------------------------------
+
+export async function createRoadmapItem(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  input: {
+    track_id: string;
+    topic: string;
+    category?: string | null;
+    notes?: string | null;
+    status?: "planned" | "in_progress" | "completed";
+    resources?: Json;
+    order_index?: number;
+  }
+): Promise<LearningItem | null> {
+  const { data, error } = await supabase
+    .from("learning_items")
+    .insert({
+      user_id: userId,
+      track_id: input.track_id,
+      topic: input.topic.trim(),
+      category: input.category?.trim() || "General",
+      notes: input.notes?.trim() || null,
+      status: input.status || "planned",
+      resources: input.resources || ([] as unknown as Json),
+      order_index: input.order_index ?? 0,
+      completed_at: input.status === "completed" ? new Date().toISOString() : null,
+    })
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error("[createRoadmapItem] Error:", error);
+    return null;
+  }
+
+  return data as LearningItem;
+}
+
+export async function updateRoadmapItem(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  itemId: string,
+  updates: Database["public"]["Tables"]["learning_items"]["Update"]
+): Promise<LearningItem | null> {
+  const payload: Database["public"]["Tables"]["learning_items"]["Update"] = { ...updates };
+  if (updates.status === "completed" && !updates.completed_at) {
+    payload.completed_at = new Date().toISOString();
+  } else if (updates.status && updates.status !== "completed") {
+    payload.completed_at = null;
+  }
+
+  const { data, error } = await supabase
+    .from("learning_items")
+    .update(payload)
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error("[updateRoadmapItem] Error:", error);
+    return null;
+  }
+
+  return data as LearningItem;
+}
+
+export async function deleteRoadmapItem(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  itemId: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("learning_items")
+    .delete()
+    .eq("id", itemId)
+    .eq("user_id", userId);
+
+  return !error;
+}
 
 export async function getRoadmapItems(
   supabase: SupabaseClient<Database>,
@@ -550,7 +924,7 @@ export async function updateProject(
   supabase: SupabaseClient<Database>,
   userId: string,
   projectId: string,
-  updates: Partial<Project>
+  updates: Database["public"]["Tables"]["projects"]["Update"]
 ): Promise<Project | null> {
   const { data, error } = await supabase
     .from("projects")

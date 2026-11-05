@@ -2,15 +2,13 @@
 
 // ============================================================================
 // Sahil's Shore: Full-Stack Learning Hub Main Container
-// Multi-track management (Java/Spring Boot & MERN/TypeScript)
-// Roadmap checklist, Concepts-learned log, Project tracker,
-// Interview Q&A bank, Mock Interview mode, Mini-Projects, Resources, and Timer
+// Dynamic multi-track management, custom track creation,
+// multi-pillar mastery scoring, deep topic study notes, and roadmap editor.
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Layers,
-  Cpu,
   BookOpen,
   Lightbulb,
   FolderGit2,
@@ -18,6 +16,7 @@ import {
   Sparkles,
   Bookmark,
   RefreshCw,
+  Plus,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -34,7 +33,11 @@ import {
   ensureDefaultLearningTracks,
   getRoadmapItems,
   toggleRoadmapStatus,
-  updateRoadmapItemNotes,
+  createRoadmapItem,
+  updateRoadmapItem,
+  deleteRoadmapItem,
+  createLearningTrack,
+  deleteLearningTrack,
   getLearningConcepts,
   createLearningConcept,
   deleteLearningConcept,
@@ -52,7 +55,8 @@ import {
   createResourceLink,
   deleteResourceLink,
   logStudySession,
-  calculateRoadmapProgress,
+  calculateDynamicTrackMastery,
+  type CreateTrackInput,
   type CreateConceptInput,
   type CreateProjectInput,
   type CreateInterviewQaInput,
@@ -67,6 +71,7 @@ import { ProjectTracker } from "./ProjectTracker";
 import { InterviewQaBank } from "./InterviewQaBank";
 import { MiniProjectIdeas } from "./MiniProjectIdeas";
 import { ResourceLinksList } from "./ResourceLinksList";
+import { CreateTrackModal } from "./CreateTrackModal";
 
 type LearningTab =
   | "roadmap"
@@ -83,6 +88,7 @@ export function LearningContainer() {
   const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LearningTab>("roadmap");
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateTrackOpen, setIsCreateTrackOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Track data
@@ -93,7 +99,7 @@ export function LearningContainer() {
   const [miniProjectIdeas, setMiniProjectIdeas] = useState<MiniProjectIdea[]>([]);
   const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>([]);
 
-  // Progress map per track
+  // Dynamic mastery map per track (trackId -> score 0-100)
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
 
   const showToast = (msg: string) => {
@@ -101,7 +107,7 @@ export function LearningContainer() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // 1. Initialize user and ensure tracks
+  // 1. Initialize user and ensure default tracks
   useEffect(() => {
     async function initUserAndTracks() {
       try {
@@ -117,7 +123,7 @@ export function LearningContainer() {
             setActiveTrackId(loadedTracks[0].id);
           }
         } else {
-          // Preview mode: display seeded tracks immediately
+          // Preview mode: display default seeded tracks
           const previewTracks: LearningTrack[] = [
             {
               id: "preview-spring",
@@ -154,26 +160,26 @@ export function LearningContainer() {
     initUserAndTracks();
   }, [supabase]);
 
-  // 2. Fetch all module data for active track
+  // 2. Load active track data
   const fetchTrackData = useCallback(async () => {
     if (!activeTrackId) return;
 
     if (!userId) {
-      // Preview mode: Load from seeded curriculum
-      const isMern = activeTrackId === "preview-mern" || activeTrackId.includes("mern");
-      const seed = isMern ? MERN_TRACK_SEED : SPRING_TRACK_SEED;
+      // Preview mode data population
+      const isSpring = activeTrackId.includes("spring");
+      const seed = isSpring ? SPRING_TRACK_SEED : MERN_TRACK_SEED;
 
       const items: LearningItem[] = seed.roadmap.map((item, idx) => ({
         id: `preview-item-${idx}`,
         user_id: "preview",
         track_id: activeTrackId,
         topic: item.topic,
-        category: item.category,
+        status: "planned",
         notes: item.notes || null,
-        resources: (item.resources || []) as unknown as Json,
-        status: idx < 3 ? "completed" : idx === 3 ? "in_progress" : "planned",
+        resources: (item.resources || [{ category: item.category }]) as unknown as Json,
+        category: item.category,
         order_index: idx,
-        completed_at: idx < 3 ? new Date().toISOString() : null,
+        completed_at: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }));
@@ -223,8 +229,8 @@ export function LearningContainer() {
       setMiniProjectIdeas(ideas);
       setResourceLinks(rLinks);
 
-      const prog = calculateRoadmapProgress(items);
-      setProgressMap((prev) => ({ ...prev, [activeTrackId]: prog.percentage }));
+      const mastery = calculateDynamicTrackMastery(items, [], [], qList);
+      setProgressMap((prev) => ({ ...prev, [activeTrackId]: mastery.overallScore }));
       return;
     }
 
@@ -245,9 +251,9 @@ export function LearningContainer() {
       setMiniProjectIdeas(ideas);
       setResourceLinks(rLinks);
 
-      // Update progress for active track
-      const prog = calculateRoadmapProgress(rItems);
-      setProgressMap((prev) => ({ ...prev, [activeTrackId]: prog.percentage }));
+      // Update dynamic mastery score for active track
+      const mastery = calculateDynamicTrackMastery(rItems, cLogs, pList, qList);
+      setProgressMap((prev) => ({ ...prev, [activeTrackId]: mastery.overallScore }));
     } catch (err) {
       console.error("[LearningContainer] Error loading track data:", err);
     }
@@ -263,11 +269,99 @@ export function LearningContainer() {
     return tracks.find((t) => t.id === activeTrackId) || null;
   }, [tracks, activeTrackId]);
 
+  // Dynamic holistic mastery score breakdown for currently active track
+  const currentTrackMastery = useMemo(() => {
+    return calculateDynamicTrackMastery(
+      roadmapItems,
+      concepts,
+      projects,
+      interviewQuestions
+    );
+  }, [roadmapItems, concepts, projects, interviewQuestions]);
+
+  // Keep progressMap synced whenever currentTrackMastery recomputes
+  useEffect(() => {
+    if (activeTrackId) {
+      setProgressMap((prev) => ({
+        ...prev,
+        [activeTrackId]: currentTrackMastery.overallScore,
+      }));
+    }
+  }, [activeTrackId, currentTrackMastery]);
+
   // --------------------------------------------------------------------------
   // Handlers
   // --------------------------------------------------------------------------
 
-  // Timer Session
+  // Track Creation & Deletion
+  const handleCreateTrack = async (input: CreateTrackInput) => {
+    if (!userId) {
+      const tempId = `custom-${Date.now()}`;
+      const newTrack: LearningTrack = {
+        id: tempId,
+        user_id: "preview",
+        title: input.title,
+        description: input.description || null,
+        icon: input.icon || "Layers",
+        color: input.color || "var(--primary)",
+        slug: input.slug || input.title.toLowerCase().replace(/\s+/g, "-"),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setTracks((prev) => [...prev, newTrack]);
+      setActiveTrackId(tempId);
+
+      if (input.initialRoadmap && input.initialRoadmap.length > 0) {
+        const seeded: LearningItem[] = input.initialRoadmap.map((item, idx) => ({
+          id: `preview-item-${idx}-${Date.now()}`,
+          user_id: "preview",
+          track_id: tempId,
+          topic: item.topic,
+          category: item.category || "Core",
+          notes: item.notes || null,
+          status: "planned",
+          resources: [] as any,
+          order_index: idx,
+          completed_at: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+        setRoadmapItems(seeded);
+      } else {
+        setRoadmapItems([]);
+      }
+      showToast(`Created track: "${input.title}"!`);
+      return;
+    }
+
+    const created = await createLearningTrack(supabase, userId, input);
+    if (created) {
+      setTracks((prev) => [...prev, created]);
+      setActiveTrackId(created.id);
+      showToast(`Created track: "${created.title}"!`);
+    }
+  };
+
+  const handleDeleteTrack = async (trackId: string) => {
+    setTracks((prev) => {
+      const remaining = prev.filter((t) => t.id !== trackId);
+      if (activeTrackId === trackId && remaining.length > 0) {
+        setActiveTrackId(remaining[0].id);
+      }
+      return remaining;
+    });
+    showToast("Track deleted.");
+
+    if (userId) {
+      try {
+        await deleteLearningTrack(supabase, userId, trackId);
+      } catch (e) {
+        console.warn("Delete track error:", e);
+      }
+    }
+  };
+
+  // Study Timer Session Logging
   const handleSaveStudySession = async (
     durationSeconds: number,
     notes?: string
@@ -287,7 +381,7 @@ export function LearningContainer() {
     }
   };
 
-  // Roadmap
+  // Roadmap Items
   const handleToggleRoadmapStatus = async (
     itemId: string,
     newStatus: "planned" | "in_progress" | "completed"
@@ -304,14 +398,7 @@ export function LearningContainer() {
             : item
         )
       );
-      if (activeTrackId) {
-        const nextList = roadmapItems.map((item) =>
-          item.id === itemId ? { ...item, status: newStatus } : item
-        );
-        const prog = calculateRoadmapProgress(nextList);
-        setProgressMap((prev) => ({ ...prev, [activeTrackId]: prog.percentage }));
-      }
-      showToast(`Updated topic status to ${newStatus.replace("_", " ")}`);
+      showToast(`Updated status to ${newStatus.replace("_", " ")}`);
       return;
     }
 
@@ -326,65 +413,134 @@ export function LearningContainer() {
       setRoadmapItems((prev) =>
         prev.map((item) => (item.id === itemId ? updated : item))
       );
-      if (activeTrackId) {
-        const nextList = roadmapItems.map((item) =>
-          item.id === itemId ? updated : item
-        );
-        const prog = calculateRoadmapProgress(nextList);
-        setProgressMap((prev) => ({ ...prev, [activeTrackId]: prog.percentage }));
-      }
       showToast(
         newStatus === "completed"
-          ? `Completed "${updated.topic}"! Added to timeline.`
-          : `Updated topic status to ${newStatus.replace("_", " ")}`
+          ? `Mastered "${updated.topic}"! Added to timeline.`
+          : `Updated status to ${newStatus.replace("_", " ")}`
       );
     }
   };
 
-  const handleUpdateRoadmapNotes = async (itemId: string, notes: string) => {
+  const handleUpdateTopic = async (
+    itemId: string,
+    updates: {
+      topic?: string;
+      category?: string | null;
+      status?: "planned" | "in_progress" | "completed";
+      notes?: string | null;
+      resources?: Json;
+    }
+  ) => {
+    setRoadmapItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, ...updates } : item))
+    );
+    showToast("Saved study notes & topic progress!");
+
+    if (userId) {
+      try {
+        const updated = await updateRoadmapItem(supabase, userId, itemId, updates);
+        if (updated) {
+          setRoadmapItems((prev) =>
+            prev.map((item) => (item.id === itemId ? updated : item))
+          );
+        }
+      } catch (e) {
+        console.warn("Update topic warning:", e);
+      }
+    }
+  };
+
+  const handleAddTopic = async (input: {
+    topic: string;
+    category: string;
+    notes?: string;
+    status: "planned" | "in_progress" | "completed";
+  }) => {
+    if (!activeTrackId) return;
+
     if (!userId) {
-      setRoadmapItems((prev) =>
-        prev.map((item) => (item.id === itemId ? { ...item, notes } : item))
-      );
-      showToast("Topic notes saved");
+      const newItem: LearningItem = {
+        id: `topic-${Date.now()}`,
+        user_id: "preview",
+        track_id: activeTrackId,
+        topic: input.topic,
+        category: input.category,
+        notes: input.notes || null,
+        status: input.status,
+        resources: [] as any,
+        order_index: roadmapItems.length,
+        completed_at: input.status === "completed" ? new Date().toISOString() : null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setRoadmapItems((prev) => [...prev, newItem]);
+      showToast(`Added topic "${input.topic}" to roadmap!`);
       return;
     }
 
-    const updated = await updateRoadmapItemNotes(supabase, userId, itemId, notes);
-    if (updated) {
-      setRoadmapItems((prev) =>
-        prev.map((item) => (item.id === itemId ? updated : item))
-      );
-      showToast("Topic notes saved");
+    const created = await createRoadmapItem(supabase, userId, {
+      track_id: activeTrackId,
+      topic: input.topic,
+      category: input.category,
+      notes: input.notes,
+      status: input.status,
+      order_index: roadmapItems.length,
+    });
+    if (created) {
+      setRoadmapItems((prev) => [...prev, created]);
+      showToast(`Added topic "${created.topic}" to roadmap!`);
+    }
+  };
+
+  const handleDeleteTopic = async (itemId: string) => {
+    setRoadmapItems((prev) => prev.filter((item) => item.id !== itemId));
+    showToast("Topic removed from roadmap.");
+
+    if (userId) {
+      try {
+        await deleteRoadmapItem(supabase, userId, itemId);
+      } catch (e) {
+        console.warn("Delete topic warning:", e);
+      }
     }
   };
 
   // Concepts
-  const handleAddConcept = async (input: {
-    title: string;
-    notes: string;
-    learned_at?: string;
-  }) => {
-    if (!userId) return;
-    const created = await createLearningConcept(
-      supabase,
-      userId,
-      {
+  const handleAddConcept = async (input: CreateConceptInput) => {
+    if (!userId) {
+      const newConcept: LearningConcept = {
+        id: `concept-${Date.now()}`,
+        user_id: "preview",
         track_id: activeTrackId,
         title: input.title,
         notes: input.notes,
-        learned_at: input.learned_at,
-      },
+        learned_at: input.learned_at || new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setConcepts((prev) => [newConcept, ...prev]);
+      showToast(`Logged concept "${input.title}"`);
+      return;
+    }
+
+    const created = await createLearningConcept(
+      supabase,
+      userId,
+      { ...input, track_id: activeTrackId },
       activeTrack?.title
     );
     if (created) {
       setConcepts((prev) => [created, ...prev]);
-      showToast(`Logged concept "${created.title}" to timeline!`);
+      showToast(`Logged concept "${created.title}"`);
     }
   };
 
   const handleDeleteConcept = async (conceptId: string) => {
-    if (!userId) return;
+    if (!userId) {
+      setConcepts((prev) => prev.filter((c) => c.id !== conceptId));
+      showToast("Concept deleted");
+      return;
+    }
     const success = await deleteLearningConcept(supabase, userId, conceptId);
     if (success) {
       setConcepts((prev) => prev.filter((c) => c.id !== conceptId));
@@ -397,14 +553,39 @@ export function LearningContainer() {
     input: CreateProjectInput,
     projectId?: string
   ) => {
-    if (!userId) return;
+    if (!userId) {
+      if (projectId) {
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? ({ ...p, ...input, updated_at: new Date().toISOString() } as Project)
+              : p
+          )
+        );
+        showToast("Project updated");
+      } else {
+        const newProj: Project = {
+          id: `proj-${Date.now()}`,
+          user_id: "preview",
+          track_id: activeTrackId,
+          title: input.title,
+          description: input.description || null,
+          tech_stack: input.tech_stack,
+          status: input.status,
+          repo_url: input.repo_url || null,
+          deployed_url: input.deployed_url || null,
+          readme_notes: input.readme_notes || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setProjects((prev) => [newProj, ...prev]);
+        showToast(`Logged project "${newProj.title}"`);
+      }
+      return;
+    }
+
     if (projectId) {
-      const updated = await updateProject(
-        supabase,
-        userId,
-        projectId,
-        input as Partial<Project>
-      );
+      const updated = await updateProject(supabase, userId, projectId, input);
       if (updated) {
         setProjects((prev) =>
           prev.map((p) => (p.id === projectId ? updated : p))
@@ -412,16 +593,23 @@ export function LearningContainer() {
         showToast("Project updated");
       }
     } else {
-      const created = await createProject(supabase, userId, input);
+      const created = await createProject(supabase, userId, {
+        ...input,
+        track_id: activeTrackId,
+      });
       if (created) {
         setProjects((prev) => [created, ...prev]);
-        showToast(`Created project "${created.title}"!`);
+        showToast(`Logged project "${created.title}"!`);
       }
     }
   };
 
   const handleDeleteProject = async (projectId: string) => {
-    if (!userId) return;
+    if (!userId) {
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      showToast("Project deleted");
+      return;
+    }
     const success = await deleteProject(supabase, userId, projectId);
     if (success) {
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
@@ -431,8 +619,30 @@ export function LearningContainer() {
 
   // Interview Q&A
   const handleAddInterviewQa = async (input: CreateInterviewQaInput) => {
-    if (!userId) return;
-    const created = await createInterviewQa(supabase, userId, input);
+    if (!userId) {
+      const newQa: InterviewQa = {
+        id: `qa-${Date.now()}`,
+        user_id: "preview",
+        track_id: activeTrackId,
+        technology: input.technology,
+        question: input.question,
+        answer: input.answer,
+        difficulty: input.difficulty || "medium",
+        tags: input.tags,
+        confidence: input.confidence || 3,
+        last_practiced_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setInterviewQuestions((prev) => [newQa, ...prev]);
+      showToast("Interview question added");
+      return;
+    }
+
+    const created = await createInterviewQa(supabase, userId, {
+      ...input,
+      track_id: activeTrackId,
+    });
     if (created) {
       setInterviewQuestions((prev) => [created, ...prev]);
       showToast("Interview question added");
@@ -440,24 +650,11 @@ export function LearningContainer() {
   };
 
   const handleUpdateConfidence = async (qaId: string, confidence: number) => {
-    if (!userId) {
-      setInterviewQuestions((prev) =>
-        prev.map((q) => (q.id === qaId ? { ...q, confidence } : q))
-      );
-      showToast(`Updated confidence to ${confidence} stars`);
-      return;
-    }
-    const updated = await updateInterviewQaConfidence(
-      supabase,
-      userId,
-      qaId,
-      confidence
+    setInterviewQuestions((prev) =>
+      prev.map((q) => (q.id === qaId ? { ...q, confidence } : q))
     );
-    if (updated) {
-      setInterviewQuestions((prev) =>
-        prev.map((q) => (q.id === qaId ? updated : q))
-      );
-      showToast(`Updated confidence to ${confidence} stars`);
+    if (userId) {
+      await updateInterviewQaConfidence(supabase, userId, qaId, confidence);
     }
   };
 
@@ -477,21 +674,21 @@ export function LearningContainer() {
   // Mini Projects
   const handleStartMiniProject = async (idea: MiniProjectIdea) => {
     if (!userId) {
-      const mockProject: Project = {
-        id: `preview-proj-${Date.now()}`,
+      const project: Project = {
+        id: `proj-${Date.now()}`,
         user_id: "preview",
         track_id: activeTrackId,
         title: idea.title,
         description: idea.description,
-        tech_stack: idea.suggested_tech,
+        tech_stack: idea.suggested_tech || [],
         status: "in_progress",
         repo_url: null,
         deployed_url: null,
-        readme_notes: `Started from mini-project idea: ${idea.title}`,
+        readme_notes: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      setProjects((prev) => [mockProject, ...prev]);
+      setProjects((prev) => [project, ...prev]);
       setMiniProjectIdeas((prev) =>
         prev.map((i) => (i.id === idea.id ? { ...i, is_completed: true } : i))
       );
@@ -546,22 +743,33 @@ export function LearningContainer() {
             Full-Stack Learning Hub
           </h1>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Master the Java/Spring Boot & MERN stacks with roadmaps, concept notes, project showcase, and mock interviews
+            Master Spring Boot, MERN, System Design, DevOps, and custom tracks with deep study notes, code implementations, and project milestones
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={fetchTrackData}
-          disabled={isLoading}
-          className="flex items-center gap-1.5 rounded-xl border border-[var(--surface-muted)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 transition-colors self-start sm:self-auto"
-          title="Refresh"
-        >
-          <RefreshCw
-            className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
-          />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={fetchTrackData}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
+            />
+            <span>Refresh</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCreateTrackOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Track</span>
+          </button>
+        </div>
       </div>
 
       {/* 1. Track Selector */}
@@ -570,27 +778,29 @@ export function LearningContainer() {
         activeTrackId={activeTrackId}
         onSelectTrack={(id) => setActiveTrackId(id)}
         progressMap={progressMap}
+        onOpenCreateTrack={() => setIsCreateTrackOpen(true)}
+        onDeleteTrack={handleDeleteTrack}
       />
 
-      {/* 2. Study Session Timer Bar (reusing daily tracker activity logger) */}
+      {/* 2. Study Session Timer Bar */}
       <StudyTimerBar
         track={activeTrack}
         onSaveSession={handleSaveStudySession}
       />
 
       {/* 3. Navigation Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-[var(--surface-muted)] overflow-x-auto pb-1 text-xs font-semibold w-full">
+      <div className="flex items-center gap-1.5 border-b border-[var(--border)] overflow-x-auto pb-1 text-xs font-semibold w-full">
         <button
           type="button"
           onClick={() => setActiveTab("roadmap")}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
             activeTab === "roadmap"
-              ? "bg-[var(--primary)] text-white shadow-sm"
+              ? "bg-[var(--primary)] text-white shadow-xs"
               : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
           }`}
         >
           <BookOpen className="h-4 w-4" />
-          <span>Roadmap ({roadmapItems.length})</span>
+          <span>Roadmap & Notes ({roadmapItems.length})</span>
         </button>
 
         <button
@@ -598,7 +808,7 @@ export function LearningContainer() {
           onClick={() => setActiveTab("concepts")}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
             activeTab === "concepts"
-              ? "bg-[var(--primary)] text-white shadow-sm"
+              ? "bg-[var(--primary)] text-white shadow-xs"
               : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
           }`}
         >
@@ -611,7 +821,7 @@ export function LearningContainer() {
           onClick={() => setActiveTab("projects")}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
             activeTab === "projects"
-              ? "bg-[var(--primary)] text-white shadow-sm"
+              ? "bg-[var(--primary)] text-white shadow-xs"
               : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
           }`}
         >
@@ -624,7 +834,7 @@ export function LearningContainer() {
           onClick={() => setActiveTab("interview")}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
             activeTab === "interview"
-              ? "bg-[var(--primary)] text-white shadow-sm"
+              ? "bg-[var(--primary)] text-white shadow-xs"
               : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
           }`}
         >
@@ -637,7 +847,7 @@ export function LearningContainer() {
           onClick={() => setActiveTab("mini_projects")}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
             activeTab === "mini_projects"
-              ? "bg-[var(--primary)] text-white shadow-sm"
+              ? "bg-[var(--primary)] text-white shadow-xs"
               : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
           }`}
         >
@@ -650,7 +860,7 @@ export function LearningContainer() {
           onClick={() => setActiveTab("resources")}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all whitespace-nowrap ${
             activeTab === "resources"
-              ? "bg-[var(--primary)] text-white shadow-sm"
+              ? "bg-[var(--primary)] text-white shadow-xs"
               : "text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)]"
           }`}
         >
@@ -665,8 +875,11 @@ export function LearningContainer() {
           <RoadmapChecklist
             items={roadmapItems}
             trackTitle={activeTrack?.title || "Track"}
+            masteryBreakdown={currentTrackMastery}
             onToggleStatus={handleToggleRoadmapStatus}
-            onUpdateNotes={handleUpdateRoadmapNotes}
+            onUpdateTopic={handleUpdateTopic}
+            onAddTopic={handleAddTopic}
+            onDeleteTopic={handleDeleteTopic}
           />
         )}
 
@@ -714,6 +927,13 @@ export function LearningContainer() {
           />
         )}
       </div>
+
+      {/* Create Track Modal */}
+      <CreateTrackModal
+        isOpen={isCreateTrackOpen}
+        onClose={() => setIsCreateTrackOpen(false)}
+        onCreateTrack={handleCreateTrack}
+      />
     </div>
   );
 }
