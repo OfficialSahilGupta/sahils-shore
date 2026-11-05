@@ -310,5 +310,11 @@ _Update this section after every phase so context survives between sessions._
   - Added comprehensive DSA topic canonicalization (`canonicalDsaTopic` and `isSameDsaTopic`) properly mapping `HashMap`, `hashmap`, `Hash Table`, and `Hashing` into unified progress stats and filters.
   - Re-engineered Blind 150 matching engine (`lib/dsa/blind150.ts`) with LeetCode slug extraction (`extractLeetCodeSlug`), problem number stripping (`stripProblemNumber`), and solved status detection (`isBlindProblemSolved`) recognizing reviewed/scheduled problems so solved medium problems are accurately captured.
   - Completed project-wide emoji purge: eliminated 100% of default OS/system emojis and replaced them with accessible, crisp Lucide React SVG icons, enforcing the zero-tolerance emoji rule.
-  - Wrote 5 new unit tests verifying advanced Blind 150 matching, slug extraction, number stripping, and topic canonicalization (165 tests passing total).
+  - Built Full-Stack Learning Hub interactive inline sub-topic drawer in `RoadmapChecklist.tsx` enabling direct sub-topic creation, individual completion checkmarks, indicators for Architecture & Notes, Code Implementations, and Doc links, and one-click launch into focused study mode.
+  - Added full background scroll locking across all modals (`TopicStudyModal`, `CreateTrackModal`, `AddTopicModal`, `SafeDeleteModal`) via `document.body.style.overflow = "hidden"`, completely eliminating background jitter and scroll bleed.
+  - Refactored `calculateDynamicTrackMastery` so unstarted tracks start strictly at a clean 0% baseline (Beginner tier), earning mastery points as topics, sub-topics, questions, concepts, and projects are completed.
+  - Created deliberate `SafeDeleteModal.tsx` protecting tracks, topics, sub-topics, concepts, and projects with blast radius warnings and mandatory typed confirmation for high-impact entities, replacing all 1-click and native `window.confirm` calls.
+  - Enhanced Concepts Log with Engineering Area / Topic association dropdown, horizontal Area filter tabs, and area badges.
+  - Upgraded track creation with isolated localStorage persistence (`shore_preview_tracks`, `shore_preview_roadmap_${trackId}`) and instant state hydration, supporting unlimited custom tracks (e.g. System Design, DevOps, Go) without overwriting.
+  - Wrote 12 new unit tests covering 0% starting mastery baseline, sub-topic multi-section persistence, safe deletion safeguards, and custom track state hydration (177 tests passing total).
 - Known issues / TODOs: _(none yet)_
