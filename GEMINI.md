@@ -102,6 +102,7 @@ Verify all text/background pairs meet WCAG AA (4.5:1 for body text).
 
 ## Conventions (always follow)
 
+- **No Emojis (Mandatory Zero-Tolerance Rule):** NEVER use system/OS default emojis anywhere in the app (no emoji characters like 🔥, ✨, 🎉, 💡, 📍, ★, ☕, ⚡, 🍽️, 💳, 📁, 😞, 😐, 🙂, 😊, 🌟, 🪫, 🔋, 🚀, etc.). Always use crisp, accessible SVGs (Lucide React icons or inline SVGs). This applies across all UI components, toast notifications, badges, headers, modals, markdown templates, and copy.
 - **Money:** store as integer paise (Rs 10.50 = 1050). Never use floats for money.
 - **Time:** store timestamps in UTC (`timestamptz`); display in `Asia/Kolkata`. "Today" means the IST calendar day.
 - **IDs:** UUIDs. Every table has `id`, `user_id`, `created_at`, `updated_at`.
@@ -305,4 +306,9 @@ _Update this section after every phase so context survives between sessions._
   - Implemented Blind 150 / NeetCode 150 curated problem roadmap (`lib/dsa/blind150.ts`, `Blind150Tracker.tsx`) spanning 18 core algorithmic patterns with problem hints, time/space complexity, LeetCode links, interactive progress rings, and 1-click batch import.
   - Built resilient DSA problem creation & spaced-repetition rating with graceful offline local fallback objects to guarantee zero data loss during network/auth disruptions.
   - Wrote 12 new unit tests covering AI Coach toggle parsing, Blind 150 dataset integrity, title fuzzy normalization, and completion statistics (160 tests passing total).
+  - Upgraded `Select` component (`components/ui/select.tsx`) into a luxury custom dropdown popover with search filtering, active checkmark indicators, zero OS default styling, and click-outside dismissal.
+  - Added comprehensive DSA topic canonicalization (`canonicalDsaTopic` and `isSameDsaTopic`) properly mapping `HashMap`, `hashmap`, `Hash Table`, and `Hashing` into unified progress stats and filters.
+  - Re-engineered Blind 150 matching engine (`lib/dsa/blind150.ts`) with LeetCode slug extraction (`extractLeetCodeSlug`), problem number stripping (`stripProblemNumber`), and solved status detection (`isBlindProblemSolved`) recognizing reviewed/scheduled problems so solved medium problems are accurately captured.
+  - Completed project-wide emoji purge: eliminated 100% of default OS/system emojis and replaced them with accessible, crisp Lucide React SVG icons, enforcing the zero-tolerance emoji rule.
+  - Wrote 5 new unit tests verifying advanced Blind 150 matching, slug extraction, number stripping, and topic canonicalization (165 tests passing total).
 - Known issues / TODOs: _(none yet)_
