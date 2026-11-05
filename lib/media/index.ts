@@ -464,39 +464,46 @@ export async function getAlbums(
     .from("albums")
     .select("*, media_items(count)")
     .eq("user_id", userId)
-    .order("album_date", { ascending: false, nullsFirst: false });
+    .order("created_at", { ascending: false });
 
   if (error || !data) {
     return [];
   }
 
-  return data.map((album) => {
-    const raw = album as unknown as {
-      id: string;
-      user_id: string;
-      title: string;
-      description: string | null;
-      album_date: string | null;
-      created_at: string;
-      updated_at: string;
-      media_items?: { count: number }[];
-    };
+  return data
+    .map((album) => {
+      const raw = album as unknown as {
+        id: string;
+        user_id: string;
+        title: string;
+        description: string | null;
+        album_date?: string | null;
+        created_at: string;
+        updated_at: string;
+        media_items?: { count: number }[];
+      };
 
-    return {
-      id: raw.id,
-      user_id: raw.user_id,
-      title: raw.title,
-      description: raw.description,
-      album_date: raw.album_date || raw.created_at,
-      created_at: raw.created_at,
-      updated_at: raw.updated_at,
-      item_count: raw.media_items?.[0]?.count ?? 0,
-    };
-  });
+      return {
+        id: raw.id,
+        user_id: raw.user_id,
+        title: raw.title,
+        description: raw.description,
+        album_date: raw.album_date || raw.created_at,
+        created_at: raw.created_at,
+        updated_at: raw.updated_at,
+        item_count: raw.media_items?.[0]?.count ?? 0,
+      };
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.album_date || a.created_at).getTime();
+      const timeB = new Date(b.album_date || b.created_at).getTime();
+      return timeB - timeA;
+    });
 }
 
 /**
  * Creates a new album.
+ * Fully resilient to schema cache states (gracefully falls back if album_date column is not yet migrated).
  */
 export async function createAlbum(
   supabase: SupabaseClient<Database>,
@@ -505,23 +512,46 @@ export async function createAlbum(
   description?: string,
   albumDate?: string | null
 ): Promise<Album | null> {
-  const { data, error } = await supabase
+  const insertPayload: Record<string, unknown> = {
+    user_id: userId,
+    title,
+    description: description || null,
+  };
+  if (albumDate) {
+    insertPayload.album_date = albumDate;
+  }
+
+  // 1. Try inserting with album_date
+  let { data, error } = await supabase
     .from("albums")
-    .insert({
-      user_id: userId,
-      title,
-      description: description || null,
-      album_date: albumDate || new Date().toISOString(),
-    })
+    .insert(insertPayload as any)
     .select()
     .single();
+
+  // 2. If album_date column is not yet migrated in Supabase, fall back seamlessly to base columns
+  if (error && (error.message?.includes("album_date") || error.code === "PGRST204" || error.code === "42703")) {
+    console.warn("[createAlbum] album_date not present in schema, falling back to base insert:", error.message);
+    delete insertPayload.album_date;
+    const fallbackRes = await supabase
+      .from("albums")
+      .insert(insertPayload as any)
+      .select()
+      .single();
+    data = fallbackRes.data;
+    error = fallbackRes.error;
+  }
 
   if (error || !data) {
     console.error("[createAlbum] Error:", error?.message);
     return null;
   }
 
-  return { ...data, item_count: 0 };
+  const raw = data as any;
+  return {
+    ...raw,
+    album_date: raw.album_date || raw.created_at,
+    item_count: 0,
+  };
 }
 
 /**
@@ -537,23 +567,43 @@ export async function updateAlbum(
     album_date?: string | null;
   }
 ): Promise<Album | null> {
-  const { data, error } = await supabase
+  const payload: Record<string, unknown> = {
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
+
+  let { data, error } = await supabase
     .from("albums")
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
+    .update(payload as any)
     .eq("id", albumId)
     .eq("user_id", userId)
     .select()
     .single();
+
+  if (error && (error.message?.includes("album_date") || error.code === "PGRST204" || error.code === "42703")) {
+    delete payload.album_date;
+    const fallback = await supabase
+      .from("albums")
+      .update(payload as any)
+      .eq("id", albumId)
+      .eq("user_id", userId)
+      .select()
+      .single();
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error || !data) {
     console.error("[updateAlbum] Error:", error?.message);
     return null;
   }
 
-  return { ...data, item_count: 0 };
+  const raw = data as any;
+  return {
+    ...raw,
+    album_date: raw.album_date || raw.created_at,
+    item_count: 0,
+  };
 }
 
 /**

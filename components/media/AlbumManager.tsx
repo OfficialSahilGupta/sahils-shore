@@ -46,6 +46,7 @@ export function AlbumManager({
   const [newDesc, setNewDesc] = useState("");
   const [newDate, setNewDate] = useState(todayIST());
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [albumToDelete, setAlbumToDelete] = useState<Album | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -55,12 +56,16 @@ export function AlbumManager({
     e.preventDefault();
     if (!newTitle.trim()) return;
     setIsCreating(true);
+    setCreateError(null);
     try {
       const isoDate = newDate ? new Date(`${newDate}T12:00:00Z`).toISOString() : undefined;
       await onCreateAlbum(newTitle.trim(), newDesc.trim() || undefined, isoDate);
       setNewTitle("");
       setNewDesc("");
       setNewDate(todayIST());
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create album";
+      setCreateError(msg);
     } finally {
       setIsCreating(false);
     }
@@ -127,6 +132,12 @@ export function AlbumManager({
               </div>
             </div>
           </div>
+          {createError && (
+            <p className="text-[11px] text-danger bg-danger/10 p-2 rounded-lg border border-danger/20">
+              {createError}
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={!newTitle.trim() || isCreating}

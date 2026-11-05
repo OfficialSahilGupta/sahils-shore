@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       // Find or create the album folder inside Shore/Photos/YYYY/MM/<album.title> or Shore/Videos/YYYY/MM/<album.title>
       const { data: album } = await supabase
         .from("albums")
-        .select("title, album_date, created_at")
+        .select("*")
         .eq("id", albumId)
         .eq("user_id", user.id)
         .maybeSingle();

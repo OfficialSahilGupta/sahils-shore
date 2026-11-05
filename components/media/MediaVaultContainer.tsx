@@ -819,10 +819,13 @@ export function MediaVaultContainer() {
           const {
             data: { user },
           } = await supabase.auth.getUser();
-          if (!user) return;
+          if (!user) {
+            throw new Error("User session not found. Please log in.");
+          }
           const created = await createAlbum(supabase, user.id, title, desc, albumDate);
           if (created) {
             setAlbums((prev) => [created, ...prev]);
+            setSelectedAlbumId(created.id);
             // Create matching folder in Google Drive under Shore/Photos/
             fetch("/api/drive/albums", {
               method: "POST",
@@ -832,6 +835,8 @@ export function MediaVaultContainer() {
                 albumDate: created.album_date,
               }),
             }).catch((e) => console.warn("Drive album creation background error:", e));
+          } else {
+            throw new Error("Unable to create album. Please try again.");
           }
         }}
         onDeleteAlbum={handleDeleteAlbum}

@@ -42,7 +42,7 @@ export async function GET() {
 
     const { data: albums } = await supabase
       .from("albums")
-      .select("id, title, album_date, created_at")
+      .select("*")
       .eq("user_id", user.id);
 
     const results: { id: string; title: string; folderId: string }[] = [];
