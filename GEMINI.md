@@ -300,4 +300,9 @@ _Update this section after every phase so context survives between sessions._
   - Added `components/ui/skeleton.tsx`, `app/error.tsx`, and `app/not-found.tsx` for error boundaries and empty states.
   - Documented production setup in `README.md`, including architecture diagram (Mermaid), Google OAuth "In production" consent guide, Supabase migration instructions, and `.env.example`.
   - Wrote 14 unit tests for Phase 12 covering RFC-4180 CSV escaping, backup manifest and key CSV tables, JSON previewing and warning flags, restoration dependency order, 12-backup retention pruning, and offline queue mutation idempotency (148 tests passing total).
+  - Built design-system `Select` component (`components/ui/select.tsx`) with custom chevron, container-constrained truncation, and dark-mode styling, standardizing dropdowns across Todos, Tracker, Expenses, German, Career, Learning, and Dashboard.
+  - Enhanced AI Coach configuration and settings persistence (`lib/coach/service.ts`, `CoachSettings.tsx`, `AICoachCard.tsx`, `/api/coach` PATCH) with localStorage caching, real-time custom event syncing across views, boolean/string state parsing, and Supabase dual-persistence fallback.
+  - Implemented Blind 150 / NeetCode 150 curated problem roadmap (`lib/dsa/blind150.ts`, `Blind150Tracker.tsx`) spanning 18 core algorithmic patterns with problem hints, time/space complexity, LeetCode links, interactive progress rings, and 1-click batch import.
+  - Built resilient DSA problem creation & spaced-repetition rating with graceful offline local fallback objects to guarantee zero data loss during network/auth disruptions.
+  - Wrote 12 new unit tests covering AI Coach toggle parsing, Blind 150 dataset integrity, title fuzzy normalization, and completion statistics (160 tests passing total).
 - Known issues / TODOs: _(none yet)_
