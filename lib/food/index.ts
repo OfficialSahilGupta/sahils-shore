@@ -12,7 +12,7 @@ import { formatINR, createExpense, updateExpense, deleteExpense } from "../expen
 import { getISTDateString, todayIST, addDaysIST } from "../date-utils.ts";
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
-export type MealLocation = "home" | "restaurant" | "office" | "other";
+export type MealLocation = "home" | "amrita_mess" | "restaurant" | "office" | "other";
 
 export interface CreateMealInput {
   meal_type: MealType;
@@ -22,6 +22,7 @@ export interface CreateMealInput {
   cost_paise?: number; // integer paise
   rating?: number | null; // 1-5
   photo_url?: string | null;
+  photo_urls?: string[];
   notes_taste?: string | null;
   notes_health?: string | null;
   is_favorite?: boolean;
@@ -37,6 +38,7 @@ export interface UpdateMealInput {
   cost_paise?: number; // integer paise
   rating?: number | null; // 1-5
   photo_url?: string | null;
+  photo_urls?: string[];
   notes_taste?: string | null;
   notes_health?: string | null;
   is_favorite?: boolean;
@@ -44,8 +46,9 @@ export interface UpdateMealInput {
   eaten_at?: string;
 }
 
-export interface MealWithExpense extends Meal {
+export interface MealWithExpense extends Omit<Meal, "photo_urls"> {
   expense?: Expense | null;
+  photo_urls?: string[];
 }
 
 export interface WeeklyMealDay {
@@ -79,20 +82,39 @@ export function decodeMealFlags(m: any): {
   is_favorite: boolean;
   eat_again: boolean;
   notes_taste: string | null;
+  photo_urls: string[];
 } {
   const hasFavCol = typeof m.is_favorite === "boolean";
   const hasEatAgainCol = typeof m.eat_again === "boolean";
 
   const rawTaste = m.notes_taste || "";
+  // Strictly decouple is_favorite from star rating:
+  // A meal is favorite if explicitly marked, or contains [FAV] marker in legacy notes
   const is_favorite = hasFavCol
     ? m.is_favorite
-    : rawTaste.includes("[FAV]") || m.rating === 5;
+    : rawTaste.includes("[FAV]");
+
   const eat_again = hasEatAgainCol
     ? m.eat_again
-    : rawTaste.includes("[EAT_AGAIN]") || (m.rating && m.rating >= 4);
+    : rawTaste.includes("[EAT_AGAIN]");
+
   const cleanTaste = rawTaste.replace(/\s*\[FAV\]|\s*\[EAT_AGAIN\]/g, "").trim() || null;
 
-  return { is_favorite, eat_again, notes_taste: cleanTaste };
+  // Normalize photo_urls array
+  let photo_urls: string[] = [];
+  if (Array.isArray(m.photo_urls)) {
+    photo_urls = m.photo_urls;
+  } else if (typeof m.photo_urls === "string" && m.photo_urls.startsWith("[")) {
+    try {
+      photo_urls = JSON.parse(m.photo_urls);
+    } catch {
+      photo_urls = [];
+    }
+  } else if (m.photo_url) {
+    photo_urls = [m.photo_url];
+  }
+
+  return { is_favorite, eat_again, notes_taste: cleanTaste, photo_urls };
 }
 
 /**
@@ -195,6 +217,7 @@ export async function getMeals(
       is_favorite: decoded.is_favorite,
       eat_again: decoded.eat_again,
       notes_taste: decoded.notes_taste,
+      photo_urls: decoded.photo_urls,
       expense: m.expense_id ? expenseMap.get(m.expense_id) || null : null,
     };
   });
@@ -214,16 +237,29 @@ export async function createMeal(
   let createdExpenseId: string | null = null;
   let createdExpense: Expense | null = null;
 
-  // 1. If cost > 0, auto-create linked expense
-  const costPaise = input.cost_paise || 0;
+  // 1. If cost > 0, auto-create linked expense (Home and Amrita Mess are always ₹0 expense)
+  const isFreeLocation = input.location_type === "home" || input.location_type === "amrita_mess";
+  const costPaise = isFreeLocation ? 0 : (input.cost_paise || 0);
+
+  const loc = input.location_type || "home";
+  const restaurantName =
+    loc === "amrita_mess"
+      ? (input.restaurant_name?.trim() || "Amrita Mess")
+      : loc === "home"
+      ? null
+      : (input.restaurant_name?.trim() || null);
+
+  const photoUrls = input.photo_urls && input.photo_urls.length > 0
+    ? input.photo_urls
+    : (input.photo_url ? [input.photo_url] : []);
+  const primaryPhotoUrl = photoUrls[0] || input.photo_url || null;
+
   if (costPaise > 0) {
     const foodCatId = await getOrCreateFoodCategory(supabase, userId);
     const placeDesc =
-      input.location_type === "restaurant" && input.restaurant_name
-        ? input.restaurant_name
-        : input.location_type === "home"
-        ? "Home"
-        : input.restaurant_name || input.location_type || "Dining";
+      loc === "restaurant" && restaurantName
+        ? restaurantName
+        : restaurantName || loc || "Dining";
 
     createdExpense = await createExpense(
       supabase,
@@ -245,16 +281,17 @@ export async function createMeal(
   }
 
   // 2. Insert Meal record
-  // Try inserting with is_favorite & eat_again first
+  // Try inserting with is_favorite, eat_again & photo_urls
   const fullPayload = {
     user_id: userId,
     meal_type: input.meal_type,
     description: input.description,
-    location_type: input.location_type || "home",
-    restaurant_name: input.restaurant_name || null,
+    location_type: loc,
+    restaurant_name: restaurantName,
     expense_id: createdExpenseId,
     rating: input.rating || null,
-    photo_url: input.photo_url || null,
+    photo_url: primaryPhotoUrl,
+    photo_urls: photoUrls,
     notes_taste: input.notes_taste || null,
     notes_health: input.notes_health || null,
     is_favorite: input.is_favorite || false,
@@ -268,17 +305,17 @@ export async function createMeal(
   if (!res1.error) {
     mealRow = res1.data;
   } else if (res1.error.code === "PGRST204" || res1.error.message?.includes("column")) {
-    // If table doesn't have is_favorite / eat_again columns, encode into notes_taste gracefully
+    // If table doesn't have is_favorite / eat_again / photo_urls columns, encode gracefully
     const encodedTaste = encodeTasteNotes(input.notes_taste, input.is_favorite, input.eat_again);
     const fallbackPayload = {
       user_id: userId,
       meal_type: input.meal_type,
       description: input.description,
-      location_type: input.location_type || "home",
-      restaurant_name: input.restaurant_name || null,
+      location_type: loc,
+      restaurant_name: restaurantName,
       expense_id: createdExpenseId,
       rating: input.rating || null,
-      photo_url: input.photo_url || null,
+      photo_url: primaryPhotoUrl,
       notes_taste: encodedTaste,
       notes_health: input.notes_health || null,
       eaten_at: eatenAt,
@@ -303,11 +340,12 @@ export async function createMeal(
   }
 
   const flags = decodeMealFlags(mealRow);
-  const createdMeal: Meal = {
+  const createdMeal = {
     ...mealRow,
     is_favorite: flags.is_favorite,
     eat_again: flags.eat_again,
     notes_taste: flags.notes_taste,
+    photo_urls: flags.photo_urls.length > 0 ? flags.photo_urls : photoUrls,
   };
 
   // 3. Write Timeline Event: meal_logged
@@ -348,15 +386,29 @@ export async function updateMeal(
 ): Promise<MealWithExpense | null> {
   let expenseId = currentMeal.expense_id;
   let linkedExpense = currentMeal.expense || null;
-  const newCostPaise = input.cost_paise !== undefined ? input.cost_paise : (linkedExpense?.amount_paise || 0);
+
+  const loc = input.location_type !== undefined ? input.location_type : currentMeal.location_type;
+  const isFreeLocation = loc === "home" || loc === "amrita_mess";
+  const newCostPaise = isFreeLocation
+    ? 0
+    : input.cost_paise !== undefined
+    ? input.cost_paise
+    : (linkedExpense?.amount_paise || 0);
+
+  const restaurantName =
+    loc === "amrita_mess"
+      ? (input.restaurant_name !== undefined ? (input.restaurant_name?.trim() || "Amrita Mess") : currentMeal.restaurant_name || "Amrita Mess")
+      : loc === "home"
+      ? null
+      : (input.restaurant_name !== undefined ? (input.restaurant_name?.trim() || null) : currentMeal.restaurant_name);
 
   // Synchronize linked expense
   if (expenseId && newCostPaise > 0) {
     // Update existing linked expense
     const placeDesc =
-      input.location_type === "restaurant" && input.restaurant_name
-        ? input.restaurant_name
-        : input.restaurant_name || currentMeal.restaurant_name || currentMeal.location_type;
+      loc === "restaurant" && restaurantName
+        ? restaurantName
+        : restaurantName || loc || "Dining";
 
     const desc = input.description || currentMeal.description;
     const mType = input.meal_type || currentMeal.meal_type;
@@ -368,7 +420,7 @@ export async function updateMeal(
       spent_at: input.eaten_at || currentMeal.eaten_at,
     });
   } else if (expenseId && newCostPaise === 0) {
-    // Cost was removed -> delete linked expense
+    // Cost was removed or changed to free location -> delete linked expense
     await deleteExpense(supabase, userId, expenseId);
     expenseId = null;
     linkedExpense = null;
@@ -376,9 +428,9 @@ export async function updateMeal(
     // Cost was added -> create new linked expense
     const foodCatId = await getOrCreateFoodCategory(supabase, userId);
     const placeDesc =
-      input.location_type === "restaurant" && input.restaurant_name
-        ? input.restaurant_name
-        : input.restaurant_name || input.location_type || "Dining";
+      loc === "restaurant" && restaurantName
+        ? restaurantName
+        : restaurantName || loc || "Dining";
 
     const desc = input.description || currentMeal.description;
     const mType = input.meal_type || currentMeal.meal_type;
@@ -402,15 +454,21 @@ export async function updateMeal(
     }
   }
 
+  const photoUrls = input.photo_urls !== undefined
+    ? input.photo_urls
+    : (input.photo_url ? [input.photo_url] : currentMeal.photo_urls || (currentMeal.photo_url ? [currentMeal.photo_url] : []));
+  const primaryPhotoUrl = photoUrls[0] || input.photo_url || null;
+
   // Update Meal table
   const fullUpdatePayload = {
     meal_type: input.meal_type,
     description: input.description,
-    location_type: input.location_type,
-    restaurant_name: input.restaurant_name,
+    location_type: loc,
+    restaurant_name: restaurantName,
     expense_id: expenseId,
     rating: input.rating,
-    photo_url: input.photo_url,
+    photo_url: primaryPhotoUrl,
+    photo_urls: photoUrls,
     notes_taste: input.notes_taste,
     notes_health: input.notes_health,
     is_favorite: input.is_favorite,
@@ -436,11 +494,11 @@ export async function updateMeal(
     const fallbackUpdate = {
       meal_type: input.meal_type,
       description: input.description,
-      location_type: input.location_type,
-      restaurant_name: input.restaurant_name,
+      location_type: loc,
+      restaurant_name: restaurantName,
       expense_id: expenseId,
       rating: input.rating,
-      photo_url: input.photo_url,
+      photo_url: primaryPhotoUrl,
       notes_taste: encodedTaste,
       notes_health: input.notes_health,
       eaten_at: input.eaten_at,
@@ -466,6 +524,7 @@ export async function updateMeal(
     is_favorite: flags.is_favorite,
     eat_again: flags.eat_again,
     notes_taste: flags.notes_taste,
+    photo_urls: flags.photo_urls.length > 0 ? flags.photo_urls : photoUrls,
     expense: linkedExpense,
   };
 }
@@ -579,18 +638,19 @@ export async function toggleMealEatAgain(
 }
 
 /**
- * Fetches meals marked as favorite or high-rated.
+ * Fetches meals marked as favorite.
  */
 export async function getFavoriteMeals(
   supabase: SupabaseClient<Database>,
   userId: string
 ): Promise<MealWithExpense[]> {
   const allMeals = await getMeals(supabase, userId);
-  return allMeals.filter((m) => m.is_favorite || (m.rating && m.rating >= 4));
+  return allMeals.filter((m) => m.is_favorite === true);
 }
 
 /**
  * Fetches unique places and restaurants marked with "Eat Again" or rating >= 4.
+ * Excludes Home and Amrita Mess so it remains a curated dining directory.
  */
 export async function getPlacesToEatAgain(
   supabase: SupabaseClient<Database>,
@@ -618,8 +678,12 @@ export async function getPlacesToEatAgain(
   >();
 
   allMeals.forEach((m) => {
+    // Exclude home and amrita_mess from outside dining directory
+    if (m.location_type === "home" || m.location_type === "amrita_mess") return;
     const place = m.restaurant_name?.trim();
     if (!place) return;
+    const lower = place.toLowerCase();
+    if (lower === "home" || lower === "amrita mess" || lower === "amrita_mess" || lower === "kitchen") return;
 
     const existing = placeMap.get(place) || {
       ratings: [],

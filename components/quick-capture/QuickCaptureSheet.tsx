@@ -32,6 +32,7 @@ import {
   Calendar,
   AlertCircle,
   Play,
+  Check,
 } from "lucide-react";
 import { Select } from "@/components/ui/select";
 
@@ -60,6 +61,7 @@ export function QuickCaptureSheet() {
 
   // Form states - Meal
   const [mealSlot, setMealSlot] = useState<"breakfast" | "lunch" | "snack" | "dinner">("lunch");
+  const [mealLocation, setMealLocation] = useState<"amrita_mess" | "home" | "restaurant" | "office" | "other">("amrita_mess");
   const [mealItems, setMealItems] = useState("");
   const [mealRestaurant, setMealRestaurant] = useState("");
   const [mealCost, setMealCost] = useState("");
@@ -258,14 +260,22 @@ export function QuickCaptureSheet() {
     }
 
     setIsSubmitting(true);
+    const isFreeLoc = mealLocation === "amrita_mess" || mealLocation === "home";
     const parsedCost = parseFloat(mealCost);
-    const costPaise = !isNaN(parsedCost) && parsedCost > 0 ? rupeesToPaise(parsedCost) : 0;
+    const costPaise = !isFreeLoc && !isNaN(parsedCost) && parsedCost > 0 ? rupeesToPaise(parsedCost) : 0;
+    const computedPlace =
+      mealLocation === "amrita_mess"
+        ? "Amrita Mess"
+        : mealLocation === "home"
+        ? null
+        : mealRestaurant.trim() || null;
 
     if (!isOnline) {
       await enqueueMutation("meal", {
         meal_type: mealSlot,
+        location_type: mealLocation,
         description: mealItems.trim(),
-        restaurant_name: mealRestaurant.trim() || null,
+        restaurant_name: computedPlace,
         cost_paise: costPaise,
         rating: mealRating,
       });
@@ -282,8 +292,9 @@ export function QuickCaptureSheet() {
       const supabase = createClient();
       const res = await createMeal(supabase, userId || "anonymous", {
         meal_type: mealSlot,
+        location_type: mealLocation,
         description: mealItems.trim(),
-        restaurant_name: mealRestaurant.trim() || null,
+        restaurant_name: computedPlace,
         cost_paise: costPaise,
         rating: mealRating,
       });
@@ -305,8 +316,9 @@ export function QuickCaptureSheet() {
     } catch {
       await enqueueMutation("meal", {
         meal_type: mealSlot,
+        location_type: mealLocation,
         description: mealItems.trim(),
-        restaurant_name: mealRestaurant.trim() || null,
+        restaurant_name: computedPlace,
         cost_paise: costPaise,
         rating: mealRating,
       });
@@ -675,13 +687,41 @@ export function QuickCaptureSheet() {
                 </div>
               </div>
 
+              {/* Location Selector */}
+              <div>
+                <label className="block text-[11px] font-semibold text-text-muted mb-1.5">
+                  Location
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { id: "amrita_mess", label: "Amrita Mess" },
+                    { id: "home", label: "Home" },
+                    { id: "restaurant", label: "Restaurant" },
+                    { id: "office", label: "Office" },
+                  ].map((loc) => (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      onClick={() => setMealLocation(loc.id as any)}
+                      className={`py-1.5 text-xs font-semibold rounded-xl border text-center transition-all ${
+                        mealLocation === loc.id
+                          ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
+                          : "border-border text-text-muted hover:bg-surface-muted"
+                      }`}
+                    >
+                      {loc.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-text mb-1">
                   What did you eat?
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Oats with banana, peanut butter, and almonds"
+                  placeholder="e.g. Dosa with sambar, Dal roti"
                   value={mealItems}
                   onChange={(e) => setMealItems(e.target.value)}
                   autoFocus
@@ -689,20 +729,29 @@ export function QuickCaptureSheet() {
                 />
               </div>
 
+              {/* Cost & Rating */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-text-muted mb-1">
-                    Cost in INR (₹)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00 (syncs to Food expense)"
-                    value={mealCost}
-                    onChange={(e) => setMealCost(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-surface text-text focus:outline-hidden focus:ring-1 focus:ring-primary placeholder:text-text-muted/60"
-                  />
-                </div>
+                {mealLocation === "amrita_mess" || mealLocation === "home" ? (
+                  <div className="p-2 rounded-xl bg-primary/10 border border-primary/20 text-[11px] text-primary flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 shrink-0" />
+                    <span>Included · ₹0</span>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-text-muted mb-1">
+                      Cost in INR (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      placeholder="0.00"
+                      value={mealCost}
+                      onChange={(e) => setMealCost(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-surface text-text focus:outline-hidden focus:ring-1 focus:ring-primary placeholder:text-text-muted/60 font-mono"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-[11px] font-semibold text-text-muted mb-1">
@@ -727,18 +776,20 @@ export function QuickCaptureSheet() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-text-muted mb-1">
-                  Restaurant / Location (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Home, Cafe Coffee Day, Kitchen"
-                  value={mealRestaurant}
-                  onChange={(e) => setMealRestaurant(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-surface text-text focus:outline-hidden focus:ring-1 focus:ring-primary placeholder:text-text-muted/60"
-                />
-              </div>
+              {mealLocation === "restaurant" && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-text-muted mb-1">
+                    Restaurant / Cafe Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Saravana Bhavan, Swiggy"
+                    value={mealRestaurant}
+                    onChange={(e) => setMealRestaurant(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-surface text-text focus:outline-hidden focus:ring-1 focus:ring-primary placeholder:text-text-muted/60"
+                  />
+                </div>
+              )}
 
               <button
                 type="submit"

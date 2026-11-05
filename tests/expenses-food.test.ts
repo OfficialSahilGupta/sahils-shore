@@ -15,7 +15,15 @@ import {
   calculateSpendInsights,
   generateExpensesCSV,
 } from "../lib/expenses/index.ts";
-import { buildWeeklyMealOverview, createMeal, updateMeal, deleteMeal } from "../lib/food/index.ts";
+import {
+  buildWeeklyMealOverview,
+  createMeal,
+  updateMeal,
+  deleteMeal,
+  decodeMealFlags,
+  getPlacesToEatAgain,
+  getFavoriteMeals,
+} from "../lib/food/index.ts";
 import { processRecurringExpenses } from "../lib/expenses/index.ts";
 import type { Expense, ExpenseCategory, Income, MealWithExpense } from "../types/index.ts";
 
@@ -543,5 +551,248 @@ describe("6. Meal-Expense Link Synchronization", () => {
     assert.equal(deleted, true);
     assert.equal(supabase._store.meals.length, 0);
     assert.equal(supabase._store.expenses.length, 0);
+  });
+});
+
+describe("7. Amrita Mess, Logical Zero Cost, Decoupled Favorites & Multi-Photo", () => {
+  function createMockSupabase() {
+    const store = {
+      expense_categories: [
+        {
+          id: "cat-food-123",
+          user_id: "user-test",
+          name: "Food",
+          icon: "Utensils",
+          color: "#E0A458",
+          is_default: true,
+        },
+      ],
+      expenses: [] as any[],
+      meals: [] as any[],
+      timeline_events: [] as any[],
+    };
+
+    const client: any = {
+      from: (table: string) => {
+        let currentTable = table;
+        let insertedRow: any = null;
+        let updatePayload: any = null;
+        let filterId: string | null = null;
+        let isDelete = false;
+
+        const chain: any = {
+          select: () => chain,
+          insert: (data: any) => {
+            insertedRow = {
+              id: `id-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              ...data,
+            };
+            (store as any)[currentTable]?.push(insertedRow);
+            return chain;
+          },
+          update: (data: any) => {
+            updatePayload = data;
+            return chain;
+          },
+          delete: () => {
+            isDelete = true;
+            return chain;
+          },
+          eq: (col: string, val: any) => {
+            if (col === "id") filterId = val;
+            if (isDelete && col === "id") {
+              const arr = (store as any)[currentTable] || [];
+              const idx = arr.findIndex((x: any) => x.id === val);
+              if (idx >= 0) arr.splice(idx, 1);
+            }
+            return chain;
+          },
+          ilike: () => chain,
+          limit: () => chain,
+          order: () => chain,
+          gte: () => chain,
+          lte: () => chain,
+          in: () => chain,
+          maybeSingle: async () => {
+            if (currentTable === "expense_categories") {
+              return { data: store.expense_categories[0], error: null };
+            }
+            return { data: null, error: null };
+          },
+          single: async () => {
+            if (insertedRow) {
+              return { data: insertedRow, error: null };
+            }
+            if (updatePayload && filterId) {
+              const arr = (store as any)[currentTable] || [];
+              const idx = arr.findIndex((x: any) => x.id === filterId);
+              if (idx >= 0) {
+                arr[idx] = { ...arr[idx], ...updatePayload };
+                return { data: arr[idx], error: null };
+              }
+            }
+            return { data: insertedRow || {}, error: null };
+          },
+          then: (resolve: any) => {
+            const arr = (store as any)[currentTable] || [];
+            return Promise.resolve(resolve({ data: arr, error: null }));
+          },
+        };
+        return chain;
+      },
+      _store: store,
+    };
+
+    return client;
+  }
+
+  test("Amrita Mess meal strictly zeroes cost and skips expense creation", async () => {
+    const supabase = createMockSupabase();
+    const userId = "user-test";
+
+    const meal = await createMeal(supabase, userId, {
+      meal_type: "lunch",
+      description: "Amrita South Indian Thali with Sambhar",
+      location_type: "amrita_mess",
+      cost_paise: 5000, // Should be ignored and zeroed!
+      rating: 4,
+    });
+
+    assert.ok(meal);
+    assert.equal(meal.location_type, "amrita_mess");
+    assert.equal(meal.restaurant_name, "Amrita Mess");
+    assert.equal(meal.expense_id, null, "Should not have linked expense");
+    assert.equal(meal.expense, null);
+    assert.equal(supabase._store.expenses.length, 0, "No expense row should be written");
+  });
+
+  test("Home meal strictly zeroes cost and skips expense creation", async () => {
+    const supabase = createMockSupabase();
+    const userId = "user-test";
+
+    const meal = await createMeal(supabase, userId, {
+      meal_type: "dinner",
+      description: "Home Cooked Khichdi",
+      location_type: "home",
+      cost_paise: 3000, // Should be ignored and zeroed!
+    });
+
+    assert.ok(meal);
+    assert.equal(meal.location_type, "home");
+    assert.equal(meal.expense_id, null);
+    assert.equal(supabase._store.expenses.length, 0);
+  });
+
+  test("Updating meal to Amrita Mess deletes previously linked restaurant expense", async () => {
+    const supabase = createMockSupabase();
+    const userId = "user-test";
+
+    // First, create a paid restaurant meal
+    const meal = await createMeal(supabase, userId, {
+      meal_type: "dinner",
+      description: "Biryani",
+      location_type: "restaurant",
+      restaurant_name: "Biryani Zone",
+      cost_paise: 25000, // ₹250
+    });
+
+    assert.ok(meal?.expense_id);
+    assert.equal(supabase._store.expenses.length, 1);
+
+    // Switch location to amrita_mess
+    const updated = await updateMeal(
+      supabase,
+      userId,
+      meal.id,
+      {
+        location_type: "amrita_mess",
+      },
+      meal
+    );
+
+    assert.ok(updated);
+    assert.equal(updated.location_type, "amrita_mess");
+    assert.equal(updated.expense_id, null);
+    assert.equal(updated.expense, null);
+    assert.equal(supabase._store.expenses.length, 0, "Previous expense must be deleted");
+  });
+
+  test("Decoupled favorites: rating does not automatically force is_favorite to true", () => {
+    // 5-star rating without is_favorite
+    const flags1 = decodeMealFlags({
+      notes_taste: "Crispy dosa",
+      rating: 5,
+      is_favorite: false,
+    });
+    assert.equal(flags1.is_favorite, false, "5-star rating should not override explicit is_favorite false");
+
+    // 4-star rating without is_favorite
+    const flags2 = decodeMealFlags({
+      notes_taste: "Nice meal",
+      rating: 4,
+      is_favorite: false,
+    });
+    assert.equal(flags2.is_favorite, false);
+
+    // Explicit favorite
+    const flags3 = decodeMealFlags({
+      notes_taste: "Loved this",
+      rating: 3,
+      is_favorite: true,
+    });
+    assert.equal(flags3.is_favorite, true);
+  });
+
+  test("Multi-photo parsing normalizes arrays, JSON strings, and single photo_url", () => {
+    const flags1 = decodeMealFlags({
+      photo_urls: ["https://example.com/p1.webp", "https://example.com/p2.webp"],
+    });
+    assert.deepEqual(flags1.photo_urls, ["https://example.com/p1.webp", "https://example.com/p2.webp"]);
+
+    const flags2 = decodeMealFlags({
+      photo_urls: '["https://example.com/json.webp"]',
+    });
+    assert.deepEqual(flags2.photo_urls, ["https://example.com/json.webp"]);
+
+    const flags3 = decodeMealFlags({
+      photo_url: "https://example.com/legacy.webp",
+    });
+    assert.deepEqual(flags3.photo_urls, ["https://example.com/legacy.webp"]);
+  });
+
+  test("Places to Eat Again excludes Amrita Mess and Home entries", async () => {
+    const supabase = createMockSupabase();
+    const userId = "user-test";
+
+    // Add 1 restaurant, 1 amrita mess, 1 home
+    await createMeal(supabase, userId, {
+      meal_type: "lunch",
+      description: "Thali",
+      location_type: "amrita_mess",
+      rating: 5,
+      eat_again: true,
+    });
+    await createMeal(supabase, userId, {
+      meal_type: "dinner",
+      description: "Roti Sabzi",
+      location_type: "home",
+      rating: 5,
+      eat_again: true,
+    });
+    await createMeal(supabase, userId, {
+      meal_type: "dinner",
+      description: "Woodfired Pizza",
+      location_type: "restaurant",
+      restaurant_name: "Toscano",
+      cost_paise: 45000,
+      rating: 5,
+      eat_again: true,
+    });
+
+    const places = await getPlacesToEatAgain(supabase, userId);
+    assert.equal(places.length, 1);
+    assert.equal(places[0].restaurant_name, "Toscano");
   });
 });

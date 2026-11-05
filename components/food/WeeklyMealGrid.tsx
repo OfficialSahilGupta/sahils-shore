@@ -124,10 +124,16 @@ export function WeeklyMealGrid({
                               <div className="font-medium text-text text-[11px] leading-tight truncate group-hover:text-primary transition-colors">
                                 {m.description}
                               </div>
-                              <div className="flex items-center justify-between text-[10px] text-text-muted mt-0.5 font-mono">
-                                <span>{m.restaurant_name || m.location_type}</span>
+                              <div className="flex items-center justify-between text-[10px] text-text-muted mt-0.5">
+                                <span className="truncate max-w-[90px]">
+                                  {m.location_type === "amrita_mess"
+                                    ? "Amrita Mess"
+                                    : m.location_type === "home"
+                                    ? "Home"
+                                    : m.restaurant_name || m.location_type}
+                                </span>
                                 {m.expense && (
-                                  <span className="font-semibold text-text">
+                                  <span className="font-semibold text-text font-mono">
                                     {formatINR(m.expense.amount_paise)}
                                   </span>
                                 )}

@@ -80,7 +80,7 @@ export type RecurringExpense = Database["public"]["Tables"]["recurring_expenses"
 export type Income = Database["public"]["Tables"]["incomes"]["Row"];
 export type Budget = Database["public"]["Tables"]["budgets"]["Row"];
 export type Meal = Database["public"]["Tables"]["meals"]["Row"];
-export type { MealWithExpense } from "@/lib/food/index";
+export type { MealWithExpense, MealLocation, MealType } from "@/lib/food/index";
 export type Place = Database["public"]["Tables"]["places"]["Row"];
 export type Album = Database["public"]["Tables"]["albums"]["Row"];
 export type MediaItem = Database["public"]["Tables"]["media_items"]["Row"];

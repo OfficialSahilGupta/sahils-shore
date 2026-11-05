@@ -2,7 +2,8 @@
 
 // ============================================================================
 // Sahil's Shore: Food Diary Container Component
-// Orchestrates Meal Diary, Weekly Meal Grid, Favorites, and Places to Eat Again.
+// Luxury meal tracking hub with Amrita Mess, permanent multi-photo galleries,
+// 4-slot daily progress, custom dropdown filters, and strict favorite decoupling.
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
@@ -19,6 +20,14 @@ import {
   Sun,
   Moon,
   Cookie,
+  GraduationCap,
+  Home,
+  Store,
+  Building2,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  TrendingUp,
 } from "lucide-react";
 import { MealDialog } from "./MealDialog";
 import { MealCard } from "./MealCard";
@@ -26,6 +35,7 @@ import { WeeklyMealGrid } from "./WeeklyMealGrid";
 import { PlacesToEatAgainList } from "./PlacesToEatAgainList";
 import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
+import { Select } from "@/components/ui/select";
 import {
   getMeals,
   createMeal,
@@ -36,13 +46,21 @@ import {
   buildWeeklyMealOverview,
   type MealWithExpense,
   type MealType,
+  type MealLocation,
   type CreateMealInput,
-  type UpdateMealInput,
 } from "@/lib/food";
 import { todayIST, getISTDateString, formatFriendlyISTDate } from "@/lib/date-utils";
+import { formatINR } from "@/lib/expenses";
 import { Card } from "@/components/ui/card";
 
 type ActiveTab = "diary" | "weekly" | "favorites" | "places";
+
+const SLOTS: Array<{ type: MealType; label: string; icon: React.ElementType }> = [
+  { type: "breakfast", label: "Breakfast", icon: Coffee },
+  { type: "lunch", label: "Lunch", icon: Sun },
+  { type: "snack", label: "Snack", icon: Cookie },
+  { type: "dinner", label: "Dinner", icon: Moon },
+];
 
 export function FoodContainer() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("diary");
@@ -62,6 +80,7 @@ export function FoodContainer() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMealType, setSelectedMealType] = useState<string>("all");
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   const { toast } = useToast();
   const supabase = useMemo(() => createClient(), []);
@@ -71,7 +90,6 @@ export function FoodContainer() {
   // Find Monday of the current week (IST)
   const mondayIST = useMemo(() => {
     const today = new Date();
-    // Monday is day 1 in ISO (0 is Sunday)
     const day = today.getDay();
     const diff = today.getDate() - day + (day === 0 ? -6 : 1);
     const mondayDate = new Date(today.setDate(diff));
@@ -110,10 +128,40 @@ export function FoodContainer() {
     return buildWeeklyMealOverview(meals, mondayIST);
   }, [meals, mondayIST]);
 
+  // Today's meals breakdown
+  const todayMeals = useMemo(() => {
+    return meals.filter((m) => getISTDateString(m.eaten_at) === currentIST);
+  }, [meals, currentIST]);
+
+  // Weekly Food Spend (Dine-out / Outside)
+  const totalWeekSpendPaise = useMemo(() => {
+    return weeklyOverview.reduce((sum, d) => sum + d.totalFoodSpendPaise, 0);
+  }, [weeklyOverview]);
+
+  // Location Counts (Today & This Week)
+  const amritaMessCount = useMemo(() => {
+    return meals.filter(
+      (m) =>
+        m.location_type === "amrita_mess" &&
+        getISTDateString(m.eaten_at) >= mondayIST
+    ).length;
+  }, [meals, mondayIST]);
+
+  const homeCount = useMemo(() => {
+    return meals.filter(
+      (m) =>
+        m.location_type === "home" &&
+        getISTDateString(m.eaten_at) >= mondayIST
+    ).length;
+  }, [meals, mondayIST]);
+
   // Filtered meals for Diary view
   const filteredMeals = useMemo(() => {
     return meals.filter((m) => {
       if (selectedMealType !== "all" && m.meal_type !== selectedMealType) {
+        return false;
+      }
+      if (selectedLocation !== "all" && m.location_type !== selectedLocation) {
         return false;
       }
       if (searchQuery.trim()) {
@@ -126,11 +174,11 @@ export function FoodContainer() {
       }
       return true;
     });
-  }, [meals, selectedMealType, searchQuery]);
+  }, [meals, selectedMealType, selectedLocation, searchQuery]);
 
-  // Favorite meals list
+  // Strictly decoupled favorite meals list
   const favoriteMeals = useMemo(() => {
-    return meals.filter((m) => m.is_favorite || (m.rating && m.rating >= 4));
+    return meals.filter((m) => m.is_favorite === true);
   }, [meals]);
 
   // Group filtered meals by IST date
@@ -148,6 +196,15 @@ export function FoodContainer() {
       items,
     }));
   }, [filteredMeals]);
+
+  // Determine smart next meal slot suggestion based on IST hour
+  const smartNextSlot: MealType = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 11) return "breakfast";
+    if (hour < 15) return "lunch";
+    if (hour < 18) return "snack";
+    return "dinner";
+  }, []);
 
   // Handler: Save (Create or Update) Meal
   const handleSaveMeal = async (input: CreateMealInput) => {
@@ -168,7 +225,8 @@ export function FoodContainer() {
         );
         if (updated) {
           setMeals((prev) => prev.map((m) => (m.id === editingMeal.id ? updated : m)));
-          toast({ title: "Meal updated and synced with expense", type: "success" });
+          toast({ title: "Meal updated successfully", type: "success" });
+          getPlacesToEatAgain(supabase, userId).then(setPlacesToEatAgain);
         }
       } catch (err) {
         toast({ title: "Failed to update meal", type: "error" });
@@ -181,11 +239,12 @@ export function FoodContainer() {
         user_id: userId,
         meal_type: input.meal_type,
         description: input.description,
-        location_type: input.location_type || "home",
+        location_type: input.location_type || "amrita_mess",
         restaurant_name: input.restaurant_name || null,
         expense_id: null,
         rating: input.rating || null,
-        photo_url: input.photo_url || null,
+        photo_url: input.photo_urls?.[0] || input.photo_url || null,
+        photo_urls: input.photo_urls || (input.photo_url ? [input.photo_url] : []),
         notes_taste: input.notes_taste || null,
         notes_health: input.notes_health || null,
         is_favorite: input.is_favorite || false,
@@ -203,12 +262,11 @@ export function FoodContainer() {
         if (created) {
           setMeals((prev) => prev.map((m) => (m.id === tempId ? created : m)));
           toast({
-            title: input.cost_paise
+            title: input.cost_paise && input.cost_paise > 0
               ? "Meal logged & Food expense created!"
               : "Meal logged successfully",
             type: "success",
           });
-          // Refresh places if needed
           getPlacesToEatAgain(supabase, userId).then(setPlacesToEatAgain);
         }
       } catch (err) {
@@ -240,6 +298,7 @@ export function FoodContainer() {
           cost_paise: target.expense?.amount_paise,
           rating: target.rating,
           photo_url: target.photo_url,
+          photo_urls: target.photo_urls,
           notes_taste: target.notes_taste,
           notes_health: target.notes_health,
           is_favorite: target.is_favorite,
@@ -251,13 +310,14 @@ export function FoodContainer() {
 
     try {
       await deleteMeal(supabase, userId, mealId, expenseId);
+      getPlacesToEatAgain(supabase, userId).then(setPlacesToEatAgain);
     } catch (err) {
       setMeals((prev) => [target, ...prev]);
       toast({ title: "Failed to delete meal", type: "error" });
     }
   };
 
-  // Handler: Toggle Favorite
+  // Handler: Toggle Favorite with instant optimistic UI update
   const handleToggleFavorite = async (mealId: string, isFav: boolean) => {
     if (!userId) return;
     setMeals((prev) =>
@@ -266,7 +326,7 @@ export function FoodContainer() {
     await toggleMealFavorite(supabase, userId, mealId, isFav);
   };
 
-  // Quick Add for Slot in Weekly Grid
+  // Quick Add for Slot
   const handleAddMealForSlot = (dateIST: string, mealType: MealType) => {
     setEditingMeal(null);
     setDialogDefaultDate(dateIST);
@@ -274,28 +334,36 @@ export function FoodContainer() {
     setDialogOpen(true);
   };
 
+  // Re-log a Favorite Dish for Today
+  const handleReLogFavorite = (favoriteMeal: MealWithExpense) => {
+    setEditingMeal(null);
+    setDialogDefaultDate(currentIST);
+    setDialogDefaultMealType(favoriteMeal.meal_type);
+    setDialogOpen(true);
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 pb-24">
-      {/* Header */}
+      {/* 1. Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-text tracking-tight flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-2xl bg-accent-warm/15 flex items-center justify-center text-accent-warm">
               <Utensils className="h-5 w-5" />
             </div>
-            Food Diary
+            <span>Food Diary</span>
           </h1>
           <p className="text-xs sm:text-sm text-text-muted mt-1">
-            Log what you eat, taste/health notes, ratings, and auto-sync with expenses.
+            Track daily meals at Amrita Mess, home, and outside dining with automatic expense sync.
           </p>
         </div>
 
-        {/* Action Button */}
         <button
+          type="button"
           onClick={() => {
             setEditingMeal(null);
             setDialogDefaultDate(undefined);
-            setDialogDefaultMealType(undefined);
+            setDialogDefaultMealType(smartNextSlot);
             setDialogOpen(true);
           }}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-primary text-primary-foreground hover:opacity-95 shadow-md active:scale-95 transition-all self-start sm:self-auto"
@@ -305,19 +373,149 @@ export function FoodContainer() {
         </button>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-1 border-b border-border/60 pb-1">
+      {/* 2. Today's 4-Slot Progress Bar */}
+      <Card className="p-4 bg-surface border border-border/80 rounded-2xl shadow-xs">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text">
+              Today&apos;s Meals ({formatFriendlyISTDate(currentIST)})
+            </h3>
+          </div>
+          <span className="text-xs font-semibold text-text-muted">
+            {todayMeals.length}/4 slots logged
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {SLOTS.map(({ type, label, icon: SlotIcon }) => {
+            const loggedInSlot = todayMeals.filter((m) => m.meal_type === type);
+            const isLogged = loggedInSlot.length > 0;
+            const isNextRecommended = !isLogged && smartNextSlot === type;
+
+            return (
+              <div
+                key={type}
+                className={`p-3 rounded-xl border transition-all flex flex-col justify-between min-h-[92px] ${
+                  isLogged
+                    ? "bg-primary/5 border-primary/30"
+                    : isNextRecommended
+                    ? "bg-accent-warm/5 border-accent-warm/40 ring-1 ring-accent-warm/30"
+                    : "bg-surface-muted/30 border-border/60 hover:border-border"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="flex items-center gap-1.5 text-xs font-bold capitalize text-text">
+                    <SlotIcon
+                      className={`h-3.5 w-3.5 ${
+                        isLogged ? "text-primary" : "text-text-muted"
+                      }`}
+                    />
+                    <span>{label}</span>
+                  </span>
+
+                  {isLogged ? (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>Done</span>
+                    </span>
+                  ) : isNextRecommended ? (
+                    <span className="text-[10px] font-bold text-accent-warm uppercase tracking-wider">
+                      Up Next
+                    </span>
+                  ) : null}
+                </div>
+
+                {isLogged ? (
+                  <div className="space-y-1">
+                    {loggedInSlot.map((m) => (
+                      <div
+                        key={m.id}
+                        onClick={() => {
+                          setEditingMeal(m);
+                          setDialogOpen(true);
+                        }}
+                        className="cursor-pointer group flex items-center justify-between text-xs"
+                      >
+                        <span className="font-semibold text-text truncate max-w-[140px] group-hover:text-primary transition-colors">
+                          {m.description}
+                        </span>
+                        <span className="text-[10px] text-text-muted capitalize">
+                          {m.location_type === "amrita_mess" ? "Mess" : m.location_type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleAddMealForSlot(currentIST, type)}
+                    className="inline-flex items-center justify-center gap-1 w-full py-1.5 px-2 rounded-lg text-xs font-semibold bg-surface border border-border/80 text-text hover:bg-surface-muted hover:border-primary/50 transition-colors"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <span>Log {label}</span>
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* 3. Nutrition & Dining Stats Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-2xl bg-surface border border-border/70 shadow-2xs">
+          <span className="text-[11px] font-semibold text-text-muted block mb-0.5">
+            Meals Today
+          </span>
+          <span className="text-xl font-extrabold text-text font-mono">
+            {todayMeals.length}
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-surface border border-border/70 shadow-2xs">
+          <span className="text-[11px] font-semibold text-text-muted flex items-center gap-1 mb-0.5">
+            <GraduationCap className="h-3.5 w-3.5 text-primary" />
+            Amrita Mess (Week)
+          </span>
+          <span className="text-xl font-extrabold text-primary font-mono">
+            {amritaMessCount}
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-surface border border-border/70 shadow-2xs">
+          <span className="text-[11px] font-semibold text-text-muted flex items-center gap-1 mb-0.5">
+            <Home className="h-3.5 w-3.5 text-accent-warm" />
+            Home Meals (Week)
+          </span>
+          <span className="text-xl font-extrabold text-accent-warm font-mono">
+            {homeCount}
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-surface border border-border/70 shadow-2xs">
+          <span className="text-[11px] font-semibold text-text-muted block mb-0.5">
+            Week Dining Spend
+          </span>
+          <span className="text-xl font-extrabold text-text font-mono">
+            {formatINR(totalWeekSpendPaise)}
+          </span>
+        </div>
+      </div>
+
+      {/* 4. Tabs Navigation */}
+      <div className="flex items-center gap-1 border-b border-border/60 pb-1 overflow-x-auto no-scrollbar">
         {[
           { key: "diary", label: "Meal Log" },
           { key: "weekly", label: "Weekly Schedule" },
-          { key: "favorites", label: "Favorites" },
-          { key: "places", label: "Places to Eat Again" },
+          { key: "favorites", label: `Favorites (${favoriteMeals.length})` },
+          { key: "places", label: `Places to Eat Again (${placesToEatAgain.length})` },
         ].map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key as ActiveTab)}
-            className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
+            className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
               activeTab === tab.key
                 ? "bg-surface text-primary shadow-xs border border-border/70"
                 : "text-text-muted hover:text-text hover:bg-surface-muted"
@@ -328,47 +526,63 @@ export function FoodContainer() {
         ))}
       </div>
 
-      {/* Tab 1: Meal Log */}
+      {/* TAB 1: Meal Log */}
       {activeTab === "diary" && (
         <div className="space-y-4">
-          {/* Search & Slot Filters */}
-          <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+          {/* Search & Custom Dropdown Filters */}
+          <div className="flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between">
+            {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search dishes, restaurants, taste notes..."
-                className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm rounded-xl bg-surface border border-border/70 text-text placeholder:text-text-muted focus:ring-1 focus:ring-primary shadow-2xs"
+                placeholder="Search dishes, taste notes, restaurants..."
+                className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm rounded-xl bg-surface border border-border text-text placeholder:text-text-muted focus:ring-1 focus:ring-primary shadow-2xs"
               />
             </div>
 
-            {/* Meal Slot Filter Pills */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
-              {["all", "breakfast", "lunch", "snack", "dinner"].map((slot) => (
-                <button
-                  key={slot}
-                  type="button"
-                  onClick={() => setSelectedMealType(slot)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize whitespace-nowrap transition-all ${
-                    selectedMealType === slot
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "bg-surface text-text-muted hover:text-text border border-border/60"
-                  }`}
-                >
-                  {slot}
-                </button>
-              ))}
+            {/* Custom Dropdown Filters */}
+            <div className="flex items-center gap-2">
+              <div className="w-36">
+                <Select
+                  value={selectedMealType}
+                  onChange={(e) => setSelectedMealType(e.target.value)}
+                  options={[
+                    { value: "all", label: "All Slots" },
+                    { value: "breakfast", label: "Breakfast" },
+                    { value: "lunch", label: "Lunch" },
+                    { value: "snack", label: "Snack" },
+                    { value: "dinner", label: "Dinner" },
+                  ]}
+                />
+              </div>
+
+              <div className="w-44">
+                <Select
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  options={[
+                    { value: "all", label: "All Locations" },
+                    { value: "amrita_mess", label: "Amrita Mess" },
+                    { value: "home", label: "Home Cooked" },
+                    { value: "restaurant", label: "Restaurant" },
+                    { value: "office", label: "Office" },
+                    { value: "other", label: "Other" },
+                  ]}
+                />
+              </div>
             </div>
           </div>
 
           {/* Grouped Meal Cards */}
           {groupedMeals.length === 0 ? (
             <Card className="p-12 text-center bg-surface border border-border/70 rounded-2xl shadow-xs">
-              <p className="text-sm font-medium text-text">No meals logged yet</p>
+              <Utensils className="h-8 w-8 text-text-muted/40 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-text">No meals match your filter</p>
               <p className="text-xs text-text-muted mt-1">
-                Log your breakfast, lunch, snacks, or dinner to start your food diary.
+                Log your breakfast, lunch, snack, or dinner to start your food diary.
               </p>
             </Card>
           ) : (
@@ -403,7 +617,7 @@ export function FoodContainer() {
         </div>
       )}
 
-      {/* Tab 2: Weekly Overview */}
+      {/* TAB 2: Weekly Overview */}
       {activeTab === "weekly" && (
         <WeeklyMealGrid
           weeklyData={weeklyOverview}
@@ -415,12 +629,17 @@ export function FoodContainer() {
         />
       )}
 
-      {/* Tab 3: Favorites */}
+      {/* TAB 3: Favorites */}
       {activeTab === "favorites" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-text">Favorite Dishes</h3>
-            <span className="text-xs text-text-muted font-mono">
+            <div>
+              <h3 className="text-sm font-bold text-text">Favorite Dishes</h3>
+              <p className="text-xs text-text-muted">
+                Curated meals you love. Tap &ldquo;Log for Today&rdquo; to re-log any favorite dish instantly.
+              </p>
+            </div>
+            <span className="text-xs font-mono text-text-muted font-bold">
               {favoriteMeals.length} favorites
             </span>
           </div>
@@ -428,66 +647,56 @@ export function FoodContainer() {
           {favoriteMeals.length === 0 ? (
             <Card className="p-12 text-center bg-surface border border-border/70 rounded-2xl shadow-xs">
               <Heart className="h-8 w-8 text-danger/30 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-text">No favorite meals marked yet</p>
+              <p className="text-sm font-semibold text-text">No favorite dishes marked yet</p>
               <p className="text-xs text-text-muted mt-1">
-                Click the heart icon on any meal or rate it 4-5 stars to add it here.
+                Click the heart icon on any meal card to add it to your favorites catalog.
               </p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {favoriteMeals.map((meal) => (
-                <MealCard
-                  key={meal.id}
-                  meal={meal}
-                  onEdit={(m) => {
-                    setEditingMeal(m);
-                    setDialogOpen(true);
-                  }}
-                  onDelete={handleDeleteMeal}
-                  onToggleFavorite={handleToggleFavorite}
-                />
+                <div key={meal.id} className="space-y-1.5">
+                  <MealCard
+                    meal={meal}
+                    onEdit={(m) => {
+                      setEditingMeal(m);
+                      setDialogOpen(true);
+                    }}
+                    onDelete={handleDeleteMeal}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleReLogFavorite(meal)}
+                    className="w-full py-1.5 px-3 rounded-xl bg-surface border border-border/80 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Log this again today</span>
+                  </button>
+                </div>
               ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Tab 4: Places to Eat Again */}
+      {/* TAB 4: Places to Eat Again */}
       {activeTab === "places" && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-text">Places to Eat Again</h3>
+            <h3 className="text-sm font-bold text-text">Places to Eat Again</h3>
             <p className="text-xs text-text-muted">
-              Top-rated dining spots and restaurants marked for revisits.
+              Curated outside dining spots and restaurants marked for revisit or rated 4+ stars.
             </p>
           </div>
           <PlacesToEatAgainList places={placesToEatAgain} />
         </div>
       )}
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-20 md:bottom-8 right-6 z-40">
-        <button
-          onClick={() => {
-            setEditingMeal(null);
-            setDialogDefaultDate(undefined);
-            setDialogDefaultMealType(undefined);
-            setDialogOpen(true);
-          }}
-          aria-label="Log Meal"
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl hover:scale-105 active:scale-95 transition-transform"
-        >
-          <Plus className="h-7 w-7 stroke-[2.5]" />
-        </button>
-      </div>
-
-      {/* Meal Modal */}
+      {/* Log/Edit Meal Dialog */}
       <MealDialog
         isOpen={dialogOpen}
-        onClose={() => {
-          setDialogOpen(false);
-          setEditingMeal(null);
-        }}
+        onClose={() => setDialogOpen(false)}
         onSave={handleSaveMeal}
         editingMeal={editingMeal}
         defaultDate={dialogDefaultDate}

@@ -282,6 +282,15 @@ html[data-font="lora"] textarea,
   ) !important;
 }
 
+/* Modals & Dialogs must remain crisp and 100% opaque without background bleed */
+[data-bg-style="glass"] [role="dialog"] .bg-surface,
+[data-bg-style="glass"] [role="dialog"].bg-surface,
+[data-bg-style="glass"] .modal-surface {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: var(--surface) !important;
+}
+
 /* Custom scrollbar matching calm coastal theme */
 ::-webkit-scrollbar {
   width: 6px;
