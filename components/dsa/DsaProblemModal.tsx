@@ -26,12 +26,14 @@ import {
 } from "@/lib/dsa/constants";
 import type { CreateDsaProblemInput } from "@/lib/dsa";
 import { CodeEditor } from "./CodeEditor";
+import { Select } from "@/components/ui/select";
 
 interface DsaProblemModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (problemData: CreateDsaProblemInput, problemId?: string) => Promise<void>;
   initialProblem?: DsaProblem | null;
+  prefill?: Partial<CreateDsaProblemInput> | null;
 }
 
 export function DsaProblemModal({
@@ -39,6 +41,7 @@ export function DsaProblemModal({
   onClose,
   onSave,
   initialProblem,
+  prefill,
 }: DsaProblemModalProps) {
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
@@ -53,8 +56,10 @@ export function DsaProblemModal({
   const [codeSnippet, setCodeSnippet] = useState("");
   const [language, setLanguage] = useState<SupportedLanguage>("java");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    setErrorMessage(null);
     if (initialProblem) {
       setTitle(initialProblem.title || "");
       setLink(initialProblem.link || "");
@@ -71,6 +76,19 @@ export function DsaProblemModal({
       setApproachNotes(initialProblem.approach_notes || "");
       setCodeSnippet(initialProblem.code_snippet || "");
       setLanguage((initialProblem.language as SupportedLanguage) || "java");
+    } else if (prefill) {
+      setTitle(prefill.title || "");
+      setLink(prefill.link || "");
+      setPlatform(prefill.platform || "LeetCode");
+      setTopic(prefill.topic || "Arrays");
+      setDifficulty((prefill.difficulty as DsaDifficulty) || "Medium");
+      setStatus((prefill.status as DsaStatus) || "Solved");
+      setTimeSpentMinutes(prefill.time_spent_minutes || 30);
+      setTimeComplexity(prefill.time_complexity || "O(N)");
+      setSpaceComplexity(prefill.space_complexity || "O(1)");
+      setApproachNotes(prefill.approach_notes || "");
+      setCodeSnippet(prefill.code_snippet || "");
+      setLanguage((prefill.language as SupportedLanguage) || "java");
     } else {
       setTitle("");
       setLink("");
@@ -85,15 +103,19 @@ export function DsaProblemModal({
       setCodeSnippet("");
       setLanguage("java");
     }
-  }, [initialProblem, isOpen]);
+  }, [initialProblem, prefill, isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setErrorMessage("Please enter a problem title.");
+      return;
+    }
 
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
       await onSave(
         {
@@ -113,8 +135,11 @@ export function DsaProblemModal({
         initialProblem?.id
       );
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving DSA problem:", err);
+      setErrorMessage(
+        err?.message || "Failed to save problem. Please verify fields and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -146,6 +171,12 @@ export function DsaProblemModal({
           </button>
         </div>
 
+        {errorMessage && (
+          <div className="mb-4 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 p-3 text-xs text-[var(--danger)]">
+            {errorMessage}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title & Platform */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -159,24 +190,25 @@ export function DsaProblemModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Trapping Rain Water, LRU Cache..."
-                className="w-full rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
                 Platform
               </label>
-              <select
+              <Select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
-                className="w-full rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 px-3 py-2.5 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+                size="md"
+                containerClassName="w-full"
               >
                 {DSA_PLATFORMS.map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -191,24 +223,25 @@ export function DsaProblemModal({
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 placeholder="https://leetcode.com/problems/..."
-                className="w-full rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
                 Topic
               </label>
-              <select
+              <Select
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                className="w-full rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 px-3 py-2.5 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+                size="md"
+                containerClassName="w-full"
               >
                 {DSA_TOPICS.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -325,17 +358,18 @@ export function DsaProblemModal({
               </label>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-[var(--text-muted)]">Language:</span>
-                <select
+                <Select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
-                  className="rounded-lg border border-[var(--surface-muted)] bg-[var(--surface-muted)]/40 px-2 py-1 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+                  size="sm"
+                  containerClassName="w-28"
                 >
                   {SUPPORTED_LANGUAGES.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             <CodeEditor

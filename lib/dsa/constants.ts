@@ -30,6 +30,8 @@ export const DSA_TOPICS = [
   "Greedy",
   "Binary Search",
   "Tries",
+  "Intervals",
+  "Math & Geometry",
   "Bit Manipulation",
 ] as const;
 
@@ -43,6 +45,7 @@ export const DSA_STATUSES = [
   "Needs revision",
   "Stuck",
   "Revisit",
+  "Todo",
 ] as const;
 export type DsaStatus = (typeof DSA_STATUSES)[number];
 

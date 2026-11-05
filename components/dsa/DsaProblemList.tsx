@@ -28,6 +28,7 @@ import {
 } from "@/lib/dsa/constants";
 import { formatFriendlyISTDate } from "@/lib/date-utils";
 import { CodeEditor } from "./CodeEditor";
+import { Select } from "@/components/ui/select";
 
 interface DsaProblemListProps {
   problems: DsaProblem[];
@@ -124,29 +125,30 @@ export function DsaProblemList({
   };
 
   return (
-    <div className="w-full rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-5 shadow-sm space-y-4">
+    <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-sm space-y-4">
       {/* Search and Filters Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search problems by title, approach, topic..."
-            className="w-full rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 pl-10 pr-4 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 pl-10 pr-4 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
           />
         </div>
 
-        {/* Filter dropdowns */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Filter dropdowns in a safe, non-outflowing flex wrap row */}
+        <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
           {/* Topic Dropdown */}
-          <select
+          <Select
             value={selectedTopic || "all"}
             onChange={(e) =>
               onSelectTopic(e.target.value === "all" ? null : e.target.value)
             }
-            className="rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/30 px-2.5 py-1.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+            className="text-xs"
+            containerClassName="w-auto max-w-[150px]"
           >
             <option value="all">All Topics</option>
             {DSA_TOPICS.map((t) => (
@@ -154,13 +156,14 @@ export function DsaProblemList({
                 {t}
               </option>
             ))}
-          </select>
+          </Select>
 
           {/* Difficulty Dropdown */}
-          <select
+          <Select
             value={difficultyFilter}
             onChange={(e) => setDifficultyFilter(e.target.value)}
-            className="rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/30 px-2.5 py-1.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+            className="text-xs"
+            containerClassName="w-auto max-w-[135px]"
           >
             <option value="all">All Difficulties</option>
             {DSA_DIFFICULTIES.map((d) => (
@@ -168,13 +171,14 @@ export function DsaProblemList({
                 {d}
               </option>
             ))}
-          </select>
+          </Select>
 
           {/* Platform Dropdown */}
-          <select
+          <Select
             value={platformFilter}
             onChange={(e) => setPlatformFilter(e.target.value)}
-            className="rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/30 px-2.5 py-1.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+            className="text-xs"
+            containerClassName="w-auto max-w-[130px]"
           >
             <option value="all">All Platforms</option>
             {DSA_PLATFORMS.map((p) => (
@@ -182,13 +186,14 @@ export function DsaProblemList({
                 {p}
               </option>
             ))}
-          </select>
+          </Select>
 
           {/* Status Dropdown */}
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/30 px-2.5 py-1.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+            className="text-xs"
+            containerClassName="w-auto max-w-[130px]"
           >
             <option value="all">All Statuses</option>
             {DSA_STATUSES.map((s) => (
@@ -196,13 +201,13 @@ export function DsaProblemList({
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
 
           {hasActiveFilters && (
             <button
               type="button"
               onClick={clearFilters}
-              className="flex items-center gap-1 rounded-xl border border-[var(--surface-muted)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/40 transition-colors"
+              className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 transition-colors"
             >
               <X className="h-3 w-3" />
               <span>Reset</span>

@@ -368,7 +368,7 @@ export interface Database {
           platform: string | null;
           topic: string | null;
           difficulty: "Easy" | "Medium" | "Hard";
-          status: "Solved" | "Needs revision" | "Stuck" | "Revisit" | "todo" | "attempted" | "solved" | "mastered";
+          status: "Solved" | "Needs revision" | "Stuck" | "Revisit" | "Todo" | "todo" | "attempted" | "solved" | "mastered";
           time_spent_minutes: number | null;
           approach_notes: string | null;
           code_snippet: string | null;
@@ -392,7 +392,7 @@ export interface Database {
           platform?: string | null;
           topic?: string | null;
           difficulty?: ("Easy" | "Medium" | "Hard");
-          status?: ("Solved" | "Needs revision" | "Stuck" | "Revisit" | "todo" | "attempted" | "solved" | "mastered");
+          status?: ("Solved" | "Needs revision" | "Stuck" | "Revisit" | "Todo" | "todo" | "attempted" | "solved" | "mastered");
           time_spent_minutes?: number | null;
           approach_notes?: string | null;
           code_snippet?: string | null;
@@ -416,7 +416,7 @@ export interface Database {
           platform?: string | null;
           topic?: string | null;
           difficulty?: ("Easy" | "Medium" | "Hard");
-          status?: ("Solved" | "Needs revision" | "Stuck" | "Revisit" | "todo" | "attempted" | "solved" | "mastered");
+          status?: ("Solved" | "Needs revision" | "Stuck" | "Revisit" | "Todo" | "todo" | "attempted" | "solved" | "mastered");
           time_spent_minutes?: number | null;
           approach_notes?: string | null;
           code_snippet?: string | null;
