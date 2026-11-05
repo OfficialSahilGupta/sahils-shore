@@ -16,10 +16,8 @@ import {
   BookOpen,
   X,
   Code2,
-  Download,
-  Clock,
-  Layers,
   ChevronRight,
+  Filter,
 } from "lucide-react";
 import type { DsaProblem } from "@/types";
 import {
@@ -33,7 +31,6 @@ import {
   DSA_TOPICS,
   canonicalDsaTopic,
   isSameDsaTopic,
-  type DsaTopic,
   type DsaDifficulty,
   type DsaStatus,
 } from "@/lib/dsa/constants";
@@ -43,27 +40,28 @@ import type { CreateDsaProblemInput } from "@/lib/dsa";
 interface Blind150TrackerProps {
   userProblems: DsaProblem[];
   onOpenSolveModal: (prefill: Partial<CreateDsaProblemInput>) => void;
+  onOpenEditProblem: (problem: DsaProblem) => void;
   onQuickToggleSolved: (blind: Blind150Problem, currentProblem?: DsaProblem) => Promise<void>;
-  onBatchImport: (unsolvedOnly: boolean) => Promise<void>;
 }
 
 export function Blind150Tracker({
   userProblems,
   onOpenSolveModal,
+  onOpenEditProblem,
   onQuickToggleSolved,
-  onBatchImport,
 }: Blind150TrackerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [topicFilter, setTopicFilter] = useState<string>("all");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedHintId, setExpandedHintId] = useState<string | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
 
   // Overall stats
   const stats = useMemo(() => {
     return calculateBlind150Stats(userProblems);
   }, [userProblems]);
+
+  const completionPct = Math.round(stats.completionRate * 100);
 
   // Filtered problems list
   const filteredProblems = useMemo(() => {
@@ -114,26 +112,10 @@ export function Blind150Tracker({
     setStatusFilter("all");
   };
 
-  const handleBatchImportClick = async () => {
-    if (
-      !window.confirm(
-        `Import ${BLIND_150_LIST.length - stats.solvedCount} unsolved Blind 150 problems into your DSA Tracker as "todo"?`
-      )
-    ) {
-      return;
-    }
-    setIsImporting(true);
-    try {
-      await onBatchImport(true);
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   return (
     <div className="w-full space-y-5">
       {/* 1. Header Progress Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-xs">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -145,80 +127,83 @@ export function Blind150Tracker({
               </h2>
             </div>
             <p className="mt-1 text-xs text-[var(--text-muted)] max-w-xl">
-              The 150 most frequently tested DSA patterns for top-tier tech interviews.
-              Track your completion rate, practice intuition hints, and prefill solutions in 1 tap.
+              The 150 most frequently tested algorithmic patterns for top-tier tech interviews.
+              Track your real-time completion rate, study intuition hints, and log code snippets.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleBatchImportClick}
-              disabled={isImporting || stats.solvedCount === stats.total}
-              className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 px-3 py-2 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors disabled:opacity-50"
-            >
-              <Download className={`h-3.5 w-3.5 ${isImporting ? "animate-bounce" : ""}`} />
-              <span>{isImporting ? "Importing..." : "Import Unsolved"}</span>
-            </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="text-right">
+              <div className="text-2xl font-bold font-mono text-[var(--text)]">
+                {stats.solvedCount} / {stats.total}
+              </div>
+              <div className="text-[10px] uppercase font-semibold tracking-wider text-[var(--text-muted)]">
+                {completionPct}% Mastered
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Progress bar and badges */}
-        <div className="mt-5 space-y-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-[var(--text)]">
-              Overall Progress:{" "}
-              <strong className="text-[var(--primary)]">
-                {stats.solvedCount} / {stats.total}
-              </strong>{" "}
-              ({Math.round(stats.completionRate * 100)}%)
-            </span>
-            <div className="flex items-center gap-3 font-mono text-[11px] text-[var(--text-muted)]">
-              <span className="text-[var(--success)] font-medium">
+        {/* Multi-segmented Progress Bar */}
+        <div className="mt-4 space-y-1.5">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
+            <div
+              className="h-full bg-[var(--primary)] transition-all duration-500 rounded-full"
+              style={{ width: `${completionPct}%` }}
+            />
+          </div>
+
+          {/* Difficulty breakdown chips */}
+          <div className="flex items-center justify-between text-xs text-[var(--text-muted)] pt-1 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 font-medium text-[var(--success)]">
                 Easy: {stats.easySolved}/{stats.easyTotal}
               </span>
-              <span className="text-[var(--warning)] font-medium">
+              <span className="flex items-center gap-1 font-medium text-[var(--warning)]">
                 Medium: {stats.mediumSolved}/{stats.mediumTotal}
               </span>
-              <span className="text-[var(--danger)] font-medium">
+              <span className="flex items-center gap-1 font-medium text-[var(--danger)]">
                 Hard: {stats.hardSolved}/{stats.hardTotal}
               </span>
             </div>
-          </div>
-
-          {/* Stacked bar */}
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
-            <div
-              className="h-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent-warm)] transition-all duration-500 rounded-full"
-              style={{ width: `${Math.max(stats.completionRate * 100, 1)}%` }}
-            />
+            <span className="font-mono text-[11px]">
+              {stats.total - stats.solvedCount} problems remaining
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 2. Search & Responsive Filters */}
-      <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* Search box with min-w-0 flex-1 */}
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+      {/* 2. Filter & Search Controls */}
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs space-y-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search 150 problems by title, pattern, or intuition hints..."
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 pl-10 pr-4 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 pl-9 pr-3.5 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text)]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Filter dropdowns in a responsive flex wrap container */}
-          <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
+          {/* Dropdown Filters */}
+          <div className="flex flex-wrap items-center gap-2">
             {/* Topic Filter */}
             <Select
               value={topicFilter}
               onChange={(e) => setTopicFilter(e.target.value)}
-              className="text-xs"
-              containerClassName="w-auto max-w-[160px]"
+              containerClassName="w-auto min-w-[130px]"
             >
               <option value="all">All Topics</option>
               {DSA_TOPICS.map((t) => (
@@ -232,8 +217,7 @@ export function Blind150Tracker({
             <Select
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value)}
-              className="text-xs"
-              containerClassName="w-auto max-w-[140px]"
+              containerClassName="w-auto min-w-[110px]"
             >
               <option value="all">All Difficulties</option>
               <option value="Easy">Easy</option>
@@ -245,8 +229,7 @@ export function Blind150Tracker({
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-xs"
-              containerClassName="w-auto max-w-[130px]"
+              containerClassName="w-auto min-w-[110px]"
             >
               <option value="all">All Status</option>
               <option value="solved">Solved</option>
@@ -257,56 +240,56 @@ export function Blind150Tracker({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 transition-colors"
-                title="Reset filters"
+                className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-muted)] transition-colors"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
                 <span>Reset</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Count */}
-        <div className="mt-3 flex items-center justify-between text-xs text-[var(--text-muted)] pt-2 border-t border-[var(--border)]/60">
+        {/* Active Results Summary */}
+        <div className="flex items-center justify-between text-xs text-[var(--text-muted)] pt-1 px-1">
           <span>
             Showing <strong className="text-[var(--text)]">{filteredProblems.length}</strong> of{" "}
             {BLIND_150_LIST.length} problems
           </span>
-          {hasActiveFilters && (
-            <span className="text-[11px] text-[var(--primary)] font-medium">
-              Filtered view
+          {statusFilter === "all" && (
+            <span className="font-mono text-[11px]">
+              {stats.solvedCount} completed • {stats.total - stats.solvedCount} left
             </span>
           )}
         </div>
       </div>
 
-      {/* 3. Problems Grid / List */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* 3. Problems Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {filteredProblems.map((b) => {
           const userMatch = findMatchingUserProblem(b, userProblems);
           const isSolved = isBlindProblemSolved(userMatch);
-
           const isHintExpanded = expandedHintId === b.id;
 
           const diffColor =
             b.difficulty === "Easy"
-              ? "text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/20"
+              ? "text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/30"
               : b.difficulty === "Medium"
-                ? "text-[var(--warning)] bg-[var(--warning)]/10 border-[var(--warning)]/20"
-                : "text-[var(--danger)] bg-[var(--danger)]/10 border-[var(--danger)]/20";
+                ? "text-[var(--warning)] bg-[var(--warning)]/10 border-[var(--warning)]/30"
+                : "text-[var(--danger)] bg-[var(--danger)]/10 border-[var(--danger)]/30";
 
           return (
             <div
               key={b.id}
-              className={`group flex flex-col justify-between rounded-2xl border p-4 transition-all duration-200 ${
+              className={`group flex flex-col justify-between rounded-2xl border p-4 transition-all ${
                 isSolved
-                  ? "border-[var(--success)]/30 bg-[var(--surface)] hover:border-[var(--success)]/60"
-                  : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/40 hover:shadow-xs"
+                  ? "border-[var(--success)]/30 bg-[var(--success)]/5 shadow-2xs"
+                  : userMatch?.status === "Todo" || userMatch?.status === "todo"
+                    ? "border-[var(--primary)]/30 bg-[var(--surface)] shadow-2xs"
+                    : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/40 hover:shadow-xs"
               }`}
             >
               <div>
-                {/* Header row: Order index, Difficulty, Status indicator */}
+                {/* Header: Order, Difficulty, Topic, Quick Toggle */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="font-mono text-[10px] text-[var(--text-muted)] shrink-0">
@@ -412,47 +395,37 @@ export function Blind150Tracker({
                   </span>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    onOpenSolveModal(
-                      userMatch
-                        ? {
-                            title: userMatch.title,
-                            link: userMatch.link || b.link,
-                            topic: canonicalDsaTopic(userMatch.topic || b.topic),
-                            difficulty: userMatch.difficulty || b.difficulty,
-                            platform: userMatch.platform || "LeetCode",
-                            time_complexity: userMatch.time_complexity || b.timeComplexity,
-                            space_complexity: userMatch.space_complexity || b.spaceComplexity,
-                            approach_notes: userMatch.approach_notes || `${b.pattern}: ${b.hints}`,
-                            code_snippet: userMatch.code_snippet || "",
-                            language: userMatch.language || "java",
-                            status:
-                              userMatch.status === "todo" || userMatch.status === "Todo"
-                                ? "Todo"
-                                : userMatch.status === "solved" || userMatch.status === "mastered"
-                                  ? "Solved"
-                                  : (userMatch.status as DsaStatus) || "Solved",
-                          }
-                        : {
-                            title: b.title,
-                            link: b.link,
-                            topic: canonicalDsaTopic(b.topic),
-                            difficulty: b.difficulty,
-                            platform: "LeetCode",
-                            time_complexity: b.timeComplexity,
-                            space_complexity: b.spaceComplexity,
-                            approach_notes: `${b.pattern}: ${b.hints}`,
-                            status: "Solved",
-                          }
-                    )
-                  }
-                  className="flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity"
-                >
-                  <Code2 className="h-3.5 w-3.5" />
-                  <span>{isSolved ? "View / Edit Code" : "Solve Now"}</span>
-                </button>
+                {userMatch ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenEditProblem(userMatch)}
+                    className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 px-3 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                  >
+                    <Code2 className="h-3.5 w-3.5 text-[var(--primary)]" />
+                    <span>View / Edit Notes</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpenSolveModal({
+                        title: b.title,
+                        link: b.link,
+                        topic: canonicalDsaTopic(b.topic),
+                        difficulty: b.difficulty,
+                        platform: "LeetCode",
+                        time_complexity: b.timeComplexity,
+                        space_complexity: b.spaceComplexity,
+                        approach_notes: `${b.pattern}: ${b.hints}`,
+                        status: "Solved",
+                      })
+                    }
+                    className="flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Solve & Log</span>
+                  </button>
+                )}
               </div>
             </div>
           );

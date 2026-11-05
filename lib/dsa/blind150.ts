@@ -1983,7 +1983,7 @@ export function findMatchingUserProblem(
   const normBlind = normalizeDsaTitle(blind.title);
   const strippedNormBlind = normalizeDsaTitle(stripProblemNumber(blind.title));
 
-  return userProblems.find((up) => {
+  const matches = userProblems.filter((up) => {
     // 0. ID match
     if (up.id === blind.id || (up.id && up.id.startsWith(`blind-${blind.id}`))) {
       return true;
@@ -2001,7 +2001,10 @@ export function findMatchingUserProblem(
 
     // 3. Stripped number title match (e.g. "49. Group Anagrams" -> "groupanagrams")
     const strippedNormUser = normalizeDsaTitle(stripProblemNumber(up.title));
-    if (strippedNormUser && (strippedNormUser === strippedNormBlind || strippedNormUser === normBlind)) {
+    if (
+      strippedNormUser &&
+      (strippedNormUser === strippedNormBlind || strippedNormUser === normBlind)
+    ) {
       return true;
     }
 
@@ -2019,6 +2022,28 @@ export function findMatchingUserProblem(
 
     return false;
   });
+
+  if (matches.length === 0) return undefined;
+  if (matches.length === 1) return matches[0];
+
+  // If multiple candidates exist (e.g. an imported todo stub and a solved problem),
+  // prioritize:
+  // 1. Solved or in-revision problems
+  // 2. Problems with actual code snippet or notes
+  // 3. Most recently updated
+  return matches.sort((a, b) => {
+    const aSolved = isBlindProblemSolved(a) ? 1 : 0;
+    const bSolved = isBlindProblemSolved(b) ? 1 : 0;
+    if (bSolved !== aSolved) return bSolved - aSolved;
+
+    const aHasCode = (a.code_snippet?.trim() || "").length > 0 ? 1 : 0;
+    const bHasCode = (b.code_snippet?.trim() || "").length > 0 ? 1 : 0;
+    if (bHasCode !== aHasCode) return bHasCode - aHasCode;
+
+    const aTime = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+    const bTime = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+    return bTime - aTime;
+  })[0];
 }
 
 /**

@@ -1,13 +1,19 @@
 "use client";
 
 // ============================================================================
-// Sahil's Shore: DSA Container Component (Main Interactive Hub)
+// Sahil's Shore: DSA Tracker Main Container
 // Spaced Repetition, Weak Topic Detection, Blind 150 Tracker,
-// Zero-data-loss Local Persistence & Supabase Synchronization.
+// Hydration-Safe State, Adaptive Mastery Targets, and Favorites.
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Code2, Sparkles, RefreshCw, Plus, Flame } from "lucide-react";
+import {
+  Code2,
+  Sparkles,
+  Plus,
+  RefreshCw,
+  HelpCircle,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { DsaProblem } from "@/types";
 import {
@@ -16,18 +22,16 @@ import {
   updateDsaProblem,
   deleteDsaProblem,
   rateRevision,
-  calculateNextRevision,
   isDueForRevision,
   detectWeakTopics,
   calculateTopicProgress,
   calculateDifficultySplit,
   calculateDsaStreak,
-  findMatchingUserProblem,
-  isBlindProblemSolved,
   canonicalDsaTopic,
+  isBlindProblemSolved,
   type CreateDsaProblemInput,
-  type Blind150Problem,
   type DsaStatus,
+  type Blind150Problem,
 } from "@/lib/dsa";
 import { DsaStatsBar } from "./DsaStatsBar";
 import { RevisionQueueCard } from "./RevisionQueueCard";
@@ -67,12 +71,12 @@ function saveCachedProblems(list: DsaProblem[]) {
 export function DsaContainer() {
   const supabase = createClient();
   const [userId, setUserId] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"my-problems" | "blind-150">("my-problems");
-  const [problems, setProblems] = useState<DsaProblem[]>(() => {
-    return loadCachedProblems() || [];
-  });
+  const [problems, setProblems] = useState<DsaProblem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [targetBenchmark, setTargetBenchmark] = useState<number | "adaptive">("adaptive");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProblem, setEditingProblem] = useState<DsaProblem | null>(null);
   const [modalPrefill, setModalPrefill] = useState<Partial<CreateDsaProblemInput> | null>(null);
@@ -83,14 +87,23 @@ export function DsaContainer() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // 1. Hydration-safe initial mount
+  useEffect(() => {
+    setIsMounted(true);
+    const cached = loadCachedProblems();
+    if (cached && cached.length > 0) {
+      setProblems(cached);
+    }
+  }, []);
+
   // Sync to local storage whenever problems state updates
   useEffect(() => {
-    if (problems.length > 0) {
+    if (isMounted && problems.length > 0) {
       saveCachedProblems(problems);
     }
-  }, [problems]);
+  }, [problems, isMounted]);
 
-  // 1. Initialize user & fetch problems
+  // 2. Initialize user & fetch problems
   useEffect(() => {
     async function initUser() {
       try {
@@ -127,6 +140,7 @@ export function DsaContainer() {
                 last_revised_at: null,
                 revision_history: [],
                 rating: null,
+                is_favorite: true,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               },
@@ -139,11 +153,11 @@ export function DsaContainer() {
                 topic: "Graphs",
                 difficulty: "Medium",
                 status: "Needs revision",
-                time_spent_minutes: 40,
+                time_spent_minutes: 30,
                 approach_notes:
-                  "Kahn's algorithm using in-degree array and queue for topological sorting. Cycle detected if processed count != numCourses.",
+                  "Topological sort via Kahn's algorithm (BFS with in-degrees) or DFS cycle detection with 3-state coloring.",
                 code_snippet:
-                  "class Solution {\n    public boolean canFinish(int numCourses, int[][] prerequisites) {\n        int[] indegree = new int[numCourses];\n        List<List<Integer>> adj = new ArrayList<>();\n        for (int i = 0; i < numCourses; i++) adj.add(new ArrayList<>());\n        for (int[] p : prerequisites) {\n            adj.get(p[1]).add(p[0]);\n            indegree[p[0]]++;\n        }\n        Queue<Integer> q = new LinkedList<>();\n        for (int i = 0; i < numCourses; i++) if (indegree[i] == 0) q.add(i);\n        int count = 0;\n        while (!q.isEmpty()) {\n            int node = q.poll();\n            count++;\n            for (int neighbor : adj.get(node)) {\n                if (--indegree[neighbor] == 0) q.add(neighbor);\n            }\n        }\n        return count == numCourses;\n    }\n}",
+                  "class Solution {\n    public boolean canFinish(int numCourses, int[][] prerequisites) {\n        int[] inDegree = new int[numCourses];\n        List<List<Integer>> adj = new ArrayList<>();\n        for (int i = 0; i < numCourses; i++) adj.add(new ArrayList<>());\n        for (int[] p : prerequisites) {\n            adj.get(p[1]).add(p[0]);\n            inDegree[p[0]]++;\n        }\n        Queue<Integer> q = new LinkedList<>();\n        for (int i = 0; i < numCourses; i++) if (inDegree[i] == 0) q.offer(i);\n        int visited = 0;\n        while (!q.isEmpty()) {\n            int curr = q.poll();\n            visited++;\n            for (int next : adj.get(curr)) {\n                if (--inDegree[next] == 0) q.offer(next);\n            }\n        }\n        return visited == numCourses;\n    }\n}",
                 language: "java",
                 time_complexity: "O(V + E)",
                 space_complexity: "O(V + E)",
@@ -153,6 +167,7 @@ export function DsaContainer() {
                 last_revised_at: null,
                 revision_history: [],
                 rating: "Hard",
+                is_favorite: false,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               },
@@ -179,6 +194,7 @@ export function DsaContainer() {
                 last_revised_at: new Date().toISOString(),
                 revision_history: [],
                 rating: "Easy",
+                is_favorite: true,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               },
@@ -194,14 +210,13 @@ export function DsaContainer() {
     initUser();
   }, [supabase]);
 
-  // 2. Fetch problems from Supabase
+  // 3. Fetch problems from Supabase
   const fetchProblems = useCallback(async () => {
     if (!userId) return;
     setIsLoading(true);
     try {
       const data = await getDsaProblems(supabase, userId);
       if (data && data.length > 0) {
-        // Merge Supabase problems with any locally created ones
         setProblems(data);
         saveCachedProblems(data);
       }
@@ -218,7 +233,7 @@ export function DsaContainer() {
     }
   }, [userId, fetchProblems]);
 
-  // 3. Computed domain insights
+  // 4. Computed domain insights
   const revisionDueProblems = useMemo(() => {
     return problems.filter((p) => isDueForRevision(p));
   }, [problems]);
@@ -228,8 +243,11 @@ export function DsaContainer() {
   }, [problems]);
 
   const topicStats = useMemo(() => {
-    return calculateTopicProgress(problems);
-  }, [problems]);
+    return calculateTopicProgress(
+      problems,
+      targetBenchmark === "adaptive" ? undefined : targetBenchmark
+    );
+  }, [problems, targetBenchmark]);
 
   const difficultySplit = useMemo(() => {
     return calculateDifficultySplit(problems);
@@ -243,7 +261,39 @@ export function DsaContainer() {
     return problems.filter((p) => isBlindProblemSolved(p)).length;
   }, [problems]);
 
-  // 4. Modal handlers
+  // Count empty placeholder stubs if user accidentally imported 150 items previously
+  const emptyImportedStubsCount = useMemo(() => {
+    return problems.filter(
+      (p) =>
+        (p.id.startsWith("blind-") || p.id.startsWith("blind-b150-")) &&
+        (p.status === "Todo" || p.status === "todo") &&
+        (!p.code_snippet || p.code_snippet.trim() === "")
+    ).length;
+  }, [problems]);
+
+  // Clean up empty stubs action
+  const handleCleanStubs = async () => {
+    if (
+      !window.confirm(
+        `Remove all ${emptyImportedStubsCount} empty placeholder stubs from your problem list?`
+      )
+    ) {
+      return;
+    }
+    const remaining = problems.filter(
+      (p) =>
+        !(
+          (p.id.startsWith("blind-") || p.id.startsWith("blind-b150-")) &&
+          (p.status === "Todo" || p.status === "todo") &&
+          (!p.code_snippet || p.code_snippet.trim() === "")
+        )
+    );
+    setProblems(remaining);
+    saveCachedProblems(remaining);
+    showToast(`Cleaned up ${emptyImportedStubsCount} empty placeholder stubs!`);
+  };
+
+  // 5. Modal handlers
   const handleOpenAddModal = () => {
     setEditingProblem(null);
     setModalPrefill(null);
@@ -262,7 +312,7 @@ export function DsaContainer() {
     setIsModalOpen(true);
   };
 
-  // 5. Save problem (Optimistic + Supabase + LocalStorage)
+  // 6. Save problem (Optimistic + Supabase + LocalStorage)
   const handleSaveProblem = async (
     problemData: CreateDsaProblemInput,
     problemId?: string
@@ -323,6 +373,7 @@ export function DsaContainer() {
         language: problemData.language || "java",
         time_complexity: problemData.time_complexity || null,
         space_complexity: problemData.space_complexity || null,
+        is_favorite: Boolean(problemData.is_favorite),
         revision_interval_days: 1,
         next_revision_at: new Date(Date.now() + 86400000).toISOString(),
         revision_count: 0,
@@ -362,17 +413,55 @@ export function DsaContainer() {
     }
   };
 
-  // 6. Rate revision (Easy vs. Hard)
+  // 7. Toggle Favorite
+  const handleToggleFavorite = async (problemId: string) => {
+    let nextFav = false;
+    setProblems((prev) => {
+      const next = prev.map((p) => {
+        if (p.id === problemId) {
+          nextFav = !p.is_favorite;
+          return { ...p, is_favorite: nextFav };
+        }
+        return p;
+      });
+      saveCachedProblems(next);
+      return next;
+    });
+
+    showToast(nextFav ? "Starred problem!" : "Removed from favorites.");
+
+    if (userId) {
+      try {
+        await updateDsaProblem(supabase, userId, problemId, {
+          is_favorite: nextFav,
+        });
+      } catch (e) {
+        console.warn("[DsaContainer] Favorite sync warning:", e);
+      }
+    }
+  };
+
+  // 8. Rate revision (Easy vs Hard)
   const handleRateRevision = async (
     problem: DsaProblem,
     rating: "Easy" | "Hard"
   ) => {
-    const { nextIntervalDays, nextRevisionDateUTC } = calculateNextRevision(
-      problem.revision_interval_days || 1,
-      rating
-    );
+    let nextIntervalDays = 1;
+    if (rating === "Easy") {
+      const ladder = [1, 3, 7, 14, 30];
+      const curIdx = ladder.indexOf(problem.revision_interval_days as any);
+      nextIntervalDays =
+        curIdx >= 0 && curIdx < ladder.length - 1
+          ? ladder[curIdx + 1]
+          : 30;
+    } else {
+      nextIntervalDays = 1;
+    }
 
-    // Optimistic update
+    const nextRevisionDateUTC = new Date(
+      Date.now() + nextIntervalDays * 86400000
+    ).toISOString();
+
     setProblems((prev) => {
       const next = prev.map((p) =>
         p.id === problem.id
@@ -413,7 +502,7 @@ export function DsaContainer() {
     }
   };
 
-  // 7. Delete problem
+  // 9. Delete problem
   const handleDeleteProblem = async (problemId: string) => {
     setProblems((prev) => {
       const next = prev.filter((p) => p.id !== problemId);
@@ -431,14 +520,13 @@ export function DsaContainer() {
     }
   };
 
-  // 8. Blind 150 Quick Toggle Solved
+  // 10. Blind 150 Quick Toggle Solved
   const handleQuickToggleSolved = async (
     blind: Blind150Problem,
     currentMatch?: DsaProblem
   ) => {
     if (currentMatch) {
       const isCurrentlySolved = isBlindProblemSolved(currentMatch);
-
       const nextStatus: DsaStatus = isCurrentlySolved ? "Todo" : "Solved";
 
       await handleSaveProblem(
@@ -453,6 +541,7 @@ export function DsaContainer() {
           approach_notes: currentMatch.approach_notes,
           code_snippet: currentMatch.code_snippet,
           language: currentMatch.language || "java",
+          is_favorite: currentMatch.is_favorite,
         },
         currentMatch.id
       );
@@ -481,57 +570,6 @@ export function DsaContainer() {
     }
   };
 
-  // 9. Batch import Blind 150
-  const handleBatchImport = async (unsolvedOnly: boolean) => {
-    const { BLIND_150_LIST } = await import("@/lib/dsa/blind150");
-    let addedCount = 0;
-
-    const newProblemsToAdd: DsaProblem[] = [];
-
-    BLIND_150_LIST.forEach((b) => {
-      const match = findMatchingUserProblem(b, problems);
-      if (unsolvedOnly && match) return;
-
-      const p: DsaProblem = {
-        id: `blind-${b.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        user_id: userId || "preview",
-        title: b.title,
-        link: b.link,
-        platform: "LeetCode",
-        topic: b.topic,
-        difficulty: b.difficulty,
-        status: "Todo",
-        time_spent_minutes: 0,
-        approach_notes: `${b.pattern}: ${b.hints}`,
-        code_snippet: null,
-        language: "java",
-        time_complexity: b.timeComplexity,
-        space_complexity: b.spaceComplexity,
-        revision_interval_days: 1,
-        next_revision_at: null,
-        revision_count: 0,
-        last_revised_at: null,
-        revision_history: [],
-        rating: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      newProblemsToAdd.push(p);
-      addedCount++;
-    });
-
-    if (newProblemsToAdd.length > 0) {
-      setProblems((prev) => {
-        const next = [...newProblemsToAdd, ...prev];
-        saveCachedProblems(next);
-        return next;
-      });
-      showToast(`Imported ${addedCount} Blind 150 problems to your tracker!`);
-    } else {
-      showToast("All Blind 150 problems are already in your tracker!");
-    }
-  };
-
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 pt-2">
       {/* Toast Notification */}
@@ -541,25 +579,28 @@ export function DsaContainer() {
         </div>
       )}
 
-      {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between w-full">
+      {/* Main Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border)] pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)] flex items-center gap-2.5">
-            <Code2 className="h-6 w-6 text-[var(--primary)]" />
-            DSA Tracker
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)] flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--primary)] text-white shadow-sm">
+              <Code2 className="h-5 w-5" />
+            </span>
+            DSA Tracker & Algorithm Notebook
           </h1>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Spaced repetition revision queue, Blind 150 roadmap, mastery rings, and CodeMirror snippets
+          <p className="text-xs text-[var(--text-muted)] mt-1">
+            Spaced repetition revision queue, Blind 150 roadmap, adaptive mastery rings, and CodeMirror snippets
           </p>
         </div>
 
+        {/* Action Controls & Navigation Tabs */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Main Mode Tabs */}
-          <div className="flex items-center gap-1 p-1 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+          {/* Tabs */}
+          <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-2xs">
             <button
               type="button"
               onClick={() => setActiveTab("my-problems")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 activeTab === "my-problems"
                   ? "bg-[var(--primary)] text-white shadow-xs"
                   : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -568,20 +609,21 @@ export function DsaContainer() {
               <Code2 className="h-3.5 w-3.5" />
               <span>My Solutions</span>
               <span
+                suppressHydrationWarning
                 className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
                   activeTab === "my-problems"
                     ? "bg-white/20 text-white"
                     : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
                 }`}
               >
-                {problems.length}
+                {isMounted ? problems.length : 0}
               </span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("blind-150")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 activeTab === "blind-150"
                   ? "bg-[var(--primary)] text-white shadow-xs"
                   : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -619,13 +661,13 @@ export function DsaContainer() {
             onClick={handleOpenAddModal}
             className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-all"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-4 w-4" />
             <span>Log Problem</span>
           </button>
         </div>
       </div>
 
-      {/* Tab 1: My Problems & Revisions Hub */}
+      {/* Tab 1: My Solutions */}
       {activeTab === "my-problems" && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* 1. Daily Goal, Streak & Stats Bar */}
@@ -649,21 +691,26 @@ export function DsaContainer() {
             onSelectTopic={(t) => setSelectedTopic(t)}
           />
 
-          {/* 4. Topic Progress Rings & Difficulty Split */}
+          {/* 4. Topic Progress Rings & Difficulty Split with Adaptive Targets */}
           <TopicProgressRings
             stats={topicStats}
             difficultySplit={difficultySplit}
             selectedTopic={selectedTopic}
             onSelectTopic={setSelectedTopic}
+            targetBenchmark={targetBenchmark}
+            onTargetBenchmarkChange={setTargetBenchmark}
           />
 
-          {/* 5. Problem List with Search, Filters, and Code Peeks */}
+          {/* 5. Problem List with Search, Filters, Favorites, and Expanded Notes */}
           <DsaProblemList
             problems={problems}
             selectedTopic={selectedTopic}
             onSelectTopic={setSelectedTopic}
             onEdit={handleOpenEditModal}
             onDelete={handleDeleteProblem}
+            onToggleFavorite={handleToggleFavorite}
+            onCleanStubs={emptyImportedStubsCount > 0 ? handleCleanStubs : undefined}
+            stubsCount={emptyImportedStubsCount}
           />
         </div>
       )}
@@ -674,13 +721,13 @@ export function DsaContainer() {
           <Blind150Tracker
             userProblems={problems}
             onOpenSolveModal={handleOpenSolveModalWithPrefill}
+            onOpenEditProblem={handleOpenEditModal}
             onQuickToggleSolved={handleQuickToggleSolved}
-            onBatchImport={handleBatchImport}
           />
         </div>
       )}
 
-      {/* Problem Add/Edit Modal */}
+      {/* Problem Add/Edit Modal (Engineering Notebook) */}
       <DsaProblemModal
         isOpen={isModalOpen}
         onClose={() => {

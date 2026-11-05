@@ -19,6 +19,7 @@ import {
 import {
   canonicalDsaTopic,
   isSameDsaTopic,
+  getAdaptiveTopicTarget,
 } from "../lib/dsa/constants.ts";
 import type { DsaProblem } from "../types/index.ts";
 
@@ -208,5 +209,62 @@ describe("3. Topic Canonicalization & HashMap Aliasing", () => {
     assert.equal(isSameDsaTopic("Hash Table", "HashMap"), true);
     assert.equal(isSameDsaTopic("Arrays & Hashing", "HashMap"), true);
     assert.equal(isSameDsaTopic("Arrays", "Strings"), false);
+  });
+});
+
+describe("4. Priority Candidate Resolution & Adaptive Milestones", () => {
+  test("prioritizes solved problem over unattempted todo stub when both exist", () => {
+    const twoSum = BLIND_150_LIST.find((p) => p.title === "Two Sum")!;
+    assert.ok(twoSum);
+
+    const userProblems: DsaProblem[] = [
+      {
+        id: "stub-two-sum",
+        user_id: "u1",
+        title: "Two Sum",
+        status: "Todo", // Unattempted placeholder
+        difficulty: "Easy",
+        code_snippet: null,
+        created_at: "2026-11-01T00:00:00Z",
+        updated_at: "2026-11-01T00:00:00Z",
+      } as unknown as DsaProblem,
+      {
+        id: "solved-two-sum",
+        user_id: "u1",
+        title: "Two Sum",
+        status: "Solved", // Solved by user
+        difficulty: "Easy",
+        code_snippet: "class Solution { ... }",
+        created_at: "2026-11-02T00:00:00Z",
+        updated_at: "2026-11-02T00:00:00Z",
+      } as unknown as DsaProblem,
+    ];
+
+    const match = findMatchingUserProblem(twoSum, userProblems);
+    assert.ok(match);
+    assert.equal(match.id, "solved-two-sum");
+    assert.equal(isBlindProblemSolved(match), true);
+  });
+
+  test("calculates adaptive milestones accurately across all tiers", () => {
+    // 0 to 9 -> 10 (Apprentice)
+    assert.deepEqual(getAdaptiveTopicTarget(0), { target: 10, tier: "Apprentice" });
+    assert.deepEqual(getAdaptiveTopicTarget(9), { target: 10, tier: "Apprentice" });
+
+    // 10 to 24 -> 25 (Practitioner)
+    assert.deepEqual(getAdaptiveTopicTarget(10), { target: 25, tier: "Practitioner" });
+    assert.deepEqual(getAdaptiveTopicTarget(24), { target: 25, tier: "Practitioner" });
+
+    // 25 to 49 -> 50 (Proficient)
+    assert.deepEqual(getAdaptiveTopicTarget(25), { target: 50, tier: "Proficient" });
+    assert.deepEqual(getAdaptiveTopicTarget(49), { target: 50, tier: "Proficient" });
+
+    // 50 to 99 -> 100 (Master)
+    assert.deepEqual(getAdaptiveTopicTarget(50), { target: 100, tier: "Master" });
+    assert.deepEqual(getAdaptiveTopicTarget(99), { target: 100, tier: "Master" });
+
+    // 100+ -> Grandmaster (adapts to next 50-step milestone)
+    assert.deepEqual(getAdaptiveTopicTarget(100), { target: 150, tier: "Grandmaster" });
+    assert.deepEqual(getAdaptiveTopicTarget(155), { target: 200, tier: "Grandmaster" });
   });
 });

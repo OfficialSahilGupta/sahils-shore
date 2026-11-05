@@ -13,6 +13,8 @@ import {
   DEFAULT_DAILY_DSA_GOAL,
   canonicalDsaTopic,
   isSameDsaTopic,
+  getAdaptiveTopicTarget,
+  type MasteryTierName,
   type DsaTopic,
   type DsaDifficulty,
   type DsaStatus,
@@ -45,6 +47,7 @@ export interface CreateDsaProblemInput {
   language?: SupportedLanguage | string;
   time_complexity?: string | null;
   space_complexity?: string | null;
+  is_favorite?: boolean;
 }
 
 export interface WeakTopicReport {
@@ -64,7 +67,8 @@ export interface TopicProgressStat {
   needsRevision: number;
   stuck: number;
   solveRate: number;
-  target: number; // benchmark
+  target: number; // adaptive milestone or benchmark
+  tier?: MasteryTierName;
 }
 
 export interface DsaStreakInfo {
@@ -212,7 +216,8 @@ export function detectWeakTopics(problems: DsaProblem[]): WeakTopicReport[] {
 // ----------------------------------------------------------------------------
 
 export function calculateTopicProgress(
-  problems: DsaProblem[]
+  problems: DsaProblem[],
+  targetOverride?: number
 ): TopicProgressStat[] {
   const map = new Map<
     string,
@@ -264,6 +269,12 @@ export function calculateTopicProgress(
   const list: TopicProgressStat[] = [];
   DSA_TOPICS.forEach((t) => {
     const s = map.get(t) || { total: 0, solved: 0, needsRevision: 0, stuck: 0 };
+    const { target: adaptiveTarget, tier } = getAdaptiveTopicTarget(s.solved, s.total);
+    const resolvedTarget =
+      typeof targetOverride === "number" && targetOverride > 0
+        ? targetOverride
+        : adaptiveTarget;
+
     list.push({
       topic: t,
       total: s.total,
@@ -271,7 +282,8 @@ export function calculateTopicProgress(
       needsRevision: s.needsRevision,
       stuck: s.stuck,
       solveRate: s.total > 0 ? s.solved / s.total : 0,
-      target: 10, // Default target benchmark per topic
+      target: resolvedTarget,
+      tier,
     });
   });
 
@@ -451,6 +463,7 @@ export async function createDsaProblem(
         next_revision_at: initialRevisionDate,
         revision_count: 0,
         revision_history: [],
+        is_favorite: Boolean(input.is_favorite),
       })
       .select()
       .single();
@@ -473,13 +486,23 @@ export async function createDsaProblem(
         language: input.language || "java",
         next_revision_at: initialRevisionDate,
         revision_count: 0,
+        is_favorite: Boolean(input.is_favorite),
       };
 
-      const fallbackRes = await supabase
+      let fallbackRes = await supabase
         .from("dsa_problems")
         .insert(fallbackPayload as any)
         .select()
         .single();
+
+      if (fallbackRes.error && fallbackRes.error.message.includes("is_favorite")) {
+        delete fallbackPayload.is_favorite;
+        fallbackRes = await supabase
+          .from("dsa_problems")
+          .insert(fallbackPayload as any)
+          .select()
+          .single();
+      }
 
       if (fallbackRes.data) {
         problem = {
@@ -489,6 +512,7 @@ export async function createDsaProblem(
           time_complexity: input.time_complexity || null,
           space_complexity: input.space_complexity || null,
           revision_interval_days: 1,
+          is_favorite: Boolean(input.is_favorite),
         };
       }
     } else if (data) {
@@ -496,6 +520,7 @@ export async function createDsaProblem(
         ...(data as DsaProblem),
         status: input.status,
         topic: normalizedTopic,
+        is_favorite: Boolean(input.is_favorite),
       };
     }
   } catch (err) {
@@ -593,7 +618,7 @@ export async function updateDsaProblem(
   if (payload.status === "Todo") payload.status = "todo";
 
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("dsa_problems")
       .update(payload as any)
       .eq("id", problemId)
@@ -601,11 +626,25 @@ export async function updateDsaProblem(
       .select()
       .single();
 
+    if (error && error.message.includes("is_favorite")) {
+      delete payload.is_favorite;
+      const retry = await supabase
+        .from("dsa_problems")
+        .update(payload as any)
+        .eq("id", problemId)
+        .eq("user_id", userId)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
+
     if (!error && data) {
       return {
         ...(data as DsaProblem),
         status: data.status === "todo" ? "Todo" : data.status === "solved" ? "Solved" : data.status,
         topic: canonicalDsaTopic(data.topic),
+        is_favorite: updates.is_favorite !== undefined ? updates.is_favorite : (data as any).is_favorite,
       } as DsaProblem;
     }
   } catch (err) {

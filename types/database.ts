@@ -381,6 +381,7 @@ export interface Database {
           last_revised_at: string | null;
           revision_history: Json;
           rating: "Easy" | "Hard" | null;
+          is_favorite?: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -405,6 +406,7 @@ export interface Database {
           last_revised_at?: string | null;
           revision_history?: Json;
           rating?: ("Easy" | "Hard" | null);
+          is_favorite?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -429,6 +431,7 @@ export interface Database {
           last_revised_at?: string | null;
           revision_history?: Json;
           rating?: ("Easy" | "Hard" | null);
+          is_favorite?: boolean;
           created_at?: string;
           updated_at?: string;
         };

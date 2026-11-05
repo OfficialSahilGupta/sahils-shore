@@ -1,7 +1,7 @@
 "use client";
 
 // ============================================================================
-// Sahil's Shore: DSA Problem List (Search, Filters, and Table/Cards)
+// Sahil's Shore: DSA Problem List (Search, Filters, Favorites, Expanded Notes)
 // ============================================================================
 
 import React, { useState, useMemo } from "react";
@@ -18,6 +18,9 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Star,
+  Copy,
+  Check,
 } from "lucide-react";
 import type { DsaProblem } from "@/types";
 import {
@@ -38,6 +41,9 @@ interface DsaProblemListProps {
   onSelectTopic: (topic: string | null) => void;
   onEdit: (problem: DsaProblem) => void;
   onDelete: (problemId: string) => Promise<void>;
+  onToggleFavorite?: (problemId: string) => Promise<void>;
+  onCleanStubs?: () => Promise<void>;
+  stubsCount?: number;
 }
 
 export function DsaProblemList({
@@ -46,16 +52,30 @@ export function DsaProblemList({
   onSelectTopic,
   onEdit,
   onDelete,
+  onToggleFavorite,
+  onCleanStubs,
+  stubsCount = 0,
 }: DsaProblemListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [starredOnly, setStarredOnly] = useState(false);
   const [expandedCodeId, setExpandedCodeId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const favoritedCount = useMemo(() => {
+    return problems.filter((p) => p.is_favorite).length;
+  }, [problems]);
 
   const filteredProblems = useMemo(() => {
     return problems.filter((p) => {
+      // Starred only filter
+      if (starredOnly && !p.is_favorite) {
+        return false;
+      }
+
       // Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -94,6 +114,7 @@ export function DsaProblemList({
     });
   }, [
     problems,
+    starredOnly,
     searchQuery,
     selectedTopic,
     difficultyFilter,
@@ -111,9 +132,20 @@ export function DsaProblemList({
     }
   };
 
+  const handleCopyCode = async (id: string, code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (e) {
+      console.warn("Failed to copy code snippet:", e);
+    }
+  };
+
   const hasActiveFilters =
     searchQuery ||
     selectedTopic ||
+    starredOnly ||
     difficultyFilter !== "all" ||
     platformFilter !== "all" ||
     statusFilter !== "all";
@@ -121,13 +153,14 @@ export function DsaProblemList({
   const clearFilters = () => {
     setSearchQuery("");
     onSelectTopic(null);
+    setStarredOnly(false);
     setDifficultyFilter("all");
     setPlatformFilter("all");
     setStatusFilter("all");
   };
 
   return (
-    <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-sm space-y-4">
+    <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-4">
       {/* Search and Filters Header */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative min-w-0 flex-1">
@@ -136,20 +169,44 @@ export function DsaProblemList({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search problems by title, approach, topic..."
-            className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 pl-10 pr-4 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+            placeholder="Search problems by title, intuition, complexity, topic..."
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 pl-10 pr-4 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors"
           />
         </div>
 
-        {/* Filter dropdowns in a safe, non-outflowing flex wrap row */}
+        {/* Filter Controls Row */}
         <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
+          {/* Starred Filter Button */}
+          <button
+            type="button"
+            onClick={() => setStarredOnly(!starredOnly)}
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+              starredOnly
+                ? "border-[var(--accent-warm)] bg-[var(--accent-warm)]/15 text-[var(--accent-warm)] shadow-2xs"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]"
+            }`}
+            title="Filter Starred Problems"
+          >
+            <Star
+              className={`h-3.5 w-3.5 ${
+                starredOnly ? "fill-[var(--accent-warm)] text-[var(--accent-warm)]" : ""
+              }`}
+            />
+            <span>Starred</span>
+            {favoritedCount > 0 && (
+              <span className="rounded-full bg-[var(--surface-muted)] px-1.5 py-0.2 text-[10px] font-mono">
+                {favoritedCount}
+              </span>
+            )}
+          </button>
+
           {/* Topic Dropdown */}
           <Select
             value={selectedTopic || "all"}
             onChange={(e) =>
               onSelectTopic(e.target.value === "all" ? null : e.target.value)
             }
-            className="text-xs"
+            size="sm"
             containerClassName="w-auto max-w-[150px]"
           >
             <option value="all">All Topics</option>
@@ -164,8 +221,8 @@ export function DsaProblemList({
           <Select
             value={difficultyFilter}
             onChange={(e) => setDifficultyFilter(e.target.value)}
-            className="text-xs"
-            containerClassName="w-auto max-w-[135px]"
+            size="sm"
+            containerClassName="w-auto max-w-[130px]"
           >
             <option value="all">All Difficulties</option>
             {DSA_DIFFICULTIES.map((d) => (
@@ -179,8 +236,8 @@ export function DsaProblemList({
           <Select
             value={platformFilter}
             onChange={(e) => setPlatformFilter(e.target.value)}
-            className="text-xs"
-            containerClassName="w-auto max-w-[130px]"
+            size="sm"
+            containerClassName="w-auto max-w-[125px]"
           >
             <option value="all">All Platforms</option>
             {DSA_PLATFORMS.map((p) => (
@@ -194,8 +251,8 @@ export function DsaProblemList({
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs"
-            containerClassName="w-auto max-w-[130px]"
+            size="sm"
+            containerClassName="w-auto max-w-[125px]"
           >
             <option value="all">All Statuses</option>
             {DSA_STATUSES.map((s) => (
@@ -209,7 +266,7 @@ export function DsaProblemList({
             <button
               type="button"
               onClick={clearFilters}
-              className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 transition-colors"
+              className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 transition-colors"
             >
               <X className="h-3 w-3" />
               <span>Reset</span>
@@ -218,29 +275,53 @@ export function DsaProblemList({
         </div>
       </div>
 
-      {/* Results Count */}
+      {/* Optional Stubs Cleanup Banner (if user previously imported empty 150 stubs) */}
+      {stubsCount > 0 && onCleanStubs && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-[var(--primary)] shrink-0" />
+            <span className="text-[var(--text)]">
+              You have <strong>{stubsCount}</strong> empty Blind 150 placeholder rows in your solution list.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onCleanStubs}
+            className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity self-start sm:self-auto shrink-0"
+          >
+            Clean Up Empty Stubs
+          </button>
+        </div>
+      )}
+
+      {/* Results Count Summary */}
       <div className="flex items-center justify-between text-xs text-[var(--text-muted)] px-1">
         <span>
           Showing <strong className="text-[var(--text)]">{filteredProblems.length}</strong> of{" "}
           {problems.length} problems
         </span>
+        {starredOnly && (
+          <span className="text-[var(--accent-warm)] font-medium">
+            Filtered by Starred
+          </span>
+        )}
       </div>
 
       {/* Problem Cards List */}
       {filteredProblems.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--surface-muted)] p-8 text-center">
+        <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center">
           <Code2 className="mx-auto h-8 w-8 text-[var(--text-muted)] mb-2" />
           <h4 className="text-sm font-semibold text-[var(--text)]">
             No problems found
           </h4>
           <p className="text-xs text-[var(--text-muted)] mt-1">
             {hasActiveFilters
-              ? "Try adjusting your search query or filters."
-              : "Log your first problem to start building your algorithm mastery."}
+              ? "Try adjusting your search query or reset filters."
+              : "Log your first problem to start building your algorithm notebook."}
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-[var(--surface-muted)]">
+        <div className="divide-y divide-[var(--border)]">
           {filteredProblems.map((problem) => {
             const isCodeExpanded = expandedCodeId === problem.id;
             const diffClass =
@@ -258,13 +339,31 @@ export function DsaProblemList({
                   ? "bg-[var(--warning)]/15 text-[var(--warning)] border-[var(--warning)]/30"
                   : statusNormalized === "stuck"
                     ? "bg-[var(--danger)]/15 text-[var(--danger)] border-[var(--danger)]/30"
-                    : "bg-[var(--surface-muted)] text-[var(--text-muted)] border-[var(--surface-muted)]";
+                    : "bg-[var(--surface-muted)] text-[var(--text-muted)] border-[var(--border)]";
 
             return (
-              <div key={problem.id} className="py-3.5 first:pt-0 last:pb-0 space-y-2">
+              <div key={problem.id} className="py-3.5 first:pt-0 last:pb-0 space-y-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
+                  <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
+                      {/* Star Favorite Button */}
+                      {onToggleFavorite && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleFavorite(problem.id)}
+                          className="text-[var(--text-muted)] hover:text-[var(--accent-warm)] transition-colors p-0.5"
+                          title={problem.is_favorite ? "Starred" : "Star problem"}
+                        >
+                          <Star
+                            className={`h-4 w-4 ${
+                              problem.is_favorite
+                                ? "fill-[var(--accent-warm)] text-[var(--accent-warm)]"
+                                : ""
+                            }`}
+                          />
+                        </button>
+                      )}
+
                       <span
                         className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${diffClass}`}
                       >
@@ -282,13 +381,13 @@ export function DsaProblemList({
                           href={problem.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-semibold text-[var(--text)] hover:text-[var(--primary)] flex items-center gap-1 transition-colors group"
+                          className="text-sm font-semibold text-[var(--text)] hover:text-[var(--primary)] flex items-center gap-1 transition-colors group truncate"
                         >
-                          <span>{problem.title}</span>
-                          <ExternalLink className="h-3 w-3 text-[var(--text-muted)] group-hover:text-[var(--primary)]" />
+                          <span className="truncate">{problem.title}</span>
+                          <ExternalLink className="h-3 w-3 text-[var(--text-muted)] group-hover:text-[var(--primary)] shrink-0" />
                         </a>
                       ) : (
-                        <span className="text-sm font-semibold text-[var(--text)]">
+                        <span className="text-sm font-semibold text-[var(--text)] truncate">
                           {problem.title}
                         </span>
                       )}
@@ -309,17 +408,17 @@ export function DsaProblemList({
                         </span>
                       ) : null}
                       {problem.time_complexity && (
-                        <span className="rounded bg-[var(--primary-soft)]/20 px-1.5 py-0.5 text-[10px] font-mono text-[var(--primary)]">
+                        <span className="rounded bg-[var(--primary)]/10 px-1.5 py-0.5 text-[10px] font-mono text-[var(--primary)] font-medium">
                           Time: {problem.time_complexity}
                         </span>
                       )}
                       {problem.space_complexity && (
-                        <span className="rounded bg-[var(--primary-soft)]/20 px-1.5 py-0.5 text-[10px] font-mono text-[var(--primary)]">
+                        <span className="rounded bg-[var(--primary)]/10 px-1.5 py-0.5 text-[10px] font-mono text-[var(--primary)] font-medium">
                           Space: {problem.space_complexity}
                         </span>
                       )}
                       {problem.next_revision_at && (
-                        <span className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
+                        <span className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] font-medium">
                           <Calendar className="h-3 w-3" />
                           Revise: {formatFriendlyISTDate(problem.next_revision_at)} ({problem.revision_interval_days || 1}d)
                         </span>
@@ -328,77 +427,134 @@ export function DsaProblemList({
                   </div>
 
                   {/* Right side actions */}
-                  <div className="flex items-center gap-2 self-end sm:self-center">
-                    {problem.code_snippet && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedCodeId(isCodeExpanded ? null : problem.id)
-                        }
-                        className="flex items-center gap-1 rounded-lg border border-[var(--surface-muted)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/40 transition-colors"
-                        title="Toggle Code Snippet"
-                      >
-                        <Code2 className="h-3.5 w-3.5 text-[var(--primary)]" />
-                        <span>Code</span>
-                        {isCodeExpanded ? (
-                          <ChevronUp className="h-3 w-3" />
-                        ) : (
-                          <ChevronDown className="h-3 w-3" />
-                        )}
-                      </button>
-                    )}
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedCodeId(isCodeExpanded ? null : problem.id)
+                      }
+                      className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-all ${
+                        isCodeExpanded
+                          ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                          : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/40 hover:text-[var(--text)]"
+                      }`}
+                      title="Toggle Engineering Notebook View"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      <span>{isCodeExpanded ? "Close" : "Notes & Code"}</span>
+                      {isCodeExpanded ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </button>
 
                     <button
                       type="button"
                       onClick={() => onEdit(problem)}
-                      className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)] transition-colors"
-                      title="Edit Problem"
+                      className="rounded-xl border border-[var(--border)] p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)] transition-colors"
+                      title="Edit Problem & Workspace"
                     >
-                      <Edit2 className="h-4 w-4" />
+                      <Edit2 className="h-3.5 w-3.5" />
                     </button>
 
                     <button
                       type="button"
                       disabled={deletingId === problem.id}
                       onClick={() => handleDelete(problem.id, problem.title)}
-                      className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] disabled:opacity-50 transition-colors"
+                      className="rounded-xl border border-[var(--border)] p-1.5 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] hover:border-[var(--danger)]/30 disabled:opacity-50 transition-colors"
                       title="Delete Problem"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Inline Approach Notes Preview */}
+                {/* Collapsed Approach Preview */}
                 {problem.approach_notes && !isCodeExpanded && (
-                  <p className="text-xs text-[var(--text-muted)] line-clamp-2 pl-1 italic">
-                    Approach: {problem.approach_notes}
+                  <p className="text-xs text-[var(--text-muted)] line-clamp-2 pl-6 italic">
+                    {problem.approach_notes}
                   </p>
                 )}
 
-                {/* Expanded Code & Approach View */}
+                {/* Expanded Engineering Notebook View */}
                 {isCodeExpanded && (
-                  <div className="mt-2 rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 p-3.5 space-y-3 animate-in fade-in duration-150">
+                  <div className="mt-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-4 space-y-4 animate-in fade-in duration-150">
                     {problem.approach_notes && (
-                      <div>
-                        <h5 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1 flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" /> Approach & Notes
-                        </h5>
-                        <p className="text-xs text-[var(--text)] whitespace-pre-wrap leading-relaxed">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+                            <BookOpen className="h-3.5 w-3.5 text-[var(--primary)]" />
+                            <span>Engineering Notes & Intuition</span>
+                          </h5>
+                          <button
+                            type="button"
+                            onClick={() => onEdit(problem)}
+                            className="text-[11px] text-[var(--primary)] hover:underline"
+                          >
+                            Edit notes
+                          </button>
+                        </div>
+                        <div className="rounded-xl border border-[var(--border)]/60 bg-[var(--surface)] p-3.5 text-xs text-[var(--text)] whitespace-pre-wrap leading-relaxed font-sans">
                           {problem.approach_notes}
-                        </p>
+                        </div>
                       </div>
                     )}
 
-                    {problem.code_snippet && (
-                      <div>
-                        <CodeEditor
-                          value={problem.code_snippet}
-                          readOnly={true}
-                          language={problem.language || "java"}
-                          minHeight="140px"
-                          maxHeight="300px"
-                        />
+                    {problem.code_snippet ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+                            <Code2 className="h-3.5 w-3.5 text-[var(--primary)]" />
+                            <span>Solution Code ({problem.language || "java"})</span>
+                          </h5>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleCopyCode(problem.id, problem.code_snippet || "")
+                              }
+                              className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)] transition-colors"
+                            >
+                              {copiedId === problem.id ? (
+                                <Check className="h-3 w-3 text-[var(--success)]" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                              <span>{copiedId === problem.id ? "Copied" : "Copy Code"}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => onEdit(problem)}
+                              className="text-[11px] text-[var(--primary)] hover:underline"
+                            >
+                              Edit code
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                          <CodeEditor
+                            value={problem.code_snippet}
+                            readOnly={true}
+                            language={problem.language || "java"}
+                            minHeight="180px"
+                            maxHeight="360px"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between rounded-xl border border-dashed border-[var(--border)] p-3 text-xs text-[var(--text-muted)]">
+                        <span>No solution code saved for this problem yet.</span>
+                        <button
+                          type="button"
+                          onClick={() => onEdit(problem)}
+                          className="text-[var(--primary)] font-semibold hover:underline"
+                        >
+                          + Add Code
+                        </button>
                       </div>
                     )}
                   </div>

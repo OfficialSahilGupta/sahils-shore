@@ -67,6 +67,37 @@ export const SPACING_INTERVALS_DAYS = [1, 3, 7, 14, 30] as const;
 export const DEFAULT_DAILY_DSA_GOAL = 3;
 
 /**
+ * Adaptive mastery tiers and thresholds for problem solving
+ */
+export const MASTERY_TIERS = [
+  { minSolved: 0, target: 10, tier: "Apprentice" },
+  { minSolved: 10, target: 25, tier: "Practitioner" },
+  { minSolved: 25, target: 50, tier: "Proficient" },
+  { minSolved: 50, target: 100, tier: "Master" },
+  { minSolved: 100, target: 200, tier: "Grandmaster" },
+] as const;
+
+export type MasteryTierName = (typeof MASTERY_TIERS)[number]["tier"];
+
+/**
+ * Calculates adaptive milestone target based on solved count and total logged
+ * Tier milestones: 10 (Apprentice) -> 25 (Practitioner) -> 50 (Proficient) -> 100 (Master) -> 200+ (Grandmaster)
+ */
+export function getAdaptiveTopicTarget(
+  solved: number,
+  total: number = 0
+): { target: number; tier: MasteryTierName } {
+  if (solved >= 100) {
+    const nextTarget = Math.max(total, Math.ceil((solved + 1) / 50) * 50);
+    return { target: nextTarget, tier: "Grandmaster" };
+  }
+  if (solved >= 50) return { target: 100, tier: "Master" };
+  if (solved >= 25) return { target: 50, tier: "Proficient" };
+  if (solved >= 10) return { target: 25, tier: "Practitioner" };
+  return { target: 10, tier: "Apprentice" };
+}
+
+/**
  * Normalizes any category string into a standardized canonical DSA topic.
  * Maps 'hashmap', 'hash table', 'arrays & hashing', etc. cleanly to 'HashMap'.
  */
