@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from "react";
 import type { Goal, CreateGoalInput } from "@/lib/goals";
 import { X, Target, Plus, Trash2, Calendar, Layers } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 interface GoalDialogProps {
   isOpen: boolean;
@@ -124,17 +125,11 @@ export function GoalDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-text">Category</label>
-              <select
+              <Select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-2xl border border-border bg-surface-muted/30 px-3 py-2 text-xs text-text outline-none focus:border-primary"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+              />
             </div>
 
             <div className="space-y-1">

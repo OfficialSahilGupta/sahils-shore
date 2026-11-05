@@ -103,6 +103,7 @@ Verify all text/background pairs meet WCAG AA (4.5:1 for body text).
 ## Conventions (always follow)
 
 - **No Emojis (Mandatory Zero-Tolerance Rule):** NEVER use system/OS default emojis anywhere in the app (no emoji characters like 🔥, ✨, 🎉, 💡, 📍, ★, ☕, ⚡, 🍽️, 💳, 📁, 😞, 😐, 🙂, 😊, 🌟, 🪫, 🔋, 🚀, etc.). Always use crisp, accessible SVGs (Lucide React icons or inline SVGs). This applies across all UI components, toast notifications, badges, headers, modals, markdown templates, and copy.
+- **Custom Dropdown Menus Only (Zero OS Default Selects):** NEVER use default or raw browser `<select>` dropdowns anywhere in the app. Dropdowns must ALWAYS use the custom, theme-aware `Select` component (`components/ui/select.tsx`) designed with real-time search filtering, active checkmark indicators, Lucide React SVG chevrons, luxury popover styling, and click-outside dismissal — identical to the custom dropdown menus crafted in the DSA module for difficulty, topic, and platform filters.
 - **Money:** store as integer paise (Rs 10.50 = 1050). Never use floats for money.
 - **Time:** store timestamps in UTC (`timestamptz`); display in `Asia/Kolkata`. "Today" means the IST calendar day.
 - **IDs:** UUIDs. Every table has `id`, `user_id`, `created_at`, `updated_at`.

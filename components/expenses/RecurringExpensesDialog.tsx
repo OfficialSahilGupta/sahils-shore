@@ -25,6 +25,7 @@ import {
   type CreateRecurringExpenseInput,
 } from "@/lib/expenses";
 import type { RecurringExpense, ExpenseCategory } from "@/types/index.ts";
+import { Select } from "@/components/ui/select";
 
 interface RecurringExpensesDialogProps {
   isOpen: boolean;
@@ -165,17 +166,11 @@ export function RecurringExpensesDialog({
                   <label className="text-[11px] font-medium text-text-muted mb-1 block">
                     Category
                   </label>
-                  <select
+                  <Select
                     value={selectedCatId}
                     onChange={(e) => setSelectedCatId(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-surface border border-border text-text"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                  />
                 </div>
 
                 <div>

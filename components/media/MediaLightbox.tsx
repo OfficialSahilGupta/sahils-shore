@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import type { MediaItem, Album } from "@/lib/media";
 import { formatISTTime } from "@/lib/date-utils";
+import { Select } from "@/components/ui/select";
 
 interface MediaLightboxProps {
   item: MediaItem | null;
@@ -239,18 +240,15 @@ export function MediaLightbox({
             {albums.length > 0 && (
               <div className="flex items-center gap-1.5">
                 <Folder className="h-3.5 w-3.5 text-accent-warm" />
-                <select
+                <Select
                   value={item.album_id || ""}
                   onChange={(e) => onAssignAlbum?.(item.id, e.target.value || null)}
-                  className="rounded-lg bg-white/10 px-2 py-0.5 text-[11px] text-white border border-white/20 focus:outline-none"
-                >
-                  <option value="" className="bg-surface text-text">No Album</option>
-                  {albums.map((a) => (
-                    <option key={a.id} value={a.id} className="bg-surface text-text">
-                      {a.title}
-                    </option>
-                  ))}
-                </select>
+                  containerClassName="w-36"
+                  options={[
+                    { value: "", label: "No Album" },
+                    ...albums.map((a) => ({ value: a.id, label: a.title })),
+                  ]}
+                />
               </div>
             )}
           </div>

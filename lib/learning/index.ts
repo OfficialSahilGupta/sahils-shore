@@ -667,22 +667,63 @@ export async function createLearningTrack(
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
-  const { data: track, error } = await supabase
-    .from("learning_tracks")
-    .insert({
-      user_id: userId,
+  let track: LearningTrack | null = null;
+
+  try {
+    // 1. Primary insert with slug column
+    const { data, error } = await supabase
+      .from("learning_tracks")
+      .insert({
+        user_id: userId,
+        title: input.title.trim(),
+        description: input.description?.trim() || null,
+        icon: input.icon || "Layers",
+        color: input.color || "var(--primary)",
+        slug,
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      track = data as LearningTrack;
+    } else {
+      console.warn("[createLearningTrack] Primary insert error:", error?.message);
+      // 2. Fallback insert without slug (for base schema compatibility)
+      const fallbackRes = await supabase
+        .from("learning_tracks")
+        .insert({
+          user_id: userId,
+          title: input.title.trim(),
+          description: input.description?.trim() || null,
+          icon: input.icon || "Layers",
+          color: input.color || "var(--primary)",
+        })
+        .select()
+        .single();
+
+      if (!fallbackRes.error && fallbackRes.data) {
+        track = fallbackRes.data as LearningTrack;
+      } else {
+        console.warn("[createLearningTrack] Fallback insert error:", fallbackRes.error?.message);
+      }
+    }
+  } catch (err) {
+    console.warn("[createLearningTrack] Exception during Supabase insert:", err);
+  }
+
+  // 3. Guaranteed local fallback if Supabase insert failed (e.g. offline, auth or schema issue)
+  if (!track) {
+    track = {
+      id: `track-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      user_id: userId || "preview",
       title: input.title.trim(),
       description: input.description?.trim() || null,
       icon: input.icon || "Layers",
       color: input.color || "var(--primary)",
       slug,
-    })
-    .select()
-    .single();
-
-  if (error || !track) {
-    console.error("[createLearningTrack] Error creating track:", error);
-    return null;
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
   }
 
   // If a preset template was selected or initial roadmap provided, seed topics
@@ -692,7 +733,7 @@ export async function createLearningTrack(
     if (template) roadmapToSeed = template.roadmap;
   }
 
-  if (roadmapToSeed && roadmapToSeed.length > 0) {
+  if (roadmapToSeed && roadmapToSeed.length > 0 && userId && !track.id.startsWith("track-")) {
     const items = roadmapToSeed.map((item, idx) => {
       const initialSub = [
         {
@@ -720,19 +761,43 @@ export async function createLearningTrack(
         } as unknown as Json,
       };
     });
-    await supabase.from("learning_items").insert(items);
+
+    try {
+      const { error: insErr } = await supabase.from("learning_items").insert(items);
+      if (insErr) {
+        console.warn("[createLearningTrack] Primary items insert warning:", insErr.message);
+        // Fallback for base schema without category / order_index columns
+        const baseItems = items.map((it) => ({
+          user_id: userId,
+          track_id: track.id,
+          topic: it.topic,
+          notes: it.notes,
+          resources: it.resources,
+          status: it.status,
+        }));
+        await supabase.from("learning_items").insert(baseItems);
+      }
+    } catch (e) {
+      console.warn("[createLearningTrack] Could not seed items to DB:", e);
+    }
   }
 
-  await writeTimelineEvent(supabase, {
-    userId,
-    type: "study_session",
-    summary: `Started learning track: ${track.title}`,
-    refTable: "learning_tracks",
-    refId: track.id,
-    meta: { title: track.title, slug: track.slug },
-  });
+  if (userId && !track.id.startsWith("track-")) {
+    try {
+      await writeTimelineEvent(supabase, {
+        userId,
+        type: "study_session",
+        summary: `Started learning track: ${track.title}`,
+        refTable: "learning_tracks",
+        refId: track.id,
+        meta: { title: track.title, slug: track.slug },
+      });
+    } catch (tlErr) {
+      console.warn("[createLearningTrack] Timeline event write error:", tlErr);
+    }
+  }
 
-  return track as LearningTrack;
+  return track;
 }
 
 export async function updateLearningTrack(

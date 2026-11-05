@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X, Plus, BookOpen } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 interface AddTopicModalProps {
   isOpen: boolean;
@@ -137,15 +138,15 @@ export function AddTopicModal({
               <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
                 Initial Status
               </label>
-              <select
+              <Select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-              >
-                <option value="planned">Planned (To Learn)</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Mastered</option>
-              </select>
+                options={[
+                  { value: "planned", label: "Planned (To Learn)" },
+                  { value: "in_progress", label: "In Progress" },
+                  { value: "completed", label: "Mastered" },
+                ]}
+              />
             </div>
           </div>
 

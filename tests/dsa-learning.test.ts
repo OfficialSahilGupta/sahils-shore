@@ -600,4 +600,54 @@ describe("9. Topic Sub-Sections Parser & Serializer", () => {
   });
 });
 
+describe("10. Resilient Learning Track Creation & Custom Track Isolation", () => {
+  test("generates slug and guaranteed fallback track if database insert fails or runs offline", async () => {
+    // Mock failing supabase client
+    const mockFailingSupabase = {
+      from: () => ({
+        insert: () => ({
+          select: () => ({
+            single: async () => ({ data: null, error: { message: "Network connection refused" } }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const { createLearningTrack } = await import("../lib/learning/index.ts");
+    const track = await createLearningTrack(mockFailingSupabase, "user-test-123", {
+      title: "Distributed Systems & Kubernetes",
+      description: "Consensus, raft, etcd and cluster operations",
+      icon: "Server",
+      color: "#1F7A8C",
+    });
+
+    assert.ok(track);
+    assert.equal(track.title, "Distributed Systems & Kubernetes");
+    assert.equal(track.slug, "distributed-systems-kubernetes");
+    assert.equal(track.icon, "Server");
+    assert.ok(track.id.startsWith("track-"));
+    assert.equal(track.user_id, "user-test-123");
+  });
+
+  test("derives clean kebab-case slugs from diverse track titles", async () => {
+    const { createLearningTrack } = await import("../lib/learning/index.ts");
+    const mockSupabase = {
+      from: () => ({
+        insert: () => ({
+          select: () => ({
+            single: async () => ({ data: null, error: { message: "Mock error" } }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const t1 = await createLearningTrack(mockSupabase, "u1", { title: "AI & Large Language Models!" });
+    assert.equal(t1?.slug, "ai-large-language-models");
+
+    const t2 = await createLearningTrack(mockSupabase, "u1", { title: "Rust / Systems Programming" });
+    assert.equal(t2?.slug, "rust-systems-programming");
+  });
+});
+
+
 

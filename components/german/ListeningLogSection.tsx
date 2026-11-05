@@ -11,6 +11,7 @@ import type { GermanListeningLog } from "@/types";
 import { type CreateListeningLogInput } from "@/lib/german";
 import { CEFR_LEVELS, type CefrLevel } from "@/lib/german/constants";
 import { getISTDateString } from "@/lib/date-utils";
+import { Select } from "@/components/ui/select";
 
 interface ListeningLogSectionProps {
   logs: GermanListeningLog[];
@@ -92,18 +93,18 @@ export function ListeningLogSection({
               <label className="text-xs font-semibold text-text-muted block mb-1">
                 Media Type
               </label>
-              <select
+              <Select
                 value={mediaType}
                 onChange={(e) => setMediaType(e.target.value)}
-                className="w-full px-2.5 py-2 text-xs rounded-xl bg-surface-muted border border-surface-muted text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="Podcast">Podcast</option>
-                <option value="Easy German">Easy German</option>
-                <option value="Deutsche Welle">Deutsche Welle</option>
-                <option value="Audiobook">Audiobook</option>
-                <option value="YouTube">YouTube</option>
-                <option value="Film / Series">Film / Series</option>
-              </select>
+                options={[
+                  { value: "Podcast", label: "Podcast" },
+                  { value: "Easy German", label: "Easy German" },
+                  { value: "Deutsche Welle", label: "Deutsche Welle" },
+                  { value: "Audiobook", label: "Audiobook" },
+                  { value: "YouTube", label: "YouTube" },
+                  { value: "Film / Series", label: "Film / Series" },
+                ]}
+              />
             </div>
 
             <div>
@@ -124,17 +125,11 @@ export function ListeningLogSection({
               <label className="text-xs font-semibold text-text-muted block mb-1">
                 Level
               </label>
-              <select
+              <Select
                 value={level}
                 onChange={(e) => setLevel(e.target.value as CefrLevel)}
-                className="w-full px-2.5 py-2 text-xs rounded-xl bg-surface-muted border border-surface-muted text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {CEFR_LEVELS.map((lvl) => (
-                  <option key={lvl} value={lvl}>
-                    {lvl}
-                  </option>
-                ))}
-              </select>
+                options={CEFR_LEVELS.map((lvl) => ({ value: lvl, label: lvl }))}
+              />
             </div>
           </div>
 

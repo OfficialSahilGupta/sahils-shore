@@ -56,6 +56,7 @@ import {
   deleteResourceLink,
   logStudySession,
   calculateDynamicTrackMastery,
+  PRESET_TRACK_TEMPLATES,
   type CreateTrackInput,
   type CreateConceptInput,
   type CreateProjectInput,
@@ -118,9 +119,25 @@ export function LearningContainer() {
         if (user) {
           setUserId(user.id);
           const loadedTracks = await ensureDefaultLearningTracks(supabase, user.id);
-          setTracks(loadedTracks);
-          if (loadedTracks.length > 0) {
-            setActiveTrackId(loadedTracks[0].id);
+          // Also load any custom tracks saved locally that might not be in DB yet
+          let customTracks: LearningTrack[] = [];
+          if (typeof window !== "undefined") {
+            try {
+              const raw = localStorage.getItem("shore_custom_tracks") || localStorage.getItem("shore_preview_tracks");
+              if (raw) customTracks = JSON.parse(raw);
+            } catch (e) {
+              console.warn("Failed reading custom tracks", e);
+            }
+          }
+          const merged = [...loadedTracks];
+          for (const ct of customTracks) {
+            if (!merged.some((t) => t.id === ct.id || t.title.toLowerCase() === ct.title.toLowerCase())) {
+              merged.push(ct);
+            }
+          }
+          setTracks(merged);
+          if (merged.length > 0) {
+            setActiveTrackId(merged[0].id);
           }
         } else {
           // Preview mode: display default seeded tracks + saved custom tracks from localStorage
@@ -152,14 +169,19 @@ export function LearningContainer() {
           let customTracks: LearningTrack[] = [];
           if (typeof window !== "undefined") {
             try {
-              const raw = localStorage.getItem("shore_preview_tracks");
+              const raw = localStorage.getItem("shore_custom_tracks") || localStorage.getItem("shore_preview_tracks");
               if (raw) customTracks = JSON.parse(raw);
             } catch (e) {
               console.warn("Failed reading preview tracks", e);
             }
           }
 
-          const combined = [...defaultTracks, ...customTracks];
+          const combined = [...defaultTracks];
+          for (const ct of customTracks) {
+            if (!combined.some((t) => t.id === ct.id || t.title.toLowerCase() === ct.title.toLowerCase())) {
+              combined.push(ct);
+            }
+          }
           setTracks(combined);
           setActiveTrackId(combined[0]?.id || "preview-spring");
         }
@@ -325,39 +347,42 @@ export function LearningContainer() {
 
   // Track Creation & Deletion
   const handleCreateTrack = async (input: CreateTrackInput) => {
-    if (!userId) {
-      const tempId = `custom-${Date.now()}`;
-      const newTrack: LearningTrack = {
-        id: tempId,
-        user_id: "preview",
-        title: input.title,
-        description: input.description || null,
-        icon: input.icon || "Layers",
-        color: input.color || "var(--primary)",
-        slug: input.slug || input.title.toLowerCase().replace(/\s+/g, "-"),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      setTracks((prev) => {
-        const next = [...prev, newTrack];
-        if (typeof window !== "undefined") {
-          try {
-            const customOnly = next.filter((t) => t.id.startsWith("custom-"));
-            localStorage.setItem("shore_preview_tracks", JSON.stringify(customOnly));
-          } catch (e) {
-            console.warn("Failed saving custom preview tracks", e);
-          }
-        }
-        return next;
-      });
-
+    try {
+      let created: LearningTrack | null = null;
       let seeded: LearningItem[] = [];
-      if (input.initialRoadmap && input.initialRoadmap.length > 0) {
-        seeded = input.initialRoadmap.map((item, idx) => ({
-          id: `preview-item-${idx}-${Date.now()}`,
-          user_id: "preview",
-          track_id: tempId,
+
+      // Find roadmap from template if applicable
+      let roadmapToSeed = input.initialRoadmap;
+      if (!roadmapToSeed && input.templateId) {
+        const template = PRESET_TRACK_TEMPLATES.find((t) => t.id === input.templateId);
+        if (template) roadmapToSeed = template.roadmap;
+      }
+
+      if (userId) {
+        created = await createLearningTrack(supabase, userId, input);
+      }
+
+      if (!created) {
+        const tempId = `custom-${Date.now()}`;
+        created = {
+          id: tempId,
+          user_id: userId || "preview",
+          title: input.title.trim(),
+          description: input.description?.trim() || null,
+          icon: input.icon || "Layers",
+          color: input.color || "var(--primary)",
+          slug: input.slug || input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+      }
+
+      // Build initial seeded roadmap items
+      if (roadmapToSeed && roadmapToSeed.length > 0) {
+        seeded = roadmapToSeed.map((item, idx) => ({
+          id: `item-${created!.id}-${idx}`,
+          user_id: userId || "preview",
+          track_id: created!.id,
           topic: item.topic,
           category: item.category || "Core",
           notes: item.notes || null,
@@ -383,27 +408,44 @@ export function LearningContainer() {
         }));
       }
 
+      // Save to localStorage for resilient offline/refresh support
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem(`shore_preview_roadmap_${tempId}`, JSON.stringify(seeded));
+          const raw = localStorage.getItem("shore_custom_tracks");
+          const existingCustom: LearningTrack[] = raw ? JSON.parse(raw) : [];
+          const nextCustom = [...existingCustom.filter((t) => t.id !== created!.id), created!];
+          localStorage.setItem("shore_custom_tracks", JSON.stringify(nextCustom));
+          localStorage.setItem("shore_preview_tracks", JSON.stringify(nextCustom));
+          localStorage.setItem(`shore_preview_roadmap_${created!.id}`, JSON.stringify(seeded));
         } catch (e) {
-          console.warn("Failed saving custom preview roadmap", e);
+          console.warn("Failed saving custom track to localStorage", e);
         }
       }
 
-      setRoadmapItems(seeded);
-      setActiveTrackId(tempId);
-      showToast(`Created track: "${input.title}" with ${seeded.length} topics!`);
-      return;
-    }
+      // Query DB items if persisted, otherwise use seeded
+      let activeItems = seeded;
+      if (userId && !created.id.startsWith("custom-") && !created.id.startsWith("track-")) {
+        try {
+          const dbItems = await getRoadmapItems(supabase, userId, created.id);
+          if (dbItems && dbItems.length > 0) {
+            activeItems = dbItems;
+          }
+        } catch (err) {
+          console.warn("Error loading db roadmap items for created track:", err);
+        }
+      }
 
-    const created = await createLearningTrack(supabase, userId, input);
-    if (created) {
-      setTracks((prev) => [...prev, created]);
-      const newItems = await getRoadmapItems(supabase, userId, created.id);
-      setRoadmapItems(newItems);
+      setTracks((prev) => {
+        const filtered = prev.filter((t) => t.id !== created!.id);
+        return [...filtered, created!];
+      });
+      setRoadmapItems(activeItems);
       setActiveTrackId(created.id);
-      showToast(`Created track: "${created.title}" with ${newItems.length} topics!`);
+      showToast(`Created track: "${created.title}" with ${activeItems.length} topics!`);
+    } catch (err: any) {
+      console.error("[handleCreateTrack] Error:", err);
+      showToast(err?.message || "Failed to create track.");
+      throw err;
     }
   };
 
@@ -415,18 +457,26 @@ export function LearningContainer() {
       }
       if (typeof window !== "undefined") {
         try {
-          const customOnly = remaining.filter((t) => t.id.startsWith("custom-"));
-          localStorage.setItem("shore_preview_tracks", JSON.stringify(customOnly));
+          const raw = localStorage.getItem("shore_custom_tracks");
+          if (raw) {
+            const list: LearningTrack[] = JSON.parse(raw);
+            localStorage.setItem("shore_custom_tracks", JSON.stringify(list.filter((t) => t.id !== trackId)));
+          }
+          const rawPrev = localStorage.getItem("shore_preview_tracks");
+          if (rawPrev) {
+            const list: LearningTrack[] = JSON.parse(rawPrev);
+            localStorage.setItem("shore_preview_tracks", JSON.stringify(list.filter((t) => t.id !== trackId)));
+          }
           localStorage.removeItem(`shore_preview_roadmap_${trackId}`);
         } catch (e) {
-          console.warn("Failed removing custom preview track", e);
+          console.warn("Failed removing custom track", e);
         }
       }
       return remaining;
     });
     showToast("Track deleted.");
 
-    if (userId) {
+    if (userId && !trackId.startsWith("custom-") && !trackId.startsWith("track-")) {
       try {
         await deleteLearningTrack(supabase, userId, trackId);
       } catch (e) {

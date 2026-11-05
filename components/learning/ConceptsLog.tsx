@@ -22,6 +22,7 @@ import {
 import type { LearningConcept } from "@/types";
 import { todayIST, formatFriendlyISTDate } from "@/lib/date-utils";
 import { SafeDeleteModal } from "./SafeDeleteModal";
+import { Select } from "@/components/ui/select";
 
 interface ConceptsLogProps {
   concepts: LearningConcept[];
@@ -149,19 +150,15 @@ export function ConceptsLog({
               <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
                 Engineering Area / Topic *
               </label>
-              <select
+              <Select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-              >
-                {availableAreas.map((area) => (
-                  <option key={area} value={area}>
-                    {area}
-                  </option>
-                ))}
-                <option value="General Architecture">General Architecture</option>
-                <option value="__custom__">+ Custom Area...</option>
-              </select>
+                options={[
+                  ...availableAreas.map((area) => ({ value: area, label: area })),
+                  { value: "General Architecture", label: "General Architecture" },
+                  { value: "__custom__", label: "+ Custom Area..." },
+                ]}
+              />
 
               {selectedArea === "__custom__" && (
                 <input

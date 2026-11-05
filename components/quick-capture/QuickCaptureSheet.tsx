@@ -33,6 +33,7 @@ import {
   AlertCircle,
   Play,
 } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 export function QuickCaptureSheet() {
   const { isOpen, activeTab, close, setActiveTab } = useQuickCapture();
@@ -598,17 +599,17 @@ export function QuickCaptureSheet() {
                   <label className="block text-[11px] font-semibold text-text-muted mb-1">
                     Payment Method
                   </label>
-                  <select
+                  <Select
                     value={expensePaymentMethod}
                     onChange={(e) => setExpensePaymentMethod(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-surface text-text focus:outline-hidden focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="UPI">UPI / GPay</option>
-                    <option value="Credit Card">Credit Card</option>
-                    <option value="Debit Card">Debit Card</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Net Banking">Net Banking</option>
-                  </select>
+                    options={[
+                      { value: "UPI", label: "UPI / GPay" },
+                      { value: "Credit Card", label: "Credit Card" },
+                      { value: "Debit Card", label: "Debit Card" },
+                      { value: "Cash", label: "Cash" },
+                      { value: "Net Banking", label: "Net Banking" },
+                    ]}
+                  />
                 </div>
 
                 <div>
@@ -823,18 +824,15 @@ export function QuickCaptureSheet() {
                 <label className="block text-xs font-semibold text-text mb-1.5">
                   Select Activity
                 </label>
-                <select
+                <Select
                   value={timerActivityId}
                   onChange={(e) => setTimerActivityId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-surface text-text focus:outline-hidden focus:ring-2 focus:ring-primary/40 focus:border-primary font-medium"
-                >
-                  {activities.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                  {activities.length === 0 && <option value="">No custom activities yet</option>}
-                </select>
+                  placeholder={activities.length === 0 ? "No custom activities yet" : "Select Activity"}
+                  options={activities.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                  }))}
+                />
               </div>
 
               <div>

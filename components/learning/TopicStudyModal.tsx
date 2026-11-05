@@ -30,6 +30,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
+import { Select } from "@/components/ui/select";
 import {
   parseTopicSubSections,
   packTopicSubSections,
@@ -611,20 +612,22 @@ export function TopicStudyModal({
                     <span>{copiedCode ? "Copied" : "Copy"}</span>
                   </button>
 
-                  <select
+                  <Select
                     value={activeSubSection?.codeLanguage || "java"}
                     onChange={(e) => updateActiveSubSection({ codeLanguage: e.target.value })}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-                  >
-                    <option value="java">Java</option>
-                    <option value="typescript">TypeScript</option>
-                    <option value="javascript">JavaScript</option>
-                    <option value="python">Python</option>
-                    <option value="go">Go</option>
-                    <option value="sql">SQL</option>
-                    <option value="rust">Rust</option>
-                    <option value="cpp">C++</option>
-                  </select>
+                    size="sm"
+                    containerClassName="w-32"
+                    options={[
+                      { value: "java", label: "Java" },
+                      { value: "typescript", label: "TypeScript" },
+                      { value: "javascript", label: "JavaScript" },
+                      { value: "python", label: "Python" },
+                      { value: "go", label: "Go" },
+                      { value: "sql", label: "SQL" },
+                      { value: "rust", label: "Rust" },
+                      { value: "cpp", label: "C++" },
+                    ]}
+                  />
                 </div>
               </div>
 

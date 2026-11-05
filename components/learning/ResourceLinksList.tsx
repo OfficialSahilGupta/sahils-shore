@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { ResourceLink } from "@/types";
 import type { CreateResourceLinkInput } from "@/lib/learning";
+import { Select } from "@/components/ui/select";
 
 interface ResourceLinksListProps {
   resources: ResourceLink[];
@@ -238,16 +239,16 @@ export function ResourceLinksList({
                 <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
                   Category
                 </label>
-                <select
+                <Select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/20 px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-                >
-                  <option value="Documentation">Documentation</option>
-                  <option value="Tutorial">Tutorial</option>
-                  <option value="Practice">Practice</option>
-                  <option value="Video">Video</option>
-                </select>
+                  options={[
+                    { value: "Documentation", label: "Documentation" },
+                    { value: "Tutorial", label: "Tutorial" },
+                    { value: "Practice", label: "Practice" },
+                    { value: "Video", label: "Video" },
+                  ]}
+                />
               </div>
 
               <div>

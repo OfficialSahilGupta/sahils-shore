@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Activity } from "@/types";
 import { todayIST } from "@/lib/date-utils";
+import { Select } from "@/components/ui/select";
 
 interface ManualLogDialogProps {
   open: boolean;
@@ -64,17 +65,14 @@ export function ManualLogDialog({
             <label className="block text-xs font-semibold text-[var(--text)] mb-1">
               Activity
             </label>
-            <select
+            <Select
               value={activityId}
               onChange={(e) => setActivityId(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-            >
-              {activities.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.daily_target_minutes}m target)
-                </option>
-              ))}
-            </select>
+              options={activities.map((a) => ({
+                value: a.id,
+                label: `${a.name} (${a.daily_target_minutes}m target)`,
+              }))}
+            />
           </div>
 
           {/* Date & Duration Grid */}

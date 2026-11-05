@@ -16,6 +16,7 @@ import {
 import type { Habit } from "@/types";
 import type { HabitWithLogs, CreateHabitInput } from "@/lib/habits";
 import { Check } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 interface HabitDialogProps {
   open: boolean;
@@ -123,17 +124,17 @@ export function HabitDialog({
             <label className="block text-xs font-semibold text-[var(--text)] mb-1">
               Frequency
             </label>
-            <select
+            <Select
               value={frequency}
               onChange={(e) =>
                 setFrequency(e.target.value as "daily" | "weekly" | "custom")
               }
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-            >
-              <option value="daily">Every day</option>
-              <option value="weekly">Once a week</option>
-              <option value="custom">Specific days of the week</option>
-            </select>
+              options={[
+                { value: "daily", label: "Every day" },
+                { value: "weekly", label: "Once a week" },
+                { value: "custom", label: "Specific days of the week" },
+              ]}
+            />
           </div>
 
           {/* Target Days selector if custom */}

@@ -27,6 +27,7 @@ import {
   Clock,
   X,
 } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 interface NoteEditorProps {
   note: NoteItem | null;
@@ -349,7 +350,7 @@ export function NoteEditor({
               </button>
             </div>
           ) : (
-            <select
+            <Select
               value={folder}
               onChange={(e) => {
                 if (e.target.value === "__new__") {
@@ -359,15 +360,14 @@ export function NoteEditor({
                   onUpdate(note.id, { folder: e.target.value });
                 }
               }}
-              className="rounded-lg border border-border bg-surface-muted/40 px-2 py-1 text-xs text-text font-medium outline-none cursor-pointer"
-            >
-              {Array.from(new Set([...folders, folder])).map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-              <option value="__new__">+ New Folder...</option>
-            </select>
+              options={[
+                ...Array.from(new Set([...folders, folder])).map((f) => ({
+                  value: f,
+                  label: f,
+                })),
+                { value: "__new__", label: "+ New Folder..." },
+              ]}
+            />
           )}
         </div>
 

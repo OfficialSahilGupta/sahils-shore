@@ -20,6 +20,7 @@ import {
   salaryPaiseToRupees,
 } from "@/lib/career";
 import { todayIST, addDaysIST, toISTDateString } from "@/lib/date-utils";
+import { Select } from "@/components/ui/select";
 import {
   Building2,
   Briefcase,
@@ -252,32 +253,20 @@ export function ApplicationDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-text mb-1">Kanban Stage</label>
-              <select
+              <Select
                 value={stage}
                 onChange={(e) => setStage(e.target.value as ApplicationStage)}
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {APPLICATION_STAGES.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+                options={APPLICATION_STAGES.map((s) => ({ value: s.id, label: s.label }))}
+              />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-text mb-1">Application Source</label>
-              <select
+              <Select
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {SOURCES.map((src) => (
-                  <option key={src} value={src}>
-                    {src}
-                  </option>
-                ))}
-              </select>
+                options={SOURCES.map((src) => ({ value: src, label: src }))}
+              />
             </div>
           </div>
 
@@ -347,21 +336,18 @@ export function ApplicationDialog({
             <label className="block text-xs font-semibold text-text mb-1">
               Resume Version Sent
             </label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-2.5 w-4 h-4 text-text-muted" />
-              <select
-                value={resumeId}
-                onChange={(e) => setResumeId(e.target.value)}
-                className="w-full rounded-xl border border-border bg-surface pl-9 pr-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">-- No specific resume attached --</option>
-                {resumes.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.version_label} - {r.title} {r.is_primary ? "(Master)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              value={resumeId}
+              onChange={(e) => setResumeId(e.target.value)}
+              placeholder="-- No specific resume attached --"
+              options={[
+                { value: "", label: "-- No specific resume attached --" },
+                ...resumes.map((r) => ({
+                  value: r.id,
+                  label: `${r.version_label} - ${r.title} ${r.is_primary ? "(Master)" : ""}`,
+                })),
+              ]}
+            />
           </div>
 
           {/* Row 6: Dates & Follow-up Presets */}

@@ -16,6 +16,7 @@ import {
 import type { TaskWithSubtasks, CreateTaskInput, UpdateTaskInput, RecurrenceRule, TaskPriority } from "@/lib/todos";
 import { todayIST } from "@/lib/date-utils";
 import { Plus, X, Trash2 } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 interface TaskDialogProps {
   open: boolean;
@@ -197,34 +198,34 @@ export function TaskDialog({
               <label className="block text-xs font-semibold text-[var(--text)] mb-1">
                 Priority
               </label>
-              <select
+              <Select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+                options={[
+                  { value: "low", label: "Low" },
+                  { value: "medium", label: "Medium" },
+                  { value: "high", label: "High" },
+                  { value: "urgent", label: "Urgent" },
+                ]}
+              />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-[var(--text)] mb-1">
                 Time Block Duration
               </label>
-              <select
+              <Select
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-              >
-                <option value={15}>15 mins</option>
-                <option value={30}>30 mins</option>
-                <option value={45}>45 mins</option>
-                <option value={60}>60 mins (1h)</option>
-                <option value={90}>90 mins (1.5h)</option>
-                <option value={120}>120 mins (2h)</option>
-              </select>
+                options={[
+                  { value: "15", label: "15 mins" },
+                  { value: "30", label: "30 mins" },
+                  { value: "45", label: "45 mins" },
+                  { value: "60", label: "60 mins (1h)" },
+                  { value: "90", label: "90 mins (1.5h)" },
+                  { value: "120", label: "120 mins (2h)" },
+                ]}
+              />
             </div>
           </div>
 
@@ -319,18 +320,19 @@ export function TaskDialog({
               <div className="pt-2 border-t border-[var(--border)] space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-[var(--text-muted)]">Repeats:</span>
-                  <select
+                  <Select
                     value={recurrenceFreq}
                     onChange={(e) =>
                       setRecurrenceFreq(e.target.value as "daily" | "weekly" | "custom" | "monthly")
                     }
-                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--text)] focus:outline-none"
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="custom">Specific days of week</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
+                    containerClassName="w-48"
+                    options={[
+                      { value: "daily", label: "Daily" },
+                      { value: "weekly", label: "Weekly" },
+                      { value: "custom", label: "Specific days of week" },
+                      { value: "monthly", label: "Monthly" },
+                    ]}
+                  />
                 </div>
 
                 {recurrenceFreq === "custom" && (

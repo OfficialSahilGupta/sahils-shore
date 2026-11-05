@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 
 interface BulletAnalyzerModalProps {
   isOpen: boolean;
@@ -286,17 +287,11 @@ export function BulletAnalyzerModal({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-text mb-1">Category</label>
-              <select
+              <Select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {PRESET_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                options={PRESET_CATEGORIES.map((c) => ({ value: c, label: c }))}
+              />
             </div>
 
             <div>
