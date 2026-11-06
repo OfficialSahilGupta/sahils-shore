@@ -26,6 +26,7 @@ import {
 import type { MediaItem, Album } from "@/lib/media";
 import { formatISTTime } from "@/lib/date-utils";
 import { Select } from "@/components/ui/select";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 interface MediaLightboxProps {
   item: MediaItem | null;
@@ -52,6 +53,7 @@ export function MediaLightbox({
   onAssignAlbum,
   onRetrySync,
 }: MediaLightboxProps) {
+  useScrollLock(isOpen);
   const currentIndex = item ? items.findIndex((i) => i.id === item.id) : -1;
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex >= 0 && currentIndex < items.length - 1;

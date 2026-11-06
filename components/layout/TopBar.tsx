@@ -40,6 +40,7 @@ export function TopBar() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -81,6 +82,22 @@ export function TopBar() {
   const currentModule = getModuleByRoute(pathname);
   const { enabledModules } = useModules();
   const { open: openQuickCapture } = useQuickCapture();
+
+  // Dismiss profile menu when clicking anywhere outside
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [userMenuOpen]);
 
   // Enhanced keyboard shortcuts (Cmd+K, /, ?, n, e, m, and g+key navigation)
   useEffect(() => {
@@ -302,7 +319,7 @@ export function TopBar() {
           <ThemeToggle />
 
           {/* User Menu */}
-          <div className="relative">
+          <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               aria-label="Sahil Profile Menu"
@@ -329,7 +346,7 @@ export function TopBar() {
                   <div className="flex items-center justify-between rounded-lg bg-surface-muted px-2 py-1.5 text-text">
                     <span className="text-text-muted">App Version</span>
                     <span className="font-mono font-medium text-primary">
-                      Phase 2 Theme OS
+                      Shore v1.2
                     </span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-surface-muted px-2 py-1.5 text-text">

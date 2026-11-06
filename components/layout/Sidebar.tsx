@@ -198,15 +198,15 @@ export function Sidebar() {
       <div className="flex items-center justify-between border-t border-border p-3 text-xs text-text-muted">
         {!collapsed ? (
           <div className="flex w-full items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[11px]">
-              <Sparkles className="h-3.5 w-3.5 text-accent-warm" />
-              Phase 2 Theme OS
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-text">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              Shore Life OS
             </span>
-            <span className="font-mono text-[10px] text-text-muted">v0.2</span>
+            <span className="font-mono text-[10px] text-primary">v1.2</span>
           </div>
         ) : (
           <div className="flex w-full justify-center">
-            <Sparkles className="h-4 w-4 text-accent-warm" />
+            <Sparkles className="h-4 w-4 text-primary" />
           </div>
         )}
       </div>

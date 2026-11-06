@@ -121,23 +121,31 @@ export function WeeklyMealGrid({
                               onClick={() => onEditMeal(m)}
                               className="cursor-pointer group"
                             >
-                              <div className="font-medium text-text text-[11px] leading-tight truncate group-hover:text-primary transition-colors">
-                                {m.description}
-                              </div>
-                              <div className="flex items-center justify-between text-[10px] text-text-muted mt-0.5">
-                                <span className="truncate max-w-[90px]">
-                                  {m.location_type === "amrita_mess"
-                                    ? "Amrita Mess"
-                                    : m.location_type === "home"
-                                    ? "Home"
-                                    : m.restaurant_name || m.location_type}
-                                </span>
-                                {m.expense && (
-                                  <span className="font-semibold text-text font-mono">
-                                    {formatINR(m.expense.amount_paise)}
-                                  </span>
-                                )}
-                              </div>
+                              {m.is_skipped ? (
+                                <div className="rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] text-purple-600 dark:text-purple-400 font-semibold truncate group-hover:bg-purple-500/20 transition-colors">
+                                  Skipped ({m.skipped_reason || "Fasting"})
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="font-medium text-text text-[11px] leading-tight truncate group-hover:text-primary transition-colors">
+                                    {m.description}
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] text-text-muted mt-0.5">
+                                    <span className="truncate max-w-[90px]">
+                                      {m.location_type === "amrita_mess"
+                                        ? "Amrita Mess"
+                                        : m.location_type === "home"
+                                        ? "Home"
+                                        : m.restaurant_name || m.location_type}
+                                    </span>
+                                    {m.expense && (
+                                      <span className="font-semibold text-text font-mono">
+                                        {formatINR(m.expense.amount_paise)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           ))}
                         </div>

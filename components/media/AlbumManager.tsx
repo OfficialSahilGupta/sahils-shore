@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { Album } from "@/lib/media";
 import { todayIST, formatISTDate } from "@/lib/date-utils";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 interface AlbumManagerProps {
   albums: Album[];
@@ -45,6 +46,8 @@ export function AlbumManager({
   onDeleteAlbum,
   onOpenAddPastMedia,
 }: AlbumManagerProps) {
+  useScrollLock(isOpen);
+
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newDate, setNewDate] = useState(todayIST());
@@ -109,7 +112,7 @@ export function AlbumManager({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in">
       <div className="relative w-full max-w-md rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">

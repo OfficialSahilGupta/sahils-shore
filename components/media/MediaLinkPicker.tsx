@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import type { MediaItem, MediaLinks, Album } from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 interface MediaLinkPickerProps {
   item: MediaItem | null;
@@ -48,6 +49,7 @@ export function MediaLinkPicker({
   onClose,
   onSaveLinks,
 }: MediaLinkPickerProps) {
+  useScrollLock(isOpen);
   const [activeTab, setActiveTab] = useState<"place" | "album" | "meal" | "expense">("place");
   const [search, setSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -231,7 +233,7 @@ export function MediaLinkPicker({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-150">
       <div className="w-full max-w-lg rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header */}
         <div className="border-b border-border px-5 py-4">

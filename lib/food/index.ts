@@ -11,6 +11,8 @@ import { writeTimelineEvent } from "../timeline/index.ts";
 import { formatINR, createExpense, updateExpense, deleteExpense } from "../expenses/index.ts";
 import { getISTDateString, todayIST, addDaysIST } from "../date-utils.ts";
 
+export * from "./fasting.ts";
+
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 export type MealLocation = "home" | "amrita_mess" | "restaurant" | "office" | "other";
 
@@ -27,6 +29,8 @@ export interface CreateMealInput {
   notes_health?: string | null;
   is_favorite?: boolean;
   eat_again?: boolean;
+  is_skipped?: boolean;
+  skipped_reason?: string | null;
   eaten_at?: string;
 }
 
@@ -43,12 +47,16 @@ export interface UpdateMealInput {
   notes_health?: string | null;
   is_favorite?: boolean;
   eat_again?: boolean;
+  is_skipped?: boolean;
+  skipped_reason?: string | null;
   eaten_at?: string;
 }
 
 export interface MealWithExpense extends Omit<Meal, "photo_urls"> {
   expense?: Expense | null;
   photo_urls?: string[];
+  is_skipped?: boolean;
+  skipped_reason?: string | null;
 }
 
 export interface WeeklyMealDay {
@@ -63,7 +71,7 @@ export interface WeeklyMealDay {
 }
 
 // ----------------------------------------------------------------------------
-// Schema-Resilience Helpers for Favorite and Eat-Again Flags
+// Schema-Resilience Helpers for Favorite, Eat-Again & Skipped Flags
 // Gracefully handles both upgraded schemas (with columns) and base schemas
 // ----------------------------------------------------------------------------
 
@@ -81,15 +89,23 @@ export function encodeTasteNotes(
 export function decodeMealFlags(m: any): {
   is_favorite: boolean;
   eat_again: boolean;
+  is_skipped: boolean;
+  skipped_reason: string | null;
   notes_taste: string | null;
+  notes_health: string | null;
+  description: string;
   photo_urls: string[];
+  location_type: MealLocation;
+  restaurant_name: string | null;
 } {
   const hasFavCol = typeof m.is_favorite === "boolean";
   const hasEatAgainCol = typeof m.eat_again === "boolean";
 
   const rawTaste = m.notes_taste || "";
+  const rawHealth = m.notes_health || "";
+  const rawDesc = m.description || "";
+
   // Strictly decouple is_favorite from star rating:
-  // A meal is favorite if explicitly marked, or contains [FAV] marker in legacy notes
   const is_favorite = hasFavCol
     ? m.is_favorite
     : rawTaste.includes("[FAV]");
@@ -98,7 +114,24 @@ export function decodeMealFlags(m: any): {
     ? m.eat_again
     : rawTaste.includes("[EAT_AGAIN]");
 
+  // Skipped meal detection
+  const hasSkippedMarker = rawDesc.startsWith("[SKIPPED]") || rawHealth.includes("[SKIPPED");
+  const is_skipped = typeof m.is_skipped === "boolean" ? m.is_skipped : hasSkippedMarker;
+
+  let skipped_reason: string | null = m.skipped_reason || null;
+  if (!skipped_reason) {
+    if (rawHealth.includes("[SKIPPED:")) {
+      const match = rawHealth.match(/\[SKIPPED:([^\]]+)\]/);
+      if (match) skipped_reason = match[1].trim();
+    } else if (rawDesc.includes("[SKIPPED:")) {
+      const match = rawDesc.match(/\[SKIPPED:([^\]]+)\]/);
+      if (match) skipped_reason = match[1].trim();
+    }
+  }
+
   const cleanTaste = rawTaste.replace(/\s*\[FAV\]|\s*\[EAT_AGAIN\]/g, "").trim() || null;
+  const cleanHealth = rawHealth.replace(/\s*\[SKIPPED:[^\]]+\]|\s*\[SKIPPED\]/g, "").trim() || null;
+  const cleanDesc = rawDesc.replace(/\s*\[SKIPPED:[^\]]+\]|\s*\[SKIPPED\]\s*/g, "").trim() || rawDesc;
 
   // Normalize photo_urls array
   let photo_urls: string[] = [];
@@ -114,7 +147,27 @@ export function decodeMealFlags(m: any): {
     photo_urls = [m.photo_url];
   }
 
-  return { is_favorite, eat_again, notes_taste: cleanTaste, photo_urls };
+  // Location mapping (ensuring Amrita Mess decodes back accurately)
+  const isAmrita =
+    m.location_type === "amrita_mess" ||
+    m.restaurant_name === "Amrita Mess" ||
+    (m.location_type === "other" && m.restaurant_name?.toLowerCase().includes("amrita mess"));
+
+  const location_type: MealLocation = isAmrita ? "amrita_mess" : (m.location_type || "home");
+  const restaurant_name = isAmrita ? "Amrita Mess" : (m.restaurant_name || null);
+
+  return {
+    is_favorite,
+    eat_again,
+    is_skipped,
+    skipped_reason,
+    notes_taste: cleanTaste,
+    notes_health: cleanHealth,
+    description: cleanDesc,
+    photo_urls,
+    location_type,
+    restaurant_name,
+  };
 }
 
 /**
@@ -214,9 +267,15 @@ export async function getMeals(
     const decoded = decodeMealFlags(m);
     return {
       ...(m as Meal),
+      description: decoded.description,
+      location_type: decoded.location_type,
+      restaurant_name: decoded.restaurant_name,
       is_favorite: decoded.is_favorite,
       eat_again: decoded.eat_again,
+      is_skipped: decoded.is_skipped,
+      skipped_reason: decoded.skipped_reason,
       notes_taste: decoded.notes_taste,
+      notes_health: decoded.notes_health,
       photo_urls: decoded.photo_urls,
       expense: m.expense_id ? expenseMap.get(m.expense_id) || null : null,
     };
@@ -224,7 +283,7 @@ export async function getMeals(
 }
 
 /**
- * Logs a new meal.
+ * Logs a new meal or records a skipped meal.
  * If cost_paise > 0, automatically creates a linked expense in the "Food" category,
  * updates the meal's expense_id, and logs timeline events.
  */
@@ -237,17 +296,31 @@ export async function createMeal(
   let createdExpenseId: string | null = null;
   let createdExpense: Expense | null = null;
 
-  // 1. If cost > 0, auto-create linked expense (Home and Amrita Mess are always ₹0 expense)
-  const isFreeLocation = input.location_type === "home" || input.location_type === "amrita_mess";
+  const isSkipped = Boolean(input.is_skipped);
+  const skippedReason = input.skipped_reason || null;
+
+  const effectiveDescription = isSkipped
+    ? (input.description ? `[SKIPPED${skippedReason ? `:${skippedReason}` : ""}] ${input.description}` : `[SKIPPED${skippedReason ? `:${skippedReason}` : ""}] Skipped ${input.meal_type}`)
+    : input.description;
+
+  const effectiveHealthNotes = isSkipped && skippedReason
+    ? (input.notes_health ? `[SKIPPED:${skippedReason}] ${input.notes_health}` : `[SKIPPED:${skippedReason}]`)
+    : input.notes_health || null;
+
+  // 1. If cost > 0 and NOT skipped, auto-create linked expense (Home and Amrita Mess are always ₹0 expense)
+  const isFreeLocation = isSkipped || input.location_type === "home" || input.location_type === "amrita_mess";
   const costPaise = isFreeLocation ? 0 : (input.cost_paise || 0);
 
-  const loc = input.location_type || "home";
+  const loc = isSkipped ? "home" : (input.location_type || "home");
   const restaurantName =
     loc === "amrita_mess"
       ? (input.restaurant_name?.trim() || "Amrita Mess")
       : loc === "home"
       ? null
       : (input.restaurant_name?.trim() || null);
+
+  // PostgreSQL safe location: check (location_type in ('home', 'restaurant', 'office', 'other'))
+  const dbLocationType = loc === "amrita_mess" ? "other" : loc;
 
   const photoUrls = input.photo_urls && input.photo_urls.length > 0
     ? input.photo_urls
@@ -270,7 +343,7 @@ export async function createMeal(
         spent_at: eatenAt,
         payment_method: "UPI",
         place: placeDesc,
-        notes: `Meal (${input.meal_type}): ${input.description}`,
+        notes: `Meal (${input.meal_type}): ${effectiveDescription}`,
       },
       "Food"
     );
@@ -281,21 +354,22 @@ export async function createMeal(
   }
 
   // 2. Insert Meal record
-  // Try inserting with is_favorite, eat_again & photo_urls
-  const fullPayload = {
+  const fullPayload: Record<string, unknown> = {
     user_id: userId,
     meal_type: input.meal_type,
-    description: input.description,
-    location_type: loc,
+    description: effectiveDescription,
+    location_type: dbLocationType,
     restaurant_name: restaurantName,
     expense_id: createdExpenseId,
-    rating: input.rating || null,
+    rating: isSkipped ? null : (input.rating || null),
     photo_url: primaryPhotoUrl,
     photo_urls: photoUrls,
-    notes_taste: input.notes_taste || null,
-    notes_health: input.notes_health || null,
+    notes_taste: isSkipped ? null : (input.notes_taste || null),
+    notes_health: effectiveHealthNotes,
     is_favorite: input.is_favorite || false,
     eat_again: input.eat_again || false,
+    is_skipped: isSkipped,
+    skipped_reason: skippedReason,
     eaten_at: eatenAt,
   };
 
@@ -305,23 +379,17 @@ export async function createMeal(
   if (!res1.error) {
     mealRow = res1.data;
   } else if (res1.error.code === "PGRST204" || res1.error.message?.includes("column")) {
-    // If table doesn't have is_favorite / eat_again / photo_urls columns, encode gracefully
+    // If table doesn't have is_favorite / is_skipped / photo_urls columns, fallback gracefully
     const encodedTaste = encodeTasteNotes(input.notes_taste, input.is_favorite, input.eat_again);
-    const fallbackPayload = {
-      user_id: userId,
-      meal_type: input.meal_type,
-      description: input.description,
-      location_type: loc,
-      restaurant_name: restaurantName,
-      expense_id: createdExpenseId,
-      rating: input.rating || null,
-      photo_url: primaryPhotoUrl,
-      notes_taste: encodedTaste,
-      notes_health: input.notes_health || null,
-      eaten_at: eatenAt,
-    };
+    delete fullPayload.is_skipped;
+    delete fullPayload.skipped_reason;
+    delete fullPayload.photo_urls;
+    delete fullPayload.is_favorite;
+    delete fullPayload.eat_again;
 
-    const res2 = await supabase.from("meals").insert(fallbackPayload as any).select().single();
+    fullPayload.notes_taste = encodedTaste;
+
+    const res2 = await supabase.from("meals").insert(fullPayload as any).select().single();
     if (!res2.error) {
       mealRow = res2.data;
     } else {
@@ -340,21 +408,31 @@ export async function createMeal(
   }
 
   const flags = decodeMealFlags(mealRow);
-  const createdMeal = {
+  const createdMeal: MealWithExpense = {
     ...mealRow,
+    description: flags.description,
+    location_type: flags.location_type,
+    restaurant_name: flags.restaurant_name,
     is_favorite: flags.is_favorite,
     eat_again: flags.eat_again,
+    is_skipped: flags.is_skipped,
+    skipped_reason: flags.skipped_reason,
     notes_taste: flags.notes_taste,
+    notes_health: flags.notes_health,
     photo_urls: flags.photo_urls.length > 0 ? flags.photo_urls : photoUrls,
   };
 
   // 3. Write Timeline Event: meal_logged
   const ratingText = createdMeal.rating ? ` (${createdMeal.rating}/5 stars)` : "";
   const costText = costPaise > 0 ? ` (${formatINR(costPaise)})` : "";
+  const summaryText = createdMeal.is_skipped
+    ? `SKIPPED ${createdMeal.meal_type.toUpperCase()}${createdMeal.skipped_reason ? ` • ${createdMeal.skipped_reason}` : " (Fasting)"}`
+    : `${createdMeal.meal_type.toUpperCase()}: ${createdMeal.description}${costText}${ratingText}`;
+
   await writeTimelineEvent(supabase, {
     userId,
     type: "meal_logged",
-    summary: `${createdMeal.meal_type.toUpperCase()}: ${createdMeal.description}${costText}${ratingText}`,
+    summary: summaryText,
     occurredAt: createdMeal.eaten_at,
     refTable: "meals",
     refId: createdMeal.id,
@@ -365,6 +443,8 @@ export async function createMeal(
       rating: createdMeal.rating,
       cost_paise: costPaise,
       expense_id: createdExpenseId,
+      is_skipped: createdMeal.is_skipped,
+      skipped_reason: createdMeal.skipped_reason,
     },
   });
 
@@ -387,8 +467,19 @@ export async function updateMeal(
   let expenseId = currentMeal.expense_id;
   let linkedExpense = currentMeal.expense || null;
 
-  const loc = input.location_type !== undefined ? input.location_type : currentMeal.location_type;
-  const isFreeLocation = loc === "home" || loc === "amrita_mess";
+  const isSkipped = input.is_skipped !== undefined ? input.is_skipped : (currentMeal.is_skipped || false);
+  const skippedReason = input.skipped_reason !== undefined ? input.skipped_reason : currentMeal.skipped_reason;
+
+  const effectiveDescription = isSkipped
+    ? (input.description ? `[SKIPPED${skippedReason ? `:${skippedReason}` : ""}] ${input.description}` : `[SKIPPED${skippedReason ? `:${skippedReason}` : ""}] Skipped ${input.meal_type || currentMeal.meal_type}`)
+    : (input.description !== undefined ? input.description : currentMeal.description);
+
+  const effectiveHealthNotes = isSkipped && skippedReason
+    ? (input.notes_health ? `[SKIPPED:${skippedReason}] ${input.notes_health}` : `[SKIPPED:${skippedReason}]`)
+    : (input.notes_health !== undefined ? input.notes_health : currentMeal.notes_health);
+
+  const loc = isSkipped ? "home" : (input.location_type !== undefined ? input.location_type : currentMeal.location_type);
+  const isFreeLocation = isSkipped || loc === "home" || loc === "amrita_mess";
   const newCostPaise = isFreeLocation
     ? 0
     : input.cost_paise !== undefined
@@ -397,20 +488,22 @@ export async function updateMeal(
 
   const restaurantName =
     loc === "amrita_mess"
-      ? (input.restaurant_name !== undefined ? (input.restaurant_name?.trim() || "Amrita Mess") : currentMeal.restaurant_name || "Amrita Mess")
+      ? (input.restaurant_name?.trim() || "Amrita Mess")
       : loc === "home"
       ? null
       : (input.restaurant_name !== undefined ? (input.restaurant_name?.trim() || null) : currentMeal.restaurant_name);
 
+  // PostgreSQL safe location
+  const dbLocationType = loc === "amrita_mess" ? "other" : loc;
+
   // Synchronize linked expense
   if (expenseId && newCostPaise > 0) {
-    // Update existing linked expense
     const placeDesc =
       loc === "restaurant" && restaurantName
         ? restaurantName
         : restaurantName || loc || "Dining";
 
-    const desc = input.description || currentMeal.description;
+    const desc = effectiveDescription || currentMeal.description;
     const mType = input.meal_type || currentMeal.meal_type;
 
     linkedExpense = await updateExpense(supabase, userId, expenseId, {
@@ -420,19 +513,17 @@ export async function updateMeal(
       spent_at: input.eaten_at || currentMeal.eaten_at,
     });
   } else if (expenseId && newCostPaise === 0) {
-    // Cost was removed or changed to free location -> delete linked expense
     await deleteExpense(supabase, userId, expenseId);
     expenseId = null;
     linkedExpense = null;
   } else if (!expenseId && newCostPaise > 0) {
-    // Cost was added -> create new linked expense
     const foodCatId = await getOrCreateFoodCategory(supabase, userId);
     const placeDesc =
       loc === "restaurant" && restaurantName
         ? restaurantName
         : restaurantName || loc || "Dining";
 
-    const desc = input.description || currentMeal.description;
+    const desc = effectiveDescription || currentMeal.description;
     const mType = input.meal_type || currentMeal.meal_type;
 
     linkedExpense = await createExpense(
@@ -460,19 +551,21 @@ export async function updateMeal(
   const primaryPhotoUrl = photoUrls[0] || input.photo_url || null;
 
   // Update Meal table
-  const fullUpdatePayload = {
+  const fullUpdatePayload: Record<string, unknown> = {
     meal_type: input.meal_type,
-    description: input.description,
-    location_type: loc,
+    description: effectiveDescription,
+    location_type: dbLocationType,
     restaurant_name: restaurantName,
     expense_id: expenseId,
-    rating: input.rating,
+    rating: isSkipped ? null : input.rating,
     photo_url: primaryPhotoUrl,
     photo_urls: photoUrls,
-    notes_taste: input.notes_taste,
-    notes_health: input.notes_health,
+    notes_taste: isSkipped ? null : input.notes_taste,
+    notes_health: effectiveHealthNotes,
     is_favorite: input.is_favorite,
     eat_again: input.eat_again,
+    is_skipped: isSkipped,
+    skipped_reason: skippedReason,
     eaten_at: input.eaten_at,
     updated_at: new Date().toISOString(),
   };
@@ -491,39 +584,39 @@ export async function updateMeal(
       input.is_favorite !== undefined ? input.is_favorite : currentMeal.is_favorite,
       input.eat_again !== undefined ? input.eat_again : currentMeal.eat_again
     );
-    const fallbackUpdate = {
-      meal_type: input.meal_type,
-      description: input.description,
-      location_type: loc,
-      restaurant_name: restaurantName,
-      expense_id: expenseId,
-      rating: input.rating,
-      photo_url: primaryPhotoUrl,
-      notes_taste: encodedTaste,
-      notes_health: input.notes_health,
-      eaten_at: input.eaten_at,
-      updated_at: new Date().toISOString(),
-    };
+    delete fullUpdatePayload.is_skipped;
+    delete fullUpdatePayload.skipped_reason;
+    delete fullUpdatePayload.photo_urls;
+    delete fullUpdatePayload.is_favorite;
+    delete fullUpdatePayload.eat_again;
+    fullUpdatePayload.notes_taste = encodedTaste;
+
     updateRes = await supabase
       .from("meals")
-      .update(fallbackUpdate as any)
+      .update(fullUpdatePayload as any)
       .eq("id", id)
       .eq("user_id", userId)
       .select()
       .single();
   }
 
-  if (updateRes.error) {
-    console.error("[updateMeal] Error:", updateRes.error);
-    throw updateRes.error;
+  if (updateRes.error || !updateRes.data) {
+    console.error("[updateMeal] Error updating meal:", updateRes.error);
+    return null;
   }
 
   const flags = decodeMealFlags(updateRes.data);
   return {
-    ...updateRes.data,
+    ...(updateRes.data as Meal),
+    description: flags.description,
+    location_type: flags.location_type,
+    restaurant_name: flags.restaurant_name,
     is_favorite: flags.is_favorite,
     eat_again: flags.eat_again,
+    is_skipped: flags.is_skipped,
+    skipped_reason: flags.skipped_reason,
     notes_taste: flags.notes_taste,
+    notes_health: flags.notes_health,
     photo_urls: flags.photo_urls.length > 0 ? flags.photo_urls : photoUrls,
     expense: linkedExpense,
   };

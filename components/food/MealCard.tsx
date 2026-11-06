@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   X,
+  Clock,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatINR } from "@/lib/expenses";
@@ -175,25 +176,34 @@ export function MealCard({
                 {meal.description}
               </h4>
 
-              {/* Location Badge */}
-              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${locConfig.badgeClass}`}
-                >
-                  <LocIcon className="h-3 w-3 shrink-0" />
-                  <span>
-                    {locType === "restaurant" && meal.restaurant_name
-                      ? meal.restaurant_name
-                      : locConfig.label}
+              {/* Location or Skipped Badge */}
+              {meal.is_skipped ? (
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/25">
+                    <Clock className="h-3 w-3" />
+                    <span>Skipped Slot • {meal.skipped_reason || "Fasting"}</span>
                   </span>
-                </span>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${locConfig.badgeClass}`}
+                  >
+                    <LocIcon className="h-3 w-3 shrink-0" />
+                    <span>
+                      {locType === "restaurant" && meal.restaurant_name
+                        ? meal.restaurant_name
+                        : locConfig.label}
+                    </span>
+                  </span>
 
-                {meal.eat_again && locType === "restaurant" && (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-accent-warm/15 text-accent-warm border border-accent-warm/25">
-                    <RotateCcw className="h-2.5 w-2.5" /> Eat Again
-                  </span>
-                )}
-              </div>
+                  {meal.eat_again && locType === "restaurant" && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-accent-warm/15 text-accent-warm border border-accent-warm/25">
+                      <RotateCcw className="h-2.5 w-2.5" /> Eat Again
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

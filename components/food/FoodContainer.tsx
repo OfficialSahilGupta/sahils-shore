@@ -28,11 +28,14 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
+  Flame,
 } from "lucide-react";
 import { MealDialog } from "./MealDialog";
 import { MealCard } from "./MealCard";
 import { WeeklyMealGrid } from "./WeeklyMealGrid";
 import { PlacesToEatAgainList } from "./PlacesToEatAgainList";
+import { FoodCalendarView } from "./FoodCalendarView";
+import { FastingTrackerView } from "./FastingTrackerView";
 import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import { Select } from "@/components/ui/select";
@@ -44,6 +47,10 @@ import {
   toggleMealFavorite,
   getPlacesToEatAgain,
   buildWeeklyMealOverview,
+  getActiveFast,
+  getFastingLogs,
+  type FastingLog,
+  formatFastingDuration,
   type MealWithExpense,
   type MealType,
   type MealLocation,
@@ -53,7 +60,7 @@ import { todayIST, getISTDateString, formatFriendlyISTDate } from "@/lib/date-ut
 import { formatINR } from "@/lib/expenses";
 import { Card } from "@/components/ui/card";
 
-type ActiveTab = "diary" | "weekly" | "favorites" | "places";
+type ActiveTab = "diary" | "calendar" | "fasting" | "weekly" | "favorites" | "places";
 
 const SLOTS: Array<{ type: MealType; label: string; icon: React.ElementType }> = [
   { type: "breakfast", label: "Breakfast", icon: Coffee },
@@ -70,6 +77,8 @@ export function FoodContainer() {
   // Data states
   const [meals, setMeals] = useState<MealWithExpense[]>([]);
   const [placesToEatAgain, setPlacesToEatAgain] = useState<any[]>([]);
+  const [activeFast, setActiveFast] = useState<FastingLog | null>(null);
+  const [fastingHistory, setFastingHistory] = useState<FastingLog[]>([]);
 
   // Dialog states
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -105,12 +114,16 @@ export function FoodContainer() {
 
       if (user) {
         setUserId(user.id);
-        const [mealsData, placesData] = await Promise.all([
+        const [mealsData, placesData, fastActive, fastHistory] = await Promise.all([
           getMeals(supabase, user.id),
           getPlacesToEatAgain(supabase, user.id),
+          getActiveFast(supabase, user.id),
+          getFastingLogs(supabase, user.id),
         ]);
         setMeals(mealsData);
         setPlacesToEatAgain(placesData);
+        setActiveFast(fastActive);
+        setFastingHistory(fastHistory);
       }
     } catch (err) {
       console.error("Error loading food data:", err);
@@ -118,6 +131,34 @@ export function FoodContainer() {
       setIsLoading(false);
     }
   }, [supabase]);
+
+  // Quick 1-tap skipped slot handler
+  const handleQuickMarkSkipped = async (
+    dateIST: string,
+    slot: MealType,
+    reason = "Intermittent Fasting (16:8)"
+  ) => {
+    if (!userId) return;
+    try {
+      const eatenAt = new Date(`${dateIST}T12:00:00Z`).toISOString();
+      const created = await createMeal(supabase, userId, {
+        meal_type: slot,
+        description: `Skipped ${slot}`,
+        is_skipped: true,
+        skipped_reason: reason,
+        eaten_at: eatenAt,
+      });
+      if (created) {
+        setMeals((prev) => [created, ...prev]);
+        toast({
+          title: `Marked ${slot} as skipped (${reason})`,
+          type: "success",
+        });
+      }
+    } catch (err) {
+      toast({ title: "Failed to mark meal as skipped", type: "error" });
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -503,10 +544,36 @@ export function FoodContainer() {
         </div>
       </div>
 
+      {/* Active Fast Banner */}
+      {activeFast && activeTab !== "fasting" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-primary/30 bg-primary/10 text-xs text-text shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
+            <span className="font-bold text-primary">Active Fast ({activeFast.protocol})</span>
+            <span className="text-text-muted">•</span>
+            <span className="font-mono font-medium">Started at {formatFriendlyISTDate(activeFast.started_at.slice(0, 10))}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("fasting")}
+            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline self-end sm:self-auto"
+          >
+            <span>Open Fasting Tracker</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* 4. Tabs Navigation */}
       <div className="flex items-center gap-1 border-b border-border/60 pb-1 overflow-x-auto no-scrollbar">
         {[
           { key: "diary", label: "Meal Log" },
+          { key: "calendar", label: "Food Calendar" },
+          {
+            key: "fasting",
+            label: activeFast ? "Fasting (Active)" : "Fasting Tracker",
+            badge: activeFast ? "Active" : null,
+          },
           { key: "weekly", label: "Weekly Schedule" },
           { key: "favorites", label: `Favorites (${favoriteMeals.length})` },
           { key: "places", label: `Places to Eat Again (${placesToEatAgain.length})` },
@@ -515,13 +582,16 @@ export function FoodContainer() {
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key as ActiveTab)}
-            className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+            className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === tab.key
                 ? "bg-surface text-primary shadow-xs border border-border/70"
                 : "text-text-muted hover:text-text hover:bg-surface-muted"
             }`}
           >
-            {tab.label}
+            <span>{tab.label}</span>
+            {tab.badge && (
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            )}
           </button>
         ))}
       </div>
@@ -680,7 +750,7 @@ export function FoodContainer() {
         </div>
       )}
 
-      {/* TAB 4: Places to Eat Again */}
+      {/* TAB: Places to Eat Again */}
       {activeTab === "places" && (
         <div className="space-y-4">
           <div>
@@ -691,6 +761,43 @@ export function FoodContainer() {
           </div>
           <PlacesToEatAgainList places={placesToEatAgain} />
         </div>
+      )}
+
+      {/* TAB: Food Calendar */}
+      {activeTab === "calendar" && (
+        <FoodCalendarView
+          meals={meals}
+          onOpenNewMeal={(date, slot) => {
+            setEditingMeal(null);
+            setDialogDefaultDate(date);
+            setDialogDefaultMealType(slot);
+            setDialogOpen(true);
+          }}
+          onEditMeal={(meal) => {
+            setEditingMeal(meal);
+            setDialogOpen(true);
+          }}
+          onDeleteMeal={handleDeleteMeal}
+          onQuickMarkSkipped={handleQuickMarkSkipped}
+        />
+      )}
+
+      {/* TAB: Fasting Tracker */}
+      {activeTab === "fasting" && (
+        <FastingTrackerView
+          supabase={supabase}
+          userId={userId || ""}
+          activeFast={activeFast}
+          history={fastingHistory}
+          recentMeals={meals}
+          onRefresh={loadData}
+          onBreakFastWithMeal={(date) => {
+            setEditingMeal(null);
+            setDialogDefaultDate(date);
+            setDialogDefaultMealType("lunch");
+            setDialogOpen(true);
+          }}
+        />
       )}
 
       {/* Log/Edit Meal Dialog */}

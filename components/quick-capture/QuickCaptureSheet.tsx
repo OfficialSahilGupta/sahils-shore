@@ -18,6 +18,7 @@ import { createNote } from "@/lib/notes";
 import { getActivities, logActivityTime } from "@/lib/tracker";
 import { todayIST } from "@/lib/date-utils";
 import type { ExpenseCategory, Activity } from "@/types";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import {
   CheckSquare,
   Wallet,
@@ -38,6 +39,7 @@ import { Select } from "@/components/ui/select";
 
 export function QuickCaptureSheet() {
   const { isOpen, activeTab, close, setActiveTab } = useQuickCapture();
+  useScrollLock(isOpen);
   const { enqueueMutation, isOnline } = useOfflineQueue();
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
@@ -450,11 +452,11 @@ export function QuickCaptureSheet() {
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-150"
       onClick={close}
     >
       <div
-        className="w-full max-w-lg bg-surface border border-border sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-200"
+        className="w-full max-w-lg bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Tabs */}

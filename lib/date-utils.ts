@@ -135,6 +135,8 @@ export function formatISTTime(timeOrDate: string | Date | null | undefined): str
   }).format(d);
 }
 
+export const formatTime12IST = formatISTTime;
+
 /**
  * Returns lowercase 3-letter day of the week in IST ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
  */

@@ -23,6 +23,7 @@ import {
 import type { Album, MediaItem, MediaType } from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
 import { formatISTDate } from "@/lib/date-utils";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 interface AddPastMediaModalProps {
   album: Album | null;
@@ -37,6 +38,7 @@ export function AddPastMediaModal({
   onClose,
   onAddItems,
 }: AddPastMediaModalProps) {
+  useScrollLock(isOpen);
   const [items, setItems] = useState<MediaItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -144,7 +146,7 @@ export function AddPastMediaModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-150">
       <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">

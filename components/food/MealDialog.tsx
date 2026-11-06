@@ -32,11 +32,14 @@ import {
   Loader2,
   Search,
   Film,
+  ShieldCheck,
+  Clock,
 } from "lucide-react";
 import { formatINR, rupeesToPaise, paiseToRupees } from "@/lib/expenses";
 import type { MealType, MealLocation, CreateMealInput, MealWithExpense } from "@/lib/food";
 import { prepareFoodPhoto } from "@/lib/food/media";
 import { createClient } from "@/lib/supabase/client";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 interface MealDialogProps {
   isOpen: boolean;
@@ -94,6 +97,8 @@ export function MealDialog({
   defaultDate,
   defaultMealType,
 }: MealDialogProps) {
+  useScrollLock(isOpen);
+
   const [mealType, setMealType] = useState<MealType>("lunch");
   const [description, setDescription] = useState("");
   const [locationType, setLocationType] = useState<MealLocation>("amrita_mess");
@@ -108,6 +113,10 @@ export function MealDialog({
   const [eatenAt, setEatenAt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
+
+  // Skipped meal tracking
+  const [isSkipped, setIsSkipped] = useState(false);
+  const [skippedReason, setSkippedReason] = useState("Intermittent Fasting (16:8)");
 
   // Inline Media Vault & URL Picker states
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
@@ -143,6 +152,8 @@ export function MealDialog({
         setNotesHealth(editingMeal.notes_health || "");
         setIsFavorite(editingMeal.is_favorite || false);
         setEatAgain(editingMeal.eat_again || false);
+        setIsSkipped(Boolean(editingMeal.is_skipped));
+        setSkippedReason(editingMeal.skipped_reason || "Intermittent Fasting (16:8)");
 
         const d = new Date(editingMeal.eaten_at);
         const tzOffset = d.getTimezoneOffset() * 60000;
@@ -159,6 +170,8 @@ export function MealDialog({
         setNotesHealth("");
         setIsFavorite(false);
         setEatAgain(false);
+        setIsSkipped(false);
+        setSkippedReason("Intermittent Fasting (16:8)");
 
         const now = defaultDate ? new Date(defaultDate) : new Date();
         const tzOffset = now.getTimezoneOffset() * 60000;
@@ -212,7 +225,7 @@ export function MealDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim()) return;
+    if (!isSkipped && !description.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -225,19 +238,25 @@ export function MealDialog({
           ? null
           : restaurantName.trim() || null;
 
+      const finalDescription = isSkipped
+        ? (description.trim() || `Skipped ${mealType}`)
+        : description.trim();
+
       await onSave({
         meal_type: mealType,
-        description: description.trim(),
-        location_type: locationType,
-        restaurant_name: computedRestaurantName,
-        cost_paise: costPaise > 0 ? costPaise : 0,
-        rating,
-        photo_url: photoUrls[0] || null,
-        photo_urls: photoUrls,
-        notes_taste: notesTaste.trim() || null,
+        description: finalDescription,
+        location_type: isSkipped ? "home" : locationType,
+        restaurant_name: isSkipped ? null : computedRestaurantName,
+        cost_paise: isSkipped ? 0 : (costPaise > 0 ? costPaise : 0),
+        rating: isSkipped ? null : rating,
+        photo_url: isSkipped ? null : (photoUrls[0] || null),
+        photo_urls: isSkipped ? [] : photoUrls,
+        notes_taste: isSkipped ? null : (notesTaste.trim() || null),
         notes_health: notesHealth.trim() || null,
-        is_favorite: isFavorite,
-        eat_again: locationType === "restaurant" ? eatAgain : false,
+        is_favorite: isSkipped ? false : isFavorite,
+        eat_again: isSkipped ? false : (locationType === "restaurant" ? eatAgain : false),
+        is_skipped: isSkipped,
+        skipped_reason: isSkipped ? skippedReason : null,
         eaten_at: utcIso,
       });
       onClose();
@@ -304,22 +323,24 @@ export function MealDialog({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in"
     >
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-3xl max-h-[96vh] flex flex-col bg-surface border border-border/80 rounded-t-3xl sm:rounded-3xl shadow-2xl z-10 overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl max-h-[92vh] flex flex-col bg-surface border border-border/80 rounded-3xl shadow-2xl z-10 overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-border/60 bg-surface-muted/40 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-accent-warm/15 flex items-center justify-center text-accent-warm">
+            <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <Utensils className="h-4 w-4" />
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-bold text-text">
-                {editingMeal ? "Edit Meal Record" : "Log Today's Meal"}
+                {editingMeal ? "Edit Meal Record" : isSkipped ? "Log Skipped Meal" : "Log Today's Meal"}
               </h3>
-              <p className="text-[11px] text-text-muted">Food diary & nutrition notes</p>
+              <p className="text-[11px] text-text-muted">
+                {isSkipped ? "Intermittent fasting & meal skip tracking" : "Food diary & nutrition notes"}
+              </p>
             </div>
           </div>
           <button
@@ -336,11 +357,26 @@ export function MealDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {/* LEFT COLUMN: Slots, Description, Location, Cost & Date */}
             <div className="space-y-3">
-              {/* 1. Meal Type Selector */}
+              {/* 1. Meal Type Selector + Skipped Toggle */}
               <div>
-                <label className="text-xs font-semibold text-text-muted mb-1 block">
-                  Meal Slot
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-text-muted">
+                    Meal Slot
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsSkipped(!isSkipped)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      isSkipped
+                        ? "bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/40 shadow-xs"
+                        : "border border-border bg-surface hover:bg-surface-muted text-text-muted hover:text-text"
+                    }`}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>{isSkipped ? "Fasting / Skipped" : "Mark as Skipped"}</span>
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-4 gap-1.5">
                   {MEAL_TYPES.map(({ type, label, icon: Icon }) => (
                     <button
@@ -349,7 +385,9 @@ export function MealDialog({
                       onClick={() => setMealType(type)}
                       className={`py-1.5 px-1 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all ${
                         mealType === type
-                          ? "bg-primary text-primary-foreground shadow-xs scale-102"
+                          ? isSkipped
+                            ? "bg-purple-600 text-white shadow-xs scale-102"
+                            : "bg-primary text-primary-foreground shadow-xs scale-102"
                           : "bg-surface-muted/70 text-text-muted hover:text-text hover:bg-surface-muted"
                       }`}
                     >
@@ -360,54 +398,104 @@ export function MealDialog({
                 </div>
               </div>
 
-              {/* 2. Meal Description */}
-              <div>
-                <label className="text-xs font-semibold text-text mb-1 block">
-                  What did you eat? *
-                </label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Masala Dosa + Sambar, Roti with Dal Tadka"
-                  required
-                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl bg-surface-muted/60 border border-border text-text placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-primary/40 focus:border-primary font-medium"
-                />
-              </div>
+              {/* Skipped Mode Form Panel */}
+              {isSkipped ? (
+                <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-3.5 space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>Reason for Skipping {mealType.toUpperCase()}</span>
+                    </span>
+                    <span className="text-[10px] text-text-muted">₹0 expense logged</span>
+                  </div>
 
-              {/* 3. Location Selector */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-muted block">
-                  Where did you eat?
-                </label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {LOCATIONS.map(({ type, label, icon: Icon }) => {
-                    const isSelected = locationType === type;
-                    return (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      "Intermittent Fasting (16:8)",
+                      "Intermittent Fasting (18:6)",
+                      "Not hungry",
+                      "Heavy previous meal",
+                      "Busy with DSA/Coding",
+                      "Woke up late",
+                    ].map((r) => (
                       <button
-                        key={type}
+                        key={r}
                         type="button"
-                        onClick={() => setLocationType(type)}
-                        className={`py-1.5 px-2 rounded-xl border text-center transition-all flex items-center justify-center gap-1 ${
-                          isSelected
-                            ? "border-primary bg-primary/10 shadow-2xs ring-1 ring-primary/30 text-primary font-bold"
-                            : "border-border/70 bg-surface-muted/40 hover:bg-surface-muted text-text-muted hover:text-text"
+                        onClick={() => setSkippedReason(r)}
+                        className={`p-2 rounded-xl border text-left text-[11px] font-medium transition-all ${
+                          skippedReason === r
+                            ? "border-purple-500 bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold shadow-2xs"
+                            : "border-border bg-surface text-text-muted hover:text-text hover:bg-surface-muted"
                         }`}
                       >
-                        <Icon className="h-3 w-3 shrink-0" />
-                        <span className="text-[11px] truncate">{label}</span>
+                        {r}
                       </button>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
 
-                {/* Restaurant Name Input */}
-                {locationType === "restaurant" && (
-                  <div className="relative pt-0.5 animate-in fade-in">
-                    <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                  <div>
+                    <label className="text-[11px] font-semibold text-text-muted block mb-1">
+                      Optional Skip Note
+                    </label>
                     <input
                       type="text"
-                      value={restaurantName}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder={`e.g. Fasting window active until 1:30 PM`}
+                      className="w-full px-3 py-1.5 text-xs rounded-xl bg-surface border border-border text-text placeholder:text-text-muted focus:border-purple-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* 2. Meal Description */}
+                  <div>
+                    <label className="text-xs font-semibold text-text mb-1 block">
+                      What did you eat? *
+                    </label>
+                    <input
+                      type="text"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="e.g. Masala Dosa + Sambar, Roti with Dal Tadka"
+                      required
+                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl bg-surface-muted/60 border border-border text-text placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-primary/40 focus:border-primary font-medium"
+                    />
+                  </div>
+
+                  {/* 3. Location Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-text-muted block">
+                      Where did you eat?
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {LOCATIONS.map(({ type, label, icon: Icon }) => {
+                        const isSelected = locationType === type;
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setLocationType(type)}
+                            className={`py-1.5 px-2 rounded-xl border text-center transition-all flex items-center justify-center gap-1 ${
+                              isSelected
+                                ? "border-primary bg-primary/10 shadow-2xs ring-1 ring-primary/30 text-primary font-bold"
+                                : "border-border/70 bg-surface-muted/40 hover:bg-surface-muted text-text-muted hover:text-text"
+                            }`}
+                          >
+                            <Icon className="h-3 w-3 shrink-0" />
+                            <span className="text-[11px] truncate">{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Restaurant Name Input */}
+                    {locationType === "restaurant" && (
+                      <div className="relative pt-0.5 animate-in fade-in">
+                        <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                        <input
+                          type="text"
+                          value={restaurantName}
                       onChange={(e) => setRestaurantName(e.target.value)}
                       placeholder="Restaurant or Cafe Name..."
                       className="w-full pl-7 pr-3 py-1.5 text-xs rounded-xl bg-surface-muted/60 border border-border text-text placeholder:text-text-muted focus:ring-1 focus:ring-primary"
@@ -470,11 +558,13 @@ export function MealDialog({
                   </div>
                 </div>
               )}
+                </>
+              )}
 
               {/* 5. Date and Time (IST) */}
               <div>
                 <label className="text-xs font-semibold text-text-muted mb-1 block">
-                  Eaten At (IST)
+                  {isSkipped ? "Skipped At (IST)" : "Eaten At (IST)"}
                 </label>
                 <input
                   type="datetime-local"
@@ -487,8 +577,32 @@ export function MealDialog({
 
             {/* RIGHT COLUMN: Rating, Favorites, Photos & Taste/Health */}
             <div className="space-y-3">
-              {/* 6. Rating & Flags (Favorites & Eat Again) */}
-              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-surface-muted/30 border border-border/60">
+              {isSkipped ? (
+                <div className="rounded-2xl border border-purple-500/25 bg-purple-500/5 p-4 space-y-3 animate-in fade-in">
+                  <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold text-xs">
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>Fasting & Metabolic Rest</span>
+                  </div>
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    By skipping this meal slot, your body remains in fasting mode, maintaining lowered insulin levels and promoting metabolic flexibility and cellular autophagy.
+                  </p>
+                  <div>
+                    <label className="text-xs font-semibold text-text-muted mb-1 block">
+                      Health / Energy Notes (Optional)
+                    </label>
+                    <textarea
+                      value={notesHealth}
+                      onChange={(e) => setNotesHealth(e.target.value)}
+                      placeholder="e.g. Felt great, had 1L lemon water and black coffee, zero brain fog..."
+                      rows={5}
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-surface border border-border text-text placeholder:text-text-muted focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* 6. Rating & Flags (Favorites & Eat Again) */}
+                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-surface-muted/30 border border-border/60">
                 <div>
                   <label className="text-[11px] font-semibold text-text-muted mb-1 block">
                     Rating
@@ -774,6 +888,8 @@ export function MealDialog({
                   />
                 </div>
               </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -781,8 +897,12 @@ export function MealDialog({
           <div className="pt-3 border-t border-border/40 mt-3">
             <button
               type="submit"
-              disabled={isSubmitting || !description.trim() || isCompressingPhoto}
-              className="w-full py-2.5 sm:py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-xs sm:text-sm shadow-md hover:opacity-95 active:scale-98 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+              disabled={isSubmitting || (!isSkipped && !description.trim()) || isCompressingPhoto}
+              className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs sm:text-sm shadow-md hover:opacity-95 active:scale-98 transition-all disabled:opacity-40 flex items-center justify-center gap-2 ${
+                isSkipped
+                  ? "bg-purple-600 text-white"
+                  : "bg-primary text-primary-foreground"
+              }`}
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -790,7 +910,11 @@ export function MealDialog({
                 <Check className="h-4 w-4 stroke-[2.5]" />
               )}
               <span>
-                {editingMeal
+                {isSkipped
+                  ? editingMeal
+                    ? "Update Skipped Meal"
+                    : "Confirm Skipped Meal (Fasting)"
+                  : editingMeal
                   ? "Update Meal Record"
                   : costPaise > 0
                   ? `Save Meal (${formatINR(costPaise)})`
