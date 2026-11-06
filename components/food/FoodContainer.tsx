@@ -31,6 +31,7 @@ import {
   Flame,
 } from "lucide-react";
 import { MealDialog } from "./MealDialog";
+import { MealScheduleDialog } from "./MealScheduleDialog";
 import { MealCard } from "./MealCard";
 import { WeeklyMealGrid } from "./WeeklyMealGrid";
 import { PlacesToEatAgainList } from "./PlacesToEatAgainList";
@@ -56,6 +57,12 @@ import {
   type MealLocation,
   type CreateMealInput,
 } from "@/lib/food";
+import {
+  getMealSchedule,
+  getSmartNextMealSlot,
+  type MealSchedule,
+  DEFAULT_MEAL_SCHEDULE,
+} from "@/lib/food/schedule";
 import { todayIST, getISTDateString, formatFriendlyISTDate } from "@/lib/date-utils";
 import { formatINR } from "@/lib/expenses";
 import { Card } from "@/components/ui/card";
@@ -82,9 +89,21 @@ export function FoodContainer() {
 
   // Dialog states
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [schedule, setSchedule] = useState<MealSchedule>(DEFAULT_MEAL_SCHEDULE);
   const [editingMeal, setEditingMeal] = useState<MealWithExpense | null>(null);
   const [dialogDefaultDate, setDialogDefaultDate] = useState<string | undefined>(undefined);
   const [dialogDefaultMealType, setDialogDefaultMealType] = useState<MealType | undefined>(undefined);
+
+  // Sync meal schedule from storage
+  useEffect(() => {
+    const updateSched = () => setSchedule(getMealSchedule());
+    updateSched();
+    if (typeof window !== "undefined") {
+      window.addEventListener("shore_meal_schedule_changed", updateSched);
+      return () => window.removeEventListener("shore_meal_schedule_changed", updateSched);
+    }
+  }, []);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -238,14 +257,10 @@ export function FoodContainer() {
     }));
   }, [filteredMeals]);
 
-  // Determine smart next meal slot suggestion based on IST hour
+  // Determine smart next meal slot suggestion based on regular meal schedule
   const smartNextSlot: MealType = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 11) return "breakfast";
-    if (hour < 15) return "lunch";
-    if (hour < 18) return "snack";
-    return "dinner";
-  }, []);
+    return getSmartNextMealSlot(new Date(), schedule);
+  }, [schedule]);
 
   // Handler: Save (Create or Update) Meal
   const handleSaveMeal = async (input: CreateMealInput) => {
@@ -399,19 +414,32 @@ export function FoodContainer() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setEditingMeal(null);
-            setDialogDefaultDate(undefined);
-            setDialogDefaultMealType(smartNextSlot);
-            setDialogOpen(true);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-primary text-primary-foreground hover:opacity-95 shadow-md active:scale-95 transition-all self-start sm:self-auto"
-        >
-          <Plus className="h-4 w-4 stroke-[2.5]" />
-          <span>Log Meal</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setScheduleDialogOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border border-border bg-surface hover:bg-surface-muted text-text-muted hover:text-text transition-all"
+            title="View and customize regular meal schedule timings"
+          >
+            <Clock className="h-4 w-4 text-primary" />
+            <span className="hidden sm:inline">Regular Timings</span>
+            <span className="sm:hidden">Timings</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditingMeal(null);
+              setDialogDefaultDate(undefined);
+              setDialogDefaultMealType(smartNextSlot);
+              setDialogOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-primary text-primary-foreground hover:opacity-95 shadow-md active:scale-95 transition-all"
+          >
+            <Plus className="h-4 w-4 stroke-[2.5]" />
+            <span>Log Meal</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Today's 4-Slot Progress Bar */}
@@ -446,22 +474,27 @@ export function FoodContainer() {
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="flex items-center gap-1.5 text-xs font-bold capitalize text-text">
-                    <SlotIcon
-                      className={`h-3.5 w-3.5 ${
-                        isLogged ? "text-primary" : "text-text-muted"
-                      }`}
-                    />
-                    <span>{label}</span>
-                  </span>
+                  <div>
+                    <span className="flex items-center gap-1.5 text-xs font-bold capitalize text-text">
+                      <SlotIcon
+                        className={`h-3.5 w-3.5 ${
+                          isLogged ? "text-primary" : "text-text-muted"
+                        }`}
+                      />
+                      <span>{label}</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-text-muted block mt-0.5">
+                      {schedule[type]?.displayRange || ""}
+                    </span>
+                  </div>
 
                   {isLogged ? (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary self-start">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       <span>Done</span>
                     </span>
                   ) : isNextRecommended ? (
-                    <span className="text-[10px] font-bold text-accent-warm uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-accent-warm uppercase tracking-wider self-start">
                       Up Next
                     </span>
                   ) : null}
@@ -808,6 +841,13 @@ export function FoodContainer() {
         editingMeal={editingMeal}
         defaultDate={dialogDefaultDate}
         defaultMealType={dialogDefaultMealType}
+      />
+
+      {/* Regular Meal Schedule Customizer */}
+      <MealScheduleDialog
+        isOpen={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        onSaved={(s) => setSchedule(s)}
       />
     </div>
   );

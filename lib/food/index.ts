@@ -12,6 +12,7 @@ import { formatINR, createExpense, updateExpense, deleteExpense } from "../expen
 import { getISTDateString, todayIST, addDaysIST } from "../date-utils.ts";
 
 export * from "./fasting.ts";
+export * from "./schedule.ts";
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 export type MealLocation = "home" | "amrita_mess" | "restaurant" | "office" | "other";

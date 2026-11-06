@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatINR } from "@/lib/expenses";
-import { formatFriendlyISTDate } from "@/lib/date-utils";
+import { formatFriendlyISTDate, formatISTTime } from "@/lib/date-utils";
 import type { MealWithExpense, MealType, MealLocation } from "@/lib/food";
 
 interface MealCardProps {
@@ -110,8 +110,8 @@ export function MealCard({
                 <Icon className="h-3.5 w-3.5" />
                 <span>{meal.meal_type}</span>
               </span>
-              <span className="text-[11px] text-text-muted">
-                {formatFriendlyISTDate(meal.eaten_at)}
+              <span className="text-[11px] text-text-muted font-mono">
+                {formatFriendlyISTDate(meal.eaten_at)} • {formatISTTime(meal.eaten_at)}
               </span>
             </div>
 

@@ -5,12 +5,17 @@
 // 7-day matrix (Mon - Sun) across Breakfast, Lunch, Snack, Dinner, with day spend
 // ============================================================================
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Coffee, Sun, Moon, Cookie, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatINR } from "@/lib/expenses";
 import { formatFriendlyISTDate, isTodayIST } from "@/lib/date-utils";
 import type { WeeklyMealDay, MealType, MealWithExpense } from "@/lib/food";
+import {
+  getMealSchedule,
+  type MealSchedule,
+  DEFAULT_MEAL_SCHEDULE,
+} from "@/lib/food/schedule";
 
 interface WeeklyMealGridProps {
   weeklyData: WeeklyMealDay[];
@@ -30,6 +35,17 @@ export function WeeklyMealGrid({
   onAddMealForSlot,
   onEditMeal,
 }: WeeklyMealGridProps) {
+  const [schedule, setSchedule] = useState<MealSchedule>(DEFAULT_MEAL_SCHEDULE);
+
+  useEffect(() => {
+    const update = () => setSchedule(getMealSchedule());
+    update();
+    if (typeof window !== "undefined") {
+      window.addEventListener("shore_meal_schedule_changed", update);
+      return () => window.removeEventListener("shore_meal_schedule_changed", update);
+    }
+  }, []);
+
   const totalWeekSpendPaise = weeklyData.reduce(
     (acc, curr) => acc + curr.totalFoodSpendPaise,
     0
@@ -95,7 +111,10 @@ export function WeeklyMealGrid({
                       <div className="flex items-center justify-between text-[10px] font-semibold text-text-muted mb-1">
                         <span className="flex items-center gap-1">
                           <Icon className="h-3 w-3" />
-                          {label}
+                          <span>{label}</span>
+                          <span className="text-[9px] font-mono text-text-muted/70 font-normal">
+                            ({schedule[type]?.startTime})
+                          </span>
                         </span>
                         <button
                           onClick={() => onAddMealForSlot(day.dateIST, type)}
@@ -109,9 +128,10 @@ export function WeeklyMealGrid({
                       {mealsInSlot.length === 0 ? (
                         <div
                           onClick={() => onAddMealForSlot(day.dateIST, type)}
-                          className="text-[11px] text-text-muted/60 italic hover:text-primary cursor-pointer truncate py-1"
+                          className="text-[11px] text-text-muted/60 italic hover:text-primary cursor-pointer truncate py-1 flex items-center justify-between"
                         >
-                          + Log {label.toLowerCase()}
+                          <span>+ Log {label.toLowerCase()}</span>
+                          <span className="text-[9px] font-mono opacity-50">~{schedule[type]?.typicalTime}</span>
                         </div>
                       ) : (
                         <div className="space-y-1">

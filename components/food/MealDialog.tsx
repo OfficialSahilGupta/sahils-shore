@@ -37,6 +37,13 @@ import {
 } from "lucide-react";
 import { formatINR, rupeesToPaise, paiseToRupees } from "@/lib/expenses";
 import type { MealType, MealLocation, CreateMealInput, MealWithExpense } from "@/lib/food";
+import {
+  getMealSchedule,
+  getDefaultMealDateTime,
+  format24To12,
+  type MealSchedule,
+  DEFAULT_MEAL_SCHEDULE,
+} from "@/lib/food/schedule";
 import { prepareFoodPhoto } from "@/lib/food/media";
 import { createClient } from "@/lib/supabase/client";
 import { useScrollLock } from "@/hooks/useScrollLock";
@@ -111,8 +118,19 @@ export function MealDialog({
   const [isFavorite, setIsFavorite] = useState(false);
   const [eatAgain, setEatAgain] = useState(false);
   const [eatenAt, setEatenAt] = useState("");
+  const [schedule, setSchedule] = useState<MealSchedule>(DEFAULT_MEAL_SCHEDULE);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
+
+  // Sync meal schedule from storage
+  useEffect(() => {
+    const updateSched = () => setSchedule(getMealSchedule());
+    updateSched();
+    if (typeof window !== "undefined") {
+      window.addEventListener("shore_meal_schedule_changed", updateSched);
+      return () => window.removeEventListener("shore_meal_schedule_changed", updateSched);
+    }
+  }, []);
 
   // Skipped meal tracking
   const [isSkipped, setIsSkipped] = useState(false);
@@ -159,7 +177,10 @@ export function MealDialog({
         const tzOffset = d.getTimezoneOffset() * 60000;
         setEatenAt(new Date(d.getTime() - tzOffset).toISOString().slice(0, 16));
       } else {
-        setMealType(defaultMealType || "lunch");
+        const sched = getMealSchedule();
+        setSchedule(sched);
+        const targetSlot = defaultMealType || "lunch";
+        setMealType(targetSlot);
         setDescription("");
         setLocationType("amrita_mess");
         setRestaurantName("");
@@ -173,9 +194,8 @@ export function MealDialog({
         setIsSkipped(false);
         setSkippedReason("Intermittent Fasting (16:8)");
 
-        const now = defaultDate ? new Date(defaultDate) : new Date();
-        const tzOffset = now.getTimezoneOffset() * 60000;
-        setEatenAt(new Date(now.getTime() - tzOffset).toISOString().slice(0, 16));
+        const initialDateTime = getDefaultMealDateTime(defaultDate, targetSlot, sched);
+        setEatenAt(initialDateTime);
       }
       setIsMediaPickerOpen(false);
       setUrlInput("");
@@ -219,6 +239,15 @@ export function MealDialog({
   }, [isMediaPickerOpen, vaultPhotos.length]);
 
   if (!isOpen) return null;
+
+  const handleSelectMealType = (newType: MealType) => {
+    setMealType(newType);
+    if (!editingMeal) {
+      const curDate = eatenAt ? eatenAt.slice(0, 10) : defaultDate;
+      const newDateTime = getDefaultMealDateTime(curDate, newType, schedule);
+      setEatenAt(newDateTime);
+    }
+  };
 
   const isFreeLocation = locationType === "home" || locationType === "amrita_mess";
   const costPaise = isFreeLocation ? 0 : rupeesToPaise(costRupees);
@@ -382,7 +411,7 @@ export function MealDialog({
                     <button
                       key={type}
                       type="button"
-                      onClick={() => setMealType(type)}
+                      onClick={() => handleSelectMealType(type)}
                       className={`py-1.5 px-1 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all ${
                         mealType === type
                           ? isSkipped
@@ -392,7 +421,10 @@ export function MealDialog({
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
-                      <span className="text-[11px]">{label}</span>
+                      <span className="text-[11px] font-semibold">{label}</span>
+                      <span className="text-[9px] opacity-75 font-mono hidden sm:inline">
+                        {schedule[type]?.startTime || ""}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -561,17 +593,80 @@ export function MealDialog({
                 </>
               )}
 
-              {/* 5. Date and Time (IST) */}
-              <div>
-                <label className="text-xs font-semibold text-text-muted mb-1 block">
-                  {isSkipped ? "Skipped At (IST)" : "Eaten At (IST)"}
-                </label>
+              {/* 5. Date and Time (IST) - Guided by Regular Timings & 100% Editable for Irregular Days */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-text-muted">
+                    {isSkipped ? "Skipped At (IST)" : "Eaten At (IST)"}
+                  </label>
+                  {schedule[mealType] && (
+                    <span className="text-[10px] font-mono font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>Regular: {schedule[mealType].displayRange}</span>
+                    </span>
+                  )}
+                </div>
                 <input
                   type="datetime-local"
                   value={eatenAt}
                   onChange={(e) => setEatenAt(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-surface-muted/60 border border-border text-text focus:ring-1 focus:ring-primary font-mono"
                 />
+
+                {/* Quick Time Shortcuts */}
+                {schedule[mealType] && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] text-text-muted font-medium">Quick set:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const curDate = eatenAt ? eatenAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+                        setEatenAt(`${curDate}T${schedule[mealType].typicalTime}`);
+                      }}
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-primary/10 border border-primary/30 text-primary font-bold hover:bg-primary/20 transition-colors"
+                      title="Typical regular time"
+                    >
+                      {format24To12(schedule[mealType].typicalTime)} (Typical)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const curDate = eatenAt ? eatenAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+                        setEatenAt(`${curDate}T${schedule[mealType].startTime}`);
+                      }}
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-surface border border-border text-text hover:bg-surface-muted transition-colors"
+                      title="Regular window start"
+                    >
+                      {format24To12(schedule[mealType].startTime)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const curDate = eatenAt ? eatenAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+                        setEatenAt(`${curDate}T${schedule[mealType].endTime}`);
+                      }}
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-surface border border-border text-text hover:bg-surface-muted transition-colors"
+                      title="Regular window end"
+                    >
+                      {format24To12(schedule[mealType].endTime)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        const tzOffset = now.getTimezoneOffset() * 60000;
+                        setEatenAt(new Date(now.getTime() - tzOffset).toISOString().slice(0, 16));
+                      }}
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-surface border border-border text-text hover:bg-surface-muted transition-colors"
+                      title="Current local time"
+                    >
+                      Now
+                    </button>
+                  </div>
+                )}
+                <p className="text-[10px] text-text-muted italic">
+                  Fully editable — adjust time freely on irregular days.
+                </p>
               </div>
             </div>
 

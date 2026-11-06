@@ -7,7 +7,7 @@
 // day inspector drawer, and 1-tap skipped/eaten logging.
 // ============================================================================
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -29,8 +29,13 @@ import {
   Trash2,
 } from "lucide-react";
 import type { MealWithExpense, MealType } from "@/lib/food";
-import { getISTDateString, todayIST, formatFriendlyISTDate } from "@/lib/date-utils";
+import { getISTDateString, todayIST, formatFriendlyISTDate, formatISTTime } from "@/lib/date-utils";
 import { formatINR } from "@/lib/expenses";
+import {
+  getMealSchedule,
+  type MealSchedule,
+  DEFAULT_MEAL_SCHEDULE,
+} from "@/lib/food/schedule";
 
 interface FoodCalendarViewProps {
   meals: MealWithExpense[];
@@ -56,6 +61,16 @@ export function FoodCalendarView({
 }: FoodCalendarViewProps) {
   const currentTodayIST = todayIST();
   const [selectedDateIST, setSelectedDateIST] = useState<string>(currentTodayIST);
+  const [schedule, setSchedule] = useState<MealSchedule>(DEFAULT_MEAL_SCHEDULE);
+
+  useEffect(() => {
+    const update = () => setSchedule(getMealSchedule());
+    update();
+    if (typeof window !== "undefined") {
+      window.addEventListener("shore_meal_schedule_changed", update);
+      return () => window.removeEventListener("shore_meal_schedule_changed", update);
+    }
+  }, []);
 
   // Month navigation: year and month index (0 = Jan)
   const [currentYear, setCurrentYear] = useState(() => {
@@ -425,10 +440,12 @@ export function FoodCalendarView({
                       key={type}
                       className="flex items-center justify-between rounded-xl border border-dashed border-border p-3 text-xs bg-surface-muted/30"
                     >
-                      <div className="flex items-center gap-2.5 text-text-muted">
+                      <div className="flex items-center gap-2 text-text-muted">
                         <SlotIcon className="h-4 w-4" />
-                        <span className="font-medium">{label}</span>
-                        <span className="text-[10px] opacity-60">Not logged</span>
+                        <span className="font-semibold text-text">{label}</span>
+                        <span className="text-[10px] font-mono text-text-muted/75">
+                          ({schedule[type]?.displayRange})
+                        </span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -516,6 +533,11 @@ export function FoodCalendarView({
                             {meal.expense?.amount_paise && meal.expense.amount_paise > 0 ? (
                               <span className="font-semibold text-text">
                                 • {formatINR(meal.expense.amount_paise)}
+                              </span>
+                            ) : null}
+                            {meal.eaten_at ? (
+                              <span className="font-mono text-primary font-medium">
+                                • {formatISTTime(meal.eaten_at)}
                               </span>
                             ) : null}
                           </div>
