@@ -447,15 +447,16 @@ export function RoadmapChecklist({
                           </span>
                         </div>
 
-                        {/* Topic title button - Clicking toggles sub-topic drawer */}
+                        {/* Topic title button - Clicking opens full-screen study workspace popup */}
                         <button
                           type="button"
-                          onClick={() => toggleExpand(item.id)}
+                          onClick={() => handleOpenStudyModal(item)}
                           className={`text-sm font-semibold text-left transition-colors hover:text-[var(--primary)] hover:underline truncate ${
                             item.status === "completed"
                               ? "text-[var(--text-muted)] line-through"
                               : "text-[var(--text)]"
                           }`}
+                          title="Click to open chapter in full-screen study workspace"
                         >
                           {item.topic}
                         </button>
@@ -478,54 +479,55 @@ export function RoadmapChecklist({
 
                         {/* Sub-topics count badge or Notes trigger button */}
                         {hasSubTopics ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleExpand(item.id)}
-                            className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--primary)] border border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 transition-colors shrink-0"
-                            title="Click to view and manage sub-topics"
-                          >
-                            <FolderTree className="h-2.5 w-2.5" />
-                            <span>
-                              {completedSubSections}/{subSections.length} sub-topics
-                            </span>
-                            {isExpanded ? (
-                              <ChevronUp className="h-2.5 w-2.5 ml-0.5" />
-                            ) : (
-                              <ChevronDown className="h-2.5 w-2.5 ml-0.5" />
-                            )}
-                          </button>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenStudyModal(item)}
+                              className="flex items-center gap-1 rounded-l-lg bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)] border border-r-0 border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 transition-colors"
+                              title="Click to open full-screen study workspace"
+                            >
+                              <FolderTree className="h-2.5 w-2.5" />
+                              <span>
+                                {completedSubSections}/{subSections.length} sub-topics
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(item.id)}
+                              className="rounded-r-lg bg-[var(--primary)]/10 p-1 text-[var(--primary)] border border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 transition-colors"
+                              title={isExpanded ? "Collapse inline preview" : "Expand inline preview"}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-2.5 w-2.5" />
+                              ) : (
+                                <ChevronDown className="h-2.5 w-2.5" />
+                              )}
+                            </button>
+                          </div>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => toggleExpand(item.id)}
-                            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors shrink-0 ${
-                              isExpanded
-                                ? "bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30 font-semibold"
-                                : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/80"
-                            }`}
-                            title={
-                              chapterNotes
-                                ? "View chapter architecture notes"
-                                : "Add chapter notes or sub-topics"
-                            }
-                          >
-                            {chapterNotes ? (
-                              <>
-                                <BookOpen className="h-2.5 w-2.5 text-[var(--primary)]" />
-                                <span>{isExpanded ? "Hide Notes" : "View Notes"}</span>
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="h-2.5 w-2.5 text-[var(--primary)]" />
-                                <span>Add Sub-topics</span>
-                              </>
-                            )}
-                            {isExpanded ? (
-                              <ChevronUp className="h-2.5 w-2.5 ml-0.5" />
-                            ) : (
-                              <ChevronDown className="h-2.5 w-2.5 ml-0.5" />
-                            )}
-                          </button>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenStudyModal(item)}
+                              className="flex items-center gap-1 rounded-l-lg bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-muted)] border border-r-0 border-[var(--border)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/80 transition-colors"
+                              title="Click to open full-screen study workspace"
+                            >
+                              <BookOpen className="h-2.5 w-2.5 text-[var(--primary)]" />
+                              <span>Study Notes</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(item.id)}
+                              className="rounded-r-lg bg-[var(--surface-muted)] p-1 text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/80 transition-colors"
+                              title={isExpanded ? "Collapse inline preview" : "Expand inline preview"}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-2.5 w-2.5" />
+                              ) : (
+                                <ChevronDown className="h-2.5 w-2.5" />
+                              )}
+                            </button>
+                          </div>
                         )}
 
                         {/* Badges for notes, code, links */}
@@ -584,10 +586,11 @@ export function RoadmapChecklist({
                     <button
                       type="button"
                       onClick={() => handleOpenStudyModal(item)}
-                      className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] hover:text-[var(--primary)] transition-all shrink-0"
+                      className="flex items-center gap-1 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0"
+                      title="Open full-screen study & notes workspace"
                     >
-                      <BookOpen className="h-3.5 w-3.5 text-[var(--primary)]" />
-                      <span>Study All</span>
+                      <BookOpen className="h-3.5 w-3.5" />
+                      <span>Study Workspace</span>
                     </button>
 
                     {onDeleteTopic && (

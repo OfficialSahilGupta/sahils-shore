@@ -254,8 +254,8 @@ export function TopicStudyModal({
         <div
           className={`relative w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 shadow-2xl transition-all flex flex-col ${
             isFullscreen
-              ? "max-w-[99vw] h-[96vh] overflow-y-auto"
-              : "max-w-5xl max-h-[92vh] overflow-y-auto"
+              ? "max-w-[99vw] h-[98vh] overflow-y-auto"
+              : "max-w-6xl w-full h-[94vh] sm:h-[92vh] overflow-y-auto"
           }`}
         >
         {/* Header Bar */}

@@ -180,56 +180,55 @@ export function EditTopicModal({
   return (
     <ModalPortal>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-        <div className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-2xl transition-all">
+        <div className="relative w-full max-w-3xl sm:max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-7 shadow-2xl transition-all space-y-4">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
-                <Edit3 className="h-4 w-4" />
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-2">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                <Edit3 className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[var(--text)]">
+                <h3 className="text-lg font-bold text-[var(--text)]">
                   Edit Curriculum Topic
                 </h3>
-                <p className="text-[11px] text-[var(--text-muted)]">
-                  {trackTitle}
+                <p className="text-xs text-[var(--text-muted)]">
+                  {trackTitle} • Manage topic details, category, notes & sequence position
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] transition-colors"
+              className="rounded-xl p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] transition-colors"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
           {errorMessage && (
-            <div className="mb-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 p-2.5 text-xs text-[var(--danger)]">
+            <div className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 p-3 text-xs text-[var(--danger)]">
               {errorMessage}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Topic Title */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text)] mb-1">
-                Topic Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g. Core Java, JPA / Hibernate & Spring Data JPA"
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3.5 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
-              />
-            </div>
+            {/* Topic Title & Category in 2-column grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+              <div className="sm:col-span-8">
+                <label className="block text-xs font-semibold text-[var(--text)] mb-1">
+                  Topic Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g. Core Java, JPA / Hibernate & Spring Data JPA"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3.5 py-2 text-xs text-[var(--text)] font-semibold placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
 
-            {/* Category and Status Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
+              <div className="sm:col-span-4">
                 <label className="block text-xs font-semibold text-[var(--text)] mb-1">
                   Category
                 </label>
@@ -237,11 +236,14 @@ export function EditTopicModal({
                   type="text"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  placeholder="e.g. Core Java, Security"
+                  placeholder="e.g. Core, Security, Data Tier"
                   className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3 py-2 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
                 />
               </div>
+            </div>
 
+            {/* Status and Position Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text)] mb-1">
                   Learning Status
@@ -256,69 +258,65 @@ export function EditTopicModal({
                   ]}
                 />
               </div>
+
+              {totalTopics > 1 && (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/15 p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-[var(--text)]">
+                      Curriculum Position & Order
+                    </label>
+                    <span className="text-[11px] text-[var(--text-muted)] font-mono">
+                      Currently #{currentPosition} of {totalTopics}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Select
+                        value={String(selectedPosition)}
+                        onChange={(e) => setSelectedPosition(Number(e.target.value))}
+                        options={Array.from({ length: totalTopics }, (_, i) => ({
+                          value: String(i + 1),
+                          label:
+                            i === 0
+                              ? `Position #1 (Top of Curriculum)`
+                              : i === totalTopics - 1
+                                ? `Position #${i + 1} (End of Curriculum)`
+                                : `Position #${i + 1}`,
+                        }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPosition(1)}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                          selectedPosition === 1
+                            ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
+                            : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-muted)]"
+                        }`}
+                        title="Set to Position #1"
+                      >
+                        Top (#1)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPosition(totalTopics)}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                          selectedPosition === totalTopics
+                            ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
+                            : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-muted)]"
+                        }`}
+                        title={`Set to Position #${totalTopics}`}
+                      >
+                        Bottom
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Curriculum Position & Order */}
-            {totalTopics > 1 && (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/15 p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-[var(--text)]">
-                    Curriculum Position & Order
-                  </label>
-                  <span className="text-[11px] text-[var(--text-muted)] font-mono">
-                    Currently #{currentPosition} of {totalTopics}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <Select
-                      value={String(selectedPosition)}
-                      onChange={(e) => setSelectedPosition(Number(e.target.value))}
-                      options={Array.from({ length: totalTopics }, (_, i) => ({
-                        value: String(i + 1),
-                        label:
-                          i === 0
-                            ? `Position #1 (Top of Curriculum — shifts others down)`
-                            : i === totalTopics - 1
-                              ? `Position #${i + 1} (End of Curriculum)`
-                              : `Position #${i + 1}`,
-                      }))}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPosition(1)}
-                      className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                        selectedPosition === 1
-                          ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
-                          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-muted)]"
-                      }`}
-                      title="Set to Position #1"
-                    >
-                      Top (#1)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPosition(totalTopics)}
-                      className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                        selectedPosition === totalTopics
-                          ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
-                          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-muted)]"
-                      }`}
-                      title={`Set to Position #${totalTopics}`}
-                    >
-                      Bottom
-                    </button>
-                  </div>
-                </div>
-                <p className="text-[11px] text-[var(--text-muted)]">
-                  Changing position shifts other topics automatically to accommodate this order.
-                </p>
-              </div>
-            )}
 
             {/* Quick Category Chips */}
             <div>
@@ -379,14 +377,14 @@ export function EditTopicModal({
 
               {notesTab === "edit" ? (
                 <textarea
-                  rows={4}
+                  rows={6}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="High-level engineering takeaways, JVM internals, design tradeoffs... (Markdown supported)"
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-y font-sans leading-relaxed"
+                  placeholder="High-level engineering takeaways, architecture internals, design tradeoffs... (Markdown supported: # headings, ``` code blocks, - lists, > quotes)"
+                  className="w-full min-h-[140px] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3.5 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-y font-sans leading-relaxed"
                 />
               ) : (
-                <div className="w-full min-h-[100px] max-h-[220px] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-xs scrollbar-thin">
+                <div className="w-full min-h-[140px] max-h-[320px] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 text-xs scrollbar-thin shadow-2xs">
                   <MarkdownView content={notes} />
                 </div>
               )}

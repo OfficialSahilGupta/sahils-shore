@@ -305,26 +305,68 @@ export function LearningContainer() {
         getResourceLinks(supabase, userId, activeTrackId),
       ]);
 
-      // Check if there are local offline roadmap items not yet in Supabase
+      // Reconcile with local items to preserve custom order, categories, and offline edits
       let finalRoadmap = rItems;
       if (typeof window !== "undefined") {
         try {
-          const localRaw = localStorage.getItem(`shore_roadmap_${activeTrackId}`);
+          const storageKey = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
+          const localRaw =
+            localStorage.getItem(storageKey) ||
+            localStorage.getItem(`shore_roadmap_${activeTrackId}`) ||
+            localStorage.getItem(`shore_preview_roadmap_${activeTrackId}`);
+
           if (localRaw) {
             const localItems: LearningItem[] = JSON.parse(localRaw);
             if (Array.isArray(localItems) && localItems.length > 0) {
-              const existingIds = new Set(rItems.map((i) => i.id));
-              const existingTopics = new Set(rItems.map((i) => i.topic.toLowerCase().trim()));
-              const merged = [...rItems];
+              const remoteMapById = new Map(rItems.map((i) => [i.id, i]));
+              const remoteMapByTopic = new Map(rItems.map((i) => [i.topic.toLowerCase().trim(), i]));
+
+              // Start with local items in their exact saved order!
+              const reconciled: LearningItem[] = [];
+              const accountedRemoteIds = new Set<string>();
+
               for (const loc of localItems) {
-                if (!existingIds.has(loc.id) && !existingTopics.has(loc.topic.toLowerCase().trim())) {
-                  merged.push(loc);
+                const remote =
+                  remoteMapById.get(loc.id) ||
+                  remoteMapByTopic.get(loc.topic.toLowerCase().trim());
+
+                if (remote) {
+                  accountedRemoteIds.add(remote.id);
+                  // Merge remote with local; local takes priority for ordering, category, notes, and sub-sections
+                  const res = loc.resources || remote.resources;
+                  const cat = loc.category || (res as any)?.category || remote.category || "Core";
+                  reconciled.push({
+                    ...remote,
+                    ...loc,
+                    id: remote.id,
+                    category: cat,
+                    notes: loc.notes !== undefined ? loc.notes : remote.notes,
+                    resources: res,
+                    status: loc.status || remote.status,
+                  });
+                } else {
+                  reconciled.push(loc);
                 }
               }
-              finalRoadmap = merged;
+
+              // Append any remote items not present in local items
+              for (const rem of rItems) {
+                if (!accountedRemoteIds.has(rem.id)) {
+                  reconciled.push(rem);
+                }
+              }
+
+              // Re-assign sequential order_index
+              finalRoadmap = reconciled.map((item, idx) => ({ ...item, order_index: idx }));
+
+              // Keep storage keys synchronized
+              localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(finalRoadmap));
+              localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(finalRoadmap));
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn("[LearningContainer] Reconciliation warning:", e);
+        }
       }
 
       setRoadmapItems(finalRoadmap);
@@ -553,8 +595,8 @@ export function LearningContainer() {
       );
       if (typeof window !== "undefined" && activeTrackId) {
         try {
-          const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
-          localStorage.setItem(key, JSON.stringify(next));
+          localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
+          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
         } catch (e) {}
       }
       return next;
@@ -593,10 +635,8 @@ export function LearningContainer() {
 
     if (typeof window !== "undefined") {
       try {
-        const key = userId
-          ? `shore_roadmap_${activeTrackId}`
-          : `shore_preview_roadmap_${activeTrackId}`;
-        localStorage.setItem(key, JSON.stringify(reordered));
+        localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(reordered));
+        localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(reordered));
       } catch (e) {}
     }
 
@@ -633,8 +673,8 @@ export function LearningContainer() {
 
         if (typeof window !== "undefined" && activeTrackId) {
           try {
-            const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
-            localStorage.setItem(key, JSON.stringify(updatedList));
+            localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(updatedList));
+            localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(updatedList));
           } catch (e) {}
         }
 
@@ -659,8 +699,8 @@ export function LearningContainer() {
       const next = prev.map((item) => (item.id === itemId ? { ...item, ...fieldUpdates } : item));
       if (typeof window !== "undefined" && activeTrackId) {
         try {
-          const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
-          localStorage.setItem(key, JSON.stringify(next));
+          localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
+          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
         } catch (e) {}
       }
       return next;
@@ -796,8 +836,8 @@ export function LearningContainer() {
       const next = prev.filter((item) => item.id !== itemId);
       if (typeof window !== "undefined" && activeTrackId) {
         try {
-          const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
-          localStorage.setItem(key, JSON.stringify(next));
+          localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
+          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
         } catch (e) {}
       }
       return next;

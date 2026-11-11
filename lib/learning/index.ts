@@ -1046,6 +1046,22 @@ export async function updateRoadmapItem(
     payload.completed_at = null;
   }
 
+  // Ensure category and order_index are also packed inside resources JSONB for 100% resilient schema compatibility
+  let packedResources = updates.resources;
+  if (!packedResources || typeof packedResources !== "object" || Array.isArray(packedResources)) {
+    packedResources = {
+      category: updates.category || "Core",
+      order_index: updates.order_index ?? 0,
+      subsections: [],
+    } as unknown as Json;
+  } else {
+    const resObj = { ...(packedResources as any) };
+    if (updates.category) resObj.category = updates.category;
+    if (updates.order_index !== undefined) resObj.order_index = updates.order_index;
+    packedResources = resObj as unknown as Json;
+  }
+  payload.resources = packedResources;
+
   // If itemId is not a UUID, return local representation directly
   if (!isValidUUID(itemId) || !userId || userId === "preview") {
     return {
@@ -1053,11 +1069,11 @@ export async function updateRoadmapItem(
       user_id: userId || "preview",
       track_id: "",
       topic: updates.topic || "Topic",
-      category: updates.category || "Core",
+      category: updates.category || (packedResources as any)?.category || "Core",
       status: updates.status || "planned",
       notes: updates.notes || null,
-      resources: updates.resources || ([] as unknown as Json),
-      order_index: updates.order_index ?? 0,
+      resources: packedResources,
+      order_index: updates.order_index ?? (packedResources as any)?.order_index ?? 0,
       completed_at: payload.completed_at || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -1164,20 +1180,47 @@ export async function getRoadmapItems(
       .order("order_index", { ascending: true })
       .order("created_at", { ascending: true });
 
+    let rawList: any[] = [];
     if (!error && data) {
-      return data as LearningItem[];
+      rawList = data;
+    } else {
+      // 2. Fallback ordering by created_at only (base schema)
+      const fallbackRes = await supabase
+        .from("learning_items")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("track_id", trackId)
+        .order("created_at", { ascending: true });
+
+      if (!fallbackRes.error && fallbackRes.data) {
+        rawList = fallbackRes.data;
+      }
     }
 
-    // 2. Fallback ordering by created_at only (base schema)
-    const fallbackRes = await supabase
-      .from("learning_items")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("track_id", trackId)
-      .order("created_at", { ascending: true });
+    if (rawList.length > 0) {
+      const mapped = rawList.map((row) => {
+        const res =
+          row.resources && typeof row.resources === "object" && !Array.isArray(row.resources)
+            ? row.resources
+            : {};
+        const category = row.category || res.category || "Core";
+        const order_index =
+          row.order_index !== undefined && row.order_index !== null
+            ? row.order_index
+            : res.order_index !== undefined && res.order_index !== null
+              ? res.order_index
+              : 0;
 
-    if (!fallbackRes.error && fallbackRes.data) {
-      return fallbackRes.data as LearningItem[];
+        return {
+          ...row,
+          category,
+          order_index,
+        } as LearningItem;
+      });
+
+      // Sort by order_index ascending
+      mapped.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+      return mapped;
     }
   } catch (err) {
     console.warn("[getRoadmapItems] Exception:", err);
@@ -1211,6 +1254,7 @@ export function reorderLearningItems(
 
 /**
  * Persists the updated order_index sequence for items across a track in Supabase.
+ * Encodes order_index and category both as database columns and inside resources JSONB for total resilience.
  */
 export async function persistRoadmapOrder(
   supabase: SupabaseClient<Database>,
@@ -1223,13 +1267,27 @@ export async function persistRoadmapOrder(
   }
 
   try {
-    const updates = reorderedItems.map((item, idx) =>
-      supabase
+    const updates = reorderedItems.map((item, idx) => {
+      const existingRes =
+        typeof item.resources === "object" && item.resources !== null && !Array.isArray(item.resources)
+          ? (item.resources as any)
+          : {};
+      const updatedRes = {
+        ...existingRes,
+        order_index: idx,
+        category: item.category || existingRes.category || "Core",
+      };
+
+      return supabase
         .from("learning_items")
-        .update({ order_index: idx, updated_at: new Date().toISOString() })
+        .update({
+          order_index: idx,
+          resources: updatedRes as unknown as Json,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", item.id)
-        .eq("user_id", userId)
-    );
+        .eq("user_id", userId);
+    });
     await Promise.allSettled(updates);
   } catch (err) {
     console.warn("[persistRoadmapOrder] Supabase update warning:", err);
