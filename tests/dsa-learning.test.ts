@@ -22,6 +22,10 @@ import {
   parseTopicSubSections,
   packTopicSubSections,
   type TopicSubSection,
+  createRoadmapItem,
+  isValidUUID,
+  updateRoadmapItem,
+  deleteRoadmapItem,
 } from "../lib/learning/index.ts";
 import { todayIST, yesterdayIST } from "../lib/date-utils.ts";
 import type { DsaProblem, LearningItem, InterviewQa, LearningConcept, Project } from "../types/index.ts";
@@ -646,6 +650,182 @@ describe("10. Resilient Learning Track Creation & Custom Track Isolation", () =>
 
     const t2 = await createLearningTrack(mockSupabase, "u1", { title: "Rust / Systems Programming" });
     assert.equal(t2?.slug, "rust-systems-programming");
+  });
+});
+
+describe("11. Resilient Roadmap Topic Creation (createRoadmapItem)", () => {
+  test("isValidUUID correctly identifies valid and invalid UUID strings", () => {
+    assert.equal(isValidUUID("550e8400-e29b-41d4-a716-446655440000"), true);
+    assert.equal(isValidUUID("preview-spring"), false);
+    assert.equal(isValidUUID("custom-1730000000"), false);
+    assert.equal(isValidUUID(null), false);
+    assert.equal(isValidUUID(undefined), false);
+    assert.equal(isValidUUID(""), false);
+  });
+
+  test("creates roadmap item with primary enhanced columns when supported", async () => {
+    const mockSupabase = {
+      from: (table: string) => ({
+        insert: (payload: any) => ({
+          select: () => ({
+            single: async () => ({
+              data: {
+                id: "550e8400-e29b-41d4-a716-446655440001",
+                ...payload,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const item = await createRoadmapItem(mockSupabase, "550e8400-e29b-41d4-a716-446655440002", {
+      track_id: "550e8400-e29b-41d4-a716-446655440003",
+      topic: "Distributed Tracing & OpenTelemetry",
+      category: "Observability",
+      notes: "Jaeger, Zipkin, OTLP collectors, and W3C TraceContext propagation.",
+      status: "in_progress",
+      order_index: 16,
+    });
+
+    assert.ok(item);
+    assert.equal(item.id, "550e8400-e29b-41d4-a716-446655440001");
+    assert.equal(item.topic, "Distributed Tracing & OpenTelemetry");
+    assert.equal(item.category, "Observability");
+    assert.equal(item.status, "in_progress");
+    assert.equal(item.order_index, 16);
+    assert.ok(item.resources);
+  });
+
+  test("falls back cleanly to base schema columns when order_index or category are not present", async () => {
+    let callCount = 0;
+    const mockSupabase = {
+      from: (table: string) => ({
+        insert: (payload: any) => {
+          callCount++;
+          if (callCount === 1) {
+            // First call fails because category or order_index column does not exist
+            return {
+              select: () => ({
+                single: async () => ({
+                  data: null,
+                  error: { message: 'column "category" of relation "learning_items" does not exist' },
+                }),
+              }),
+            };
+          }
+          // Second call (fallback) succeeds without those columns
+          return {
+            select: () => ({
+              single: async () => ({
+                data: {
+                  id: "550e8400-e29b-41d4-a716-446655440010",
+                  ...payload,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+                error: null,
+              }),
+            }),
+          };
+        },
+      }),
+    } as any;
+
+    const item = await createRoadmapItem(mockSupabase, "550e8400-e29b-41d4-a716-446655440002", {
+      track_id: "550e8400-e29b-41d4-a716-446655440003",
+      topic: "Kafka Partition Rebalancing & Consumer Groups",
+      category: "Messaging",
+      notes: "Eager vs Cooperative Sticky Assignor protocols.",
+      status: "planned",
+      order_index: 17,
+    });
+
+    assert.ok(item);
+    assert.equal(item.topic, "Kafka Partition Rebalancing & Consumer Groups");
+    assert.equal(item.category, "Messaging");
+    assert.equal(item.order_index, 17);
+    assert.equal(callCount, 2);
+  });
+
+  test("generates guaranteed deterministic local item if database insert fails or runs offline", async () => {
+    const mockFailingSupabase = {
+      from: () => ({
+        insert: () => ({
+          select: () => ({
+            single: async () => ({ data: null, error: { message: "Network connection refused" } }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const item = await createRoadmapItem(mockFailingSupabase, "preview", {
+      track_id: "preview-spring",
+      topic: "Spring Cloud Gateway & Resilience4j Circuit Breakers",
+      category: "Microservices",
+      status: "planned",
+    });
+
+    assert.ok(item);
+    assert.ok(item.id.startsWith("item-"));
+    assert.equal(item.topic, "Spring Cloud Gateway & Resilience4j Circuit Breakers");
+    assert.equal(item.category, "Microservices");
+    assert.equal(item.status, "planned");
+    // Verify standard subsections packed
+    const res = item.resources as any;
+    assert.ok(res.subsections);
+    assert.equal(res.subsections.length, 1);
+    assert.equal(res.subsections[0].title, "Overview & Core Architecture");
+  });
+});
+
+describe("12. Curriculum Growth Beyond 16 Topics & Dynamic Mastery Recalculation", () => {
+  test("mastery score formula smoothly incorporates 17+ topics without degradation", () => {
+    // 16 default Spring topics
+    const baselineItems: LearningItem[] = Array.from({ length: 16 }, (_, idx) => ({
+      id: `item-${idx}`,
+      user_id: "u1",
+      track_id: "t1",
+      topic: `Topic ${idx + 1}`,
+      status: idx < 8 ? "completed" : idx < 12 ? "in_progress" : "planned",
+      notes: idx < 8 ? "Rich completed architecture notes..." : "",
+      resources: [],
+      order_index: idx,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as unknown as LearningItem));
+
+    const baselineMastery = calculateDynamicTrackMastery(baselineItems, [], [], []);
+    assert.equal(baselineMastery.topicsTotal, 16);
+    assert.equal(baselineMastery.topicsMastered, 8);
+    assert.equal(baselineMastery.topicsInProgress, 4);
+
+    // Add topic #17 (newly added user topic)
+    const newTopic17: LearningItem = {
+      id: "item-16",
+      user_id: "u1",
+      track_id: "t1",
+      topic: "Apache Kafka Event Streaming",
+      status: "completed",
+      notes: "Producers, consumer groups, partition keys, compaction.",
+      resources: [],
+      order_index: 16,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as unknown as LearningItem;
+
+    const expandedItems = [...baselineItems, newTopic17];
+    const expandedMastery = calculateDynamicTrackMastery(expandedItems, [], [], []);
+
+    assert.equal(expandedMastery.topicsTotal, 17);
+    assert.equal(expandedMastery.topicsMastered, 9);
+    assert.ok(
+      expandedMastery.overallScore >= baselineMastery.overallScore,
+      "Adding and mastering topic #17 should increase overall mastery score"
+    );
   });
 });
 

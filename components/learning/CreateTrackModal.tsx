@@ -26,6 +26,7 @@ import {
   type CreateTrackInput,
   type TrackTemplate,
 } from "@/lib/learning";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface CreateTrackModalProps {
   isOpen: boolean;
@@ -127,8 +128,9 @@ export function CreateTrackModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-2xl transition-all">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-2xl transition-all">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-4 mb-4">
           <div className="flex items-center gap-2.5">
@@ -316,5 +318,6 @@ export function CreateTrackModal({
         </form>
       </div>
     </div>
+  </ModalPortal>
   );
 }

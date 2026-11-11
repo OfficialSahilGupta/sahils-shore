@@ -37,6 +37,7 @@ import {
 import type { CreateDsaProblemInput } from "@/lib/dsa";
 import { CodeEditor } from "./CodeEditor";
 import { Select } from "@/components/ui/select";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface DsaProblemModalProps {
   isOpen: boolean;
@@ -179,14 +180,15 @@ export function DsaProblemModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div
-        className={`relative w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-2xl transition-all flex flex-col ${
-          isFullscreen
-            ? "max-w-[98vw] h-[95vh] overflow-y-auto"
-            : "max-w-5xl max-h-[92vh] overflow-y-auto"
-        }`}
-      >
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+        <div
+          className={`relative w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-2xl transition-all flex flex-col ${
+            isFullscreen
+              ? "max-w-[98vw] h-[95vh] overflow-y-auto"
+              : "max-w-5xl max-h-[92vh] overflow-y-auto"
+          }`}
+        >
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-4 mb-4 gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -576,5 +578,6 @@ export function DsaProblemModal({
         </form>
       </div>
     </div>
+  </ModalPortal>
   );
 }

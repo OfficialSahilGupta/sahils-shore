@@ -56,6 +56,7 @@ import {
   deleteResourceLink,
   logStudySession,
   calculateDynamicTrackMastery,
+  packTopicSubSections,
   PRESET_TRACK_TEMPLATES,
   type CreateTrackInput,
   type CreateConceptInput,
@@ -231,6 +232,12 @@ export function LearningContainer() {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }));
+
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(items));
+          } catch (e) {}
+        }
       }
 
       const isSpring = activeTrackId.includes("spring");
@@ -296,7 +303,29 @@ export function LearningContainer() {
         getResourceLinks(supabase, userId, activeTrackId),
       ]);
 
-      setRoadmapItems(rItems);
+      // Check if there are local offline roadmap items not yet in Supabase
+      let finalRoadmap = rItems;
+      if (typeof window !== "undefined") {
+        try {
+          const localRaw = localStorage.getItem(`shore_roadmap_${activeTrackId}`);
+          if (localRaw) {
+            const localItems: LearningItem[] = JSON.parse(localRaw);
+            if (Array.isArray(localItems) && localItems.length > 0) {
+              const existingIds = new Set(rItems.map((i) => i.id));
+              const existingTopics = new Set(rItems.map((i) => i.topic.toLowerCase().trim()));
+              const merged = [...rItems];
+              for (const loc of localItems) {
+                if (!existingIds.has(loc.id) && !existingTopics.has(loc.topic.toLowerCase().trim())) {
+                  merged.push(loc);
+                }
+              }
+              finalRoadmap = merged;
+            }
+          }
+        } catch (e) {}
+      }
+
+      setRoadmapItems(finalRoadmap);
       setConcepts(cLogs);
       setProjects(pList);
       setInterviewQuestions(qList);
@@ -304,7 +333,7 @@ export function LearningContainer() {
       setResourceLinks(rLinks);
 
       // Update dynamic mastery score for active track
-      const mastery = calculateDynamicTrackMastery(rItems, cLogs, pList, qList);
+      const mastery = calculateDynamicTrackMastery(finalRoadmap, cLogs, pList, qList);
       setProgressMap((prev) => ({ ...prev, [activeTrackId]: mastery.overallScore }));
     } catch (err) {
       console.error("[LearningContainer] Error loading track data:", err);
@@ -510,38 +539,44 @@ export function LearningContainer() {
     itemId: string,
     newStatus: "planned" | "in_progress" | "completed"
   ) => {
-    if (!userId) {
-      setRoadmapItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId
-            ? {
-                ...item,
-                status: newStatus,
-                completed_at: newStatus === "completed" ? new Date().toISOString() : null,
-              }
-            : item
-        )
+    setRoadmapItems((prev) => {
+      const next = prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: newStatus,
+              completed_at: newStatus === "completed" ? new Date().toISOString() : null,
+            }
+          : item
       );
-      showToast(`Updated status to ${newStatus.replace("_", " ")}`);
-      return;
-    }
+      if (typeof window !== "undefined" && activeTrackId) {
+        try {
+          const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
+          localStorage.setItem(key, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
 
-    const updated = await toggleRoadmapStatus(
-      supabase,
-      userId,
-      itemId,
-      newStatus,
-      activeTrack?.title
+    const targetItem = roadmapItems.find((i) => i.id === itemId);
+    showToast(
+      newStatus === "completed"
+        ? `Mastered "${targetItem?.topic || "Topic"}"! Added to timeline.`
+        : `Updated status to ${newStatus.replace("_", " ")}`
     );
-    if (updated) {
-      setRoadmapItems((prev) =>
-        prev.map((item) => (item.id === itemId ? updated : item))
-      );
-      showToast(
-        newStatus === "completed"
-          ? `Mastered "${updated.topic}"! Added to timeline.`
-          : `Updated status to ${newStatus.replace("_", " ")}`
-      );
+
+    if (userId) {
+      try {
+        await toggleRoadmapStatus(
+          supabase,
+          userId,
+          itemId,
+          newStatus,
+          activeTrack?.title
+        );
+      } catch (e) {
+        console.warn("Toggle roadmap status warning:", e);
+      }
     }
   };
 
@@ -557,9 +592,10 @@ export function LearningContainer() {
   ) => {
     setRoadmapItems((prev) => {
       const next = prev.map((item) => (item.id === itemId ? { ...item, ...updates } : item));
-      if (!userId && activeTrackId && typeof window !== "undefined") {
+      if (typeof window !== "undefined" && activeTrackId) {
         try {
-          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
+          const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
+          localStorage.setItem(key, JSON.stringify(next));
         } catch (e) {}
       }
       return next;
@@ -588,67 +624,92 @@ export function LearningContainer() {
   }) => {
     if (!activeTrackId) return;
 
-    if (!userId) {
-      const newItem: LearningItem = {
-        id: `topic-${Date.now()}`,
-        user_id: "preview",
-        track_id: activeTrackId,
-        topic: input.topic,
-        category: input.category,
-        notes: input.notes || null,
-        status: input.status,
-        resources: {
-          category: input.category,
-          subsections: [
-            {
-              id: `sub-init-1`,
-              title: "Overview & Core Architecture",
-              notes: input.notes || "",
-              codeSnippet: "",
-              codeLanguage: "java",
-              resources: [],
-              isCompleted: input.status === "completed",
-            },
-          ],
-        } as unknown as Json,
-        order_index: roadmapItems.length,
-        completed_at: input.status === "completed" ? new Date().toISOString() : null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setRoadmapItems((prev) => {
-        const next = [...prev, newItem];
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
-          } catch (e) {}
-        }
-        return next;
-      });
-      showToast(`Added topic "${input.topic}" to roadmap!`);
-      return;
-    }
+    const trimmedTopic = input.topic.trim();
+    if (!trimmedTopic) return;
 
-    const created = await createRoadmapItem(supabase, userId, {
+    const trimmedCategory = input.category.trim() || "Core Principles";
+
+    // 1. Pack standard resources with initial sub-section
+    const initialSub = [
+      {
+        id: `sub-init-${Date.now()}`,
+        title: "Overview & Core Architecture",
+        notes: input.notes?.trim() || "",
+        codeSnippet: "",
+        codeLanguage: "java",
+        resources: [],
+        isCompleted: input.status === "completed",
+      },
+    ];
+    const packed = packTopicSubSections(initialSub, trimmedCategory);
+
+    // 2. Generate optimistic item
+    const tempId = `topic-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const optimisticItem: LearningItem = {
+      id: tempId,
+      user_id: userId || "preview",
       track_id: activeTrackId,
-      topic: input.topic,
-      category: input.category,
-      notes: input.notes,
+      topic: trimmedTopic,
+      category: trimmedCategory,
+      notes: input.notes?.trim() || null,
       status: input.status,
+      resources: packed.resources,
       order_index: roadmapItems.length,
+      completed_at: input.status === "completed" ? new Date().toISOString() : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // 3. Immediately update UI state & localStorage
+    setRoadmapItems((prev) => {
+      const next = [...prev, optimisticItem];
+      if (typeof window !== "undefined") {
+        try {
+          const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
+          localStorage.setItem(key, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
     });
-    if (created) {
-      setRoadmapItems((prev) => [...prev, created]);
-      showToast(`Added topic "${created.topic}" to roadmap!`);
+    showToast(`Added topic "${trimmedTopic}" to roadmap!`);
+
+    // 4. If logged in, persist to database & reconcile permanent ID
+    if (userId) {
+      try {
+        const created = await createRoadmapItem(supabase, userId, {
+          track_id: activeTrackId,
+          topic: trimmedTopic,
+          category: trimmedCategory,
+          notes: input.notes,
+          status: input.status,
+          resources: packed.resources,
+          order_index: roadmapItems.length,
+        });
+
+        if (created && created.id !== tempId) {
+          setRoadmapItems((prev) => {
+            const next = prev.map((item) => (item.id === tempId ? created : item));
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
+              } catch (e) {}
+            }
+            return next;
+          });
+        }
+      } catch (err: any) {
+        console.warn("[handleAddTopic] Supabase insert warning, safely retained locally:", err);
+      }
     }
   };
 
   const handleDeleteTopic = async (itemId: string) => {
     setRoadmapItems((prev) => {
       const next = prev.filter((item) => item.id !== itemId);
-      if (!userId && activeTrackId && typeof window !== "undefined") {
+      if (typeof window !== "undefined" && activeTrackId) {
         try {
-          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
+          const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
+          localStorage.setItem(key, JSON.stringify(next));
         } catch (e) {}
       }
       return next;
@@ -786,7 +847,7 @@ export function LearningContainer() {
         technology: input.technology,
         question: input.question,
         answer: input.answer,
-        difficulty: input.difficulty || "medium",
+        difficulty: input.difficulty || "Medium",
         tags: input.tags,
         confidence: input.confidence || 3,
         last_practiced_at: null,
@@ -868,8 +929,26 @@ export function LearningContainer() {
 
   // Resources
   const handleAddResource = async (input: CreateResourceLinkInput) => {
-    if (!userId) return;
-    const created = await createResourceLink(supabase, userId, input);
+    if (!userId) {
+      const newRes: ResourceLink = {
+        id: `res-${Date.now()}`,
+        user_id: "preview",
+        track_id: activeTrackId,
+        title: input.title,
+        url: input.url,
+        category: input.category || "Documentation",
+        description: input.description || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setResourceLinks((prev) => [newRes, ...prev]);
+      showToast("Resource link saved");
+      return;
+    }
+    const created = await createResourceLink(supabase, userId, {
+      ...input,
+      track_id: activeTrackId,
+    });
     if (created) {
       setResourceLinks((prev) => [created, ...prev]);
       showToast("Resource link saved");
@@ -877,7 +956,11 @@ export function LearningContainer() {
   };
 
   const handleDeleteResource = async (linkId: string) => {
-    if (!userId) return;
+    if (!userId) {
+      setResourceLinks((prev) => prev.filter((r) => r.id !== linkId));
+      showToast("Resource link deleted");
+      return;
+    }
     const success = await deleteResourceLink(supabase, userId, linkId);
     if (success) {
       setResourceLinks((prev) => prev.filter((r) => r.id !== linkId));

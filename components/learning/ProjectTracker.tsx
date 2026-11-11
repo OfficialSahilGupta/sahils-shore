@@ -24,6 +24,7 @@ import type { Project } from "@/types";
 import type { CreateProjectInput } from "@/lib/learning";
 import { Select } from "@/components/ui/select";
 import { SafeDeleteModal } from "./SafeDeleteModal";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface ProjectTrackerProps {
   projects: Project[];
@@ -285,8 +286,9 @@ export function ProjectTracker({
 
       {/* Add / Edit Project Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--surface-muted)] pb-3 mb-4">
               <h3 className="text-base font-bold text-[var(--text)]">
                 {editingProject ? "Edit Project" : "Add Project"}
@@ -418,12 +420,14 @@ export function ProjectTracker({
             </form>
           </div>
         </div>
+      </ModalPortal>
       )}
 
       {/* README Notes Modal */}
       {readmeModalProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl max-h-[80vh] overflow-y-auto rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl space-y-4">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative w-full max-w-xl max-h-[80vh] overflow-y-auto rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--surface-muted)] pb-3">
               <h3 className="text-sm font-bold text-[var(--text)] flex items-center gap-2">
                 <FileText className="h-4 w-4 text-[var(--primary)]" />
@@ -452,6 +456,7 @@ export function ProjectTracker({
             </div>
           </div>
         </div>
+      </ModalPortal>
       )}
 
       {/* Safe Delete Modal for Project */}

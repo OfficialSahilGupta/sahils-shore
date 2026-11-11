@@ -38,6 +38,7 @@ import {
 } from "@/lib/learning";
 import { CodeEditor } from "../dsa/CodeEditor";
 import { SafeDeleteModal } from "./SafeDeleteModal";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface TopicStudyModalProps {
   isOpen: boolean;
@@ -231,14 +232,15 @@ export function TopicStudyModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div
-        className={`relative w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 shadow-2xl transition-all flex flex-col ${
-          isFullscreen
-            ? "max-w-[99vw] h-[96vh] overflow-y-auto"
-            : "max-w-5xl max-h-[92vh] overflow-y-auto"
-        }`}
-      >
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+        <div
+          className={`relative w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6 shadow-2xl transition-all flex flex-col ${
+            isFullscreen
+              ? "max-w-[99vw] h-[96vh] overflow-y-auto"
+              : "max-w-5xl max-h-[92vh] overflow-y-auto"
+          }`}
+        >
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-3 gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -783,5 +785,6 @@ export function TopicStudyModal({
         )}
       </div>
     </div>
+  </ModalPortal>
   );
 }

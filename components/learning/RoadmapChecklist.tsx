@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  Edit3,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import {
@@ -32,6 +33,7 @@ import {
 } from "@/lib/learning";
 import { TopicStudyModal } from "./TopicStudyModal";
 import { AddTopicModal } from "./AddTopicModal";
+import { EditTopicModal } from "./EditTopicModal";
 import { SafeDeleteModal } from "./SafeDeleteModal";
 
 interface RoadmapChecklistProps {
@@ -73,6 +75,7 @@ export function RoadmapChecklist({
   const [filter, setFilter] = useState<string>("all");
   const [selectedItemForStudy, setSelectedItemForStudy] = useState<LearningItem | null>(null);
   const [selectedSubTopicId, setSelectedSubTopicId] = useState<string | undefined>(undefined);
+  const [editingTopicItem, setEditingTopicItem] = useState<LearningItem | null>(null);
   const [isAddTopicOpen, setIsAddTopicOpen] = useState(false);
 
   // Expanded topic IDs for the inline sub-topic tree
@@ -88,6 +91,30 @@ export function RoadmapChecklist({
     subId?: string;
     title: string;
   } | null>(null);
+
+  // Quick inline topic adder state
+  const [inlineTopicText, setInlineTopicText] = useState("");
+  const [inlineCategoryText, setInlineCategoryText] = useState("");
+  const [isInlineAdding, setIsInlineAdding] = useState(false);
+
+  const handleInlineAddTopic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = inlineTopicText.trim();
+    if (!trimmed || isInlineAdding) return;
+
+    setIsInlineAdding(true);
+    try {
+      await onAddTopic({
+        topic: trimmed,
+        category: inlineCategoryText.trim() || "Core",
+        status: "planned",
+      });
+      setInlineTopicText("");
+      setInlineCategoryText("");
+    } finally {
+      setIsInlineAdding(false);
+    }
+  };
 
   const toggleExpand = (topicId: string) => {
     setExpandedTopicIds((prev) => {
@@ -431,6 +458,16 @@ export function RoadmapChecklist({
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
+                      onClick={() => setEditingTopicItem(item)}
+                      className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] hover:text-[var(--primary)] transition-all shrink-0"
+                      title="Edit Topic Title, Category & Architecture Notes"
+                    >
+                      <Edit3 className="h-3.5 w-3.5 text-[var(--text-muted)] group-hover:text-[var(--primary)]" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleOpenStudyModal(item)}
                       className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] hover:text-[var(--primary)] transition-all shrink-0"
                     >
@@ -600,6 +637,44 @@ export function RoadmapChecklist({
         </div>
       )}
 
+      {/* Inline Quick Add Topic bar at bottom of curriculum */}
+      <div className="pt-2">
+        <form
+          onSubmit={handleInlineAddTopic}
+          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-[var(--surface-muted)]/15 p-2.5 rounded-2xl border border-[var(--border)]"
+        >
+          <div className="flex-1 flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 focus-within:border-[var(--primary)] transition-all">
+            <Plus className="h-4 w-4 text-[var(--primary)] shrink-0" />
+            <input
+              type="text"
+              value={inlineTopicText}
+              onChange={(e) => setInlineTopicText(e.target.value)}
+              placeholder={`+ Quick add topic #${items.length + 1} (e.g. Distributed Tracing & OpenTelemetry)...`}
+              className="w-full bg-transparent text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:outline-none"
+            />
+          </div>
+
+          <div className="sm:w-44">
+            <input
+              type="text"
+              value={inlineCategoryText}
+              onChange={(e) => setInlineCategoryText(e.target.value)}
+              placeholder="Category (e.g. Observability)"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-all"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={!inlineTopicText.trim() || isInlineAdding}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>{isInlineAdding ? "Adding..." : "Add Topic"}</span>
+          </button>
+        </form>
+      </div>
+
       {/* Topic Study Modal with body scroll lock */}
       {selectedItemForStudy && (
         <TopicStudyModal
@@ -623,6 +698,22 @@ export function RoadmapChecklist({
         trackTitle={trackTitle}
         onAddTopic={onAddTopic}
       />
+
+      {/* Edit Topic Modal */}
+      {editingTopicItem && (
+        <EditTopicModal
+          isOpen={Boolean(editingTopicItem)}
+          onClose={() => setEditingTopicItem(null)}
+          item={editingTopicItem}
+          trackTitle={trackTitle}
+          onSave={onUpdateTopic}
+          onOpenStudyWorkspace={(item) => {
+            setEditingTopicItem(null);
+            handleOpenStudyModal(item);
+          }}
+          onDeleteTopic={onDeleteTopic}
+        />
+      )}
 
       {/* Safe Delete Modal for Topic or Sub-Topic */}
       {safeDeleteTarget && (

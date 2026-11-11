@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect } from "react";
 import { AlertTriangle, Trash2, X, ShieldAlert } from "lucide-react";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface SafeDeleteModalProps {
   isOpen: boolean;
@@ -89,8 +90,9 @@ export function SafeDeleteModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-2xl border border-[var(--danger)]/30 bg-[var(--surface)] p-5 sm:p-6 shadow-2xl transition-all space-y-4">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="relative w-full max-w-md rounded-2xl border border-[var(--danger)]/30 bg-[var(--surface)] p-5 sm:p-6 shadow-2xl transition-all space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -165,5 +167,6 @@ export function SafeDeleteModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

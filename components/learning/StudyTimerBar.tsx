@@ -19,6 +19,7 @@ export function StudyTimerBar({ track, onSaveSession }: StudyTimerBarProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [shortWarning, setShortWarning] = useState(false);
 
   // Timer tick
   useEffect(() => {
@@ -47,11 +48,13 @@ export function StudyTimerBar({ track, onSaveSession }: StudyTimerBarProps) {
     setIsRunning(false);
     setSeconds(0);
     setNotes("");
+    setShortWarning(false);
   };
 
   const handleSave = async () => {
     if (seconds < 10) {
-      alert("Session is too short to log (minimum 10 seconds).");
+      setShortWarning(true);
+      setTimeout(() => setShortWarning(false), 3000);
       return;
     }
     setIsSaving(true);
@@ -93,6 +96,11 @@ export function StudyTimerBar({ track, onSaveSession }: StudyTimerBarProps) {
                 <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--success)] animate-pulse">
                   <span className="h-2 w-2 rounded-full bg-[var(--success)]" />
                   Recording...
+                </span>
+              )}
+              {shortWarning && (
+                <span className="text-[11px] font-semibold text-[var(--danger)]">
+                  Minimum 10s needed to log
                 </span>
               )}
             </div>

@@ -94,7 +94,7 @@ export function CommandPalette({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-background/80 p-4 pt-[12vh] backdrop-blur-md animate-in fade-in">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/75 p-4 pt-[12vh] backdrop-blur-md animate-in fade-in">
       <div
         className="fixed inset-0"
         onClick={() => onOpenChange(false)}

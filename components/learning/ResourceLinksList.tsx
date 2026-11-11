@@ -20,6 +20,8 @@ import {
 import type { ResourceLink } from "@/types";
 import type { CreateResourceLinkInput } from "@/lib/learning";
 import { Select } from "@/components/ui/select";
+import { SafeDeleteModal } from "./SafeDeleteModal";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface ResourceLinksListProps {
   resources: ResourceLink[];
@@ -41,7 +43,7 @@ export function ResourceLinksList({
   const [category, setCategory] = useState("Documentation");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [resourceToDelete, setResourceToDelete] = useState<ResourceLink | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,14 +67,14 @@ export function ResourceLinksList({
     }
   };
 
-  const handleDelete = async (id: string, resourceTitle: string) => {
-    if (!window.confirm(`Delete resource "${resourceTitle}"?`)) return;
-    setDeletingId(id);
-    try {
-      await onDeleteResource(id);
-    } finally {
-      setDeletingId(null);
-    }
+  const handleDeleteClick = (resource: ResourceLink) => {
+    setResourceToDelete(resource);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!resourceToDelete) return;
+    await onDeleteResource(resourceToDelete.id);
+    setResourceToDelete(null);
   };
 
   const filteredResources = resources.filter((r) => {
@@ -179,9 +181,9 @@ export function ResourceLinksList({
 
               <button
                 type="button"
-                disabled={deletingId === res.id}
-                onClick={() => handleDelete(res.id, res.title)}
+                onClick={() => handleDeleteClick(res)}
                 className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] transition-colors shrink-0"
+                title="Delete Resource"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -192,8 +194,9 @@ export function ResourceLinksList({
 
       {/* Add Resource Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative w-full max-w-lg rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--surface-muted)] pb-3 mb-4">
               <h3 className="text-base font-bold text-[var(--text)]">
                 Add Resource Link
@@ -283,6 +286,20 @@ export function ResourceLinksList({
             </form>
           </div>
         </div>
+      </ModalPortal>
+      )}
+
+      {/* Safe Delete Confirmation Modal */}
+      {resourceToDelete && (
+        <SafeDeleteModal
+          isOpen={Boolean(resourceToDelete)}
+          onClose={() => setResourceToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Delete Resource Link"
+          itemName={resourceToDelete.title}
+          itemType="project"
+          warningText={`Are you sure you want to remove "${resourceToDelete.title}" from your reference directory?`}
+        />
       )}
     </div>
   );

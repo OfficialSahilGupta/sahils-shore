@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { InterviewQa } from "@/types";
 import { selectMockInterviewQuestions } from "@/lib/learning";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface MockInterviewModalProps {
   isOpen: boolean;
@@ -104,8 +105,9 @@ export function MockInterviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl space-y-5">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="relative w-full max-w-2xl rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--surface-muted)] pb-4">
           <div className="flex items-center gap-2.5">
@@ -291,5 +293,6 @@ export function MockInterviewModal({
         )}
       </div>
     </div>
+  </ModalPortal>
   );
 }

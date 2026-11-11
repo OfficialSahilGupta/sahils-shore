@@ -23,6 +23,7 @@ import type { CreateInterviewQaInput } from "@/lib/learning";
 import { MockInterviewModal } from "./MockInterviewModal";
 import { Select } from "@/components/ui/select";
 import { SafeDeleteModal } from "./SafeDeleteModal";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface InterviewQaBankProps {
   questions: InterviewQa[];
@@ -340,8 +341,9 @@ export function InterviewQaBank({
 
       {/* Add Question Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--surface-muted)] pb-3 mb-4">
               <h3 className="text-base font-bold text-[var(--text)]">
                 Add Interview Question
@@ -377,13 +379,14 @@ export function InterviewQaBank({
                   <Select
                     value={difficulty}
                     onChange={(e) => setDifficulty(e.target.value)}
+                    options={[
+                      { value: "Easy", label: "Easy" },
+                      { value: "Medium", label: "Medium" },
+                      { value: "Hard", label: "Hard" },
+                    ]}
                     size="md"
                     containerClassName="w-full"
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </Select>
+                  />
                 </div>
               </div>
 
@@ -473,6 +476,7 @@ export function InterviewQaBank({
             </form>
           </div>
         </div>
+      </ModalPortal>
       )}
 
       {/* Mock Interview Modal */}
