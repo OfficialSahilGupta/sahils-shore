@@ -26,6 +26,8 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpToLine,
+  FileText,
+  Maximize2,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import {
@@ -38,6 +40,7 @@ import {
 } from "@/lib/learning";
 import { MarkdownView } from "@/components/common/MarkdownView";
 import { TopicStudyModal } from "./TopicStudyModal";
+import { FullPageNoteModal } from "./FullPageNoteModal";
 import { AddTopicModal } from "./AddTopicModal";
 import { EditTopicModal } from "./EditTopicModal";
 import { SafeDeleteModal } from "./SafeDeleteModal";
@@ -85,6 +88,7 @@ export function RoadmapChecklist({
   const [filter, setFilter] = useState<string>("all");
   const [selectedItemForStudy, setSelectedItemForStudy] = useState<LearningItem | null>(null);
   const [selectedSubTopicId, setSelectedSubTopicId] = useState<string | undefined>(undefined);
+  const [fullPageNoteItem, setFullPageNoteItem] = useState<LearningItem | null>(null);
   const [editingTopicItem, setEditingTopicItem] = useState<LearningItem | null>(null);
   const [isAddTopicOpen, setIsAddTopicOpen] = useState(false);
 
@@ -154,6 +158,30 @@ export function RoadmapChecklist({
   const handleOpenStudyModal = (item: LearningItem, subTopicId?: string) => {
     setSelectedItemForStudy(item);
     setSelectedSubTopicId(subTopicId);
+  };
+
+  const handleOpenFullPageNotes = (item: LearningItem) => {
+    setFullPageNoteItem(item);
+  };
+
+  const activeFullPageItem = fullPageNoteItem
+    ? items.find((i) => i.id === fullPageNoteItem.id) || fullPageNoteItem
+    : null;
+
+  const handleSaveFromFullPage = async (
+    itemId: string,
+    updates: {
+      topic?: string;
+      category?: string | null;
+      status?: "planned" | "in_progress" | "completed";
+      notes?: string | null;
+      resources?: Json;
+    }
+  ) => {
+    await onUpdateTopic(itemId, updates);
+    setFullPageNoteItem((prev) =>
+      prev && prev.id === itemId ? { ...prev, ...updates } : prev
+    );
   };
 
   // Quick add a sub-topic inside an expanded topic
@@ -508,9 +536,9 @@ export function RoadmapChecklist({
                           <div className="flex items-center gap-0.5 shrink-0">
                             <button
                               type="button"
-                              onClick={() => handleOpenStudyModal(item)}
+                              onClick={() => handleOpenFullPageNotes(item)}
                               className="flex items-center gap-1 rounded-l-lg bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-muted)] border border-r-0 border-[var(--border)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/80 transition-colors"
-                              title="Click to open full-screen study workspace"
+                              title="Click to open full-page study notes"
                             >
                               <BookOpen className="h-2.5 w-2.5 text-[var(--primary)]" />
                               <span>Study Notes</span>
@@ -532,10 +560,15 @@ export function RoadmapChecklist({
 
                         {/* Badges for notes, code, links */}
                         {hasNotes && (
-                          <span className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[10px] font-medium text-[var(--primary)] shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenFullPageNotes(item)}
+                            className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[10px] font-medium text-[var(--primary)] shrink-0 hover:bg-[var(--primary)]/20 transition-colors cursor-pointer"
+                            title="Click to open full-page study notes"
+                          >
                             <BookOpen className="h-2.5 w-2.5" />
                             <span>Notes</span>
-                          </span>
+                          </button>
                         )}
                         {hasCode && (
                           <span className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[10px] font-medium text-[var(--primary)] shrink-0">
@@ -552,7 +585,11 @@ export function RoadmapChecklist({
                       </div>
 
                       {chapterNotes && !isExpanded && (
-                        <p className="mt-1 text-xs text-[var(--text-muted)] line-clamp-1 font-sans">
+                        <p
+                          onClick={() => handleOpenFullPageNotes(item)}
+                          className="mt-1 text-xs text-[var(--text-muted)] line-clamp-1 font-sans cursor-pointer hover:text-[var(--primary)] transition-colors"
+                          title="Click to open full-page study notes"
+                        >
                           {chapterNotes.replace(/[#*`_~>-]/g, "").trim()}
                         </p>
                       )}
@@ -585,12 +622,22 @@ export function RoadmapChecklist({
 
                     <button
                       type="button"
-                      onClick={() => handleOpenStudyModal(item)}
-                      className="flex items-center gap-1 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0"
-                      title="Open full-screen study & notes workspace"
+                      onClick={() => handleOpenFullPageNotes(item)}
+                      className="flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0 shadow-2xs"
+                      title="Open beautiful full-page Markdown study notes"
                     >
-                      <BookOpen className="h-3.5 w-3.5" />
-                      <span>Study Workspace</span>
+                      <FileText className="h-3.5 w-3.5" />
+                      <span>Study Notes</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenStudyModal(item)}
+                      className="hidden lg:flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-all shrink-0"
+                      title="Open Code Implementation & Resources Workspace"
+                    >
+                      <Code2 className="h-3.5 w-3.5 text-[var(--primary)]" />
+                      <span>Code Studio</span>
                     </button>
 
                     {onDeleteTopic && (
@@ -667,10 +714,15 @@ export function RoadmapChecklist({
                                 {/* Indicators */}
                                 <div className="flex items-center gap-1 shrink-0">
                                   {sub.notes && (
-                                    <span className="flex items-center gap-0.5 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[9px] font-medium text-[var(--primary)]">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenFullPageNotes(item)}
+                                      className="flex items-center gap-0.5 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[9px] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
+                                      title="Open chapter notes in Full-Page Studio"
+                                    >
                                       <BookOpen className="h-2 w-2" />
                                       <span>Notes</span>
-                                    </span>
+                                    </button>
                                   )}
                                   {sub.codeSnippet && (
                                     <span className="flex items-center gap-0.5 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[9px] font-medium text-[var(--primary)]">
@@ -758,18 +810,37 @@ export function RoadmapChecklist({
                             <BookOpen className="h-3.5 w-3.5 text-[var(--primary)]" />
                             <span>Chapter Architecture & Study Notes</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenStudyModal(item)}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-[var(--primary)] hover:underline"
-                          >
-                            <Edit3 className="h-3 w-3" />
-                            <span>Open Study Workspace</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenFullPageNotes(item)}
+                              className="flex items-center gap-1 text-[11px] font-semibold text-[var(--primary)] hover:underline"
+                            >
+                              <FileText className="h-3 w-3" />
+                              <span>Open Full-Page Studio</span>
+                            </button>
+                            <span className="text-[var(--text-muted)] opacity-30">•</span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenStudyModal(item)}
+                              className="flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:underline"
+                            >
+                              <Code2 className="h-3 w-3" />
+                              <span>Code Studio</span>
+                            </button>
+                          </div>
                         </div>
 
                         {chapterNotes ? (
-                          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs">
+                          <div
+                            onClick={() => handleOpenFullPageNotes(item)}
+                            className="group/notes relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs cursor-pointer hover:border-[var(--primary)]/40 transition-all"
+                            title="Click to open full-page Markdown study studio"
+                          >
+                            <div className="absolute top-2 right-2.5 opacity-0 group-hover/notes:opacity-100 transition-opacity bg-[var(--surface-muted)]/90 backdrop-blur rounded-lg px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)] flex items-center gap-1 shadow-2xs border border-[var(--border)]">
+                              <Maximize2 className="h-2.5 w-2.5" />
+                              <span>Full Page</span>
+                            </div>
                             <MarkdownView content={chapterNotes} />
                           </div>
                         ) : (
@@ -780,11 +851,11 @@ export function RoadmapChecklist({
                             </p>
                             <button
                               type="button"
-                              onClick={() => handleOpenStudyModal(item)}
-                              className="mt-2 inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity"
+                              onClick={() => handleOpenFullPageNotes(item)}
+                              className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity"
                             >
-                              <BookOpen className="h-3.5 w-3.5" />
-                              <span>Write Architecture Notes</span>
+                              <FileText className="h-3.5 w-3.5" />
+                              <span>Write Full-Page Notes</span>
                             </button>
                           </div>
                         )}
@@ -900,6 +971,25 @@ export function RoadmapChecklist({
           trackTitle={trackTitle}
           onSave={onUpdateTopic}
           onDeleteTopic={onDeleteTopic}
+          onOpenFullPageNotes={(item) => {
+            setSelectedItemForStudy(null);
+            setFullPageNoteItem(item);
+          }}
+        />
+      )}
+
+      {/* Full-Page Markdown Document Studio Modal */}
+      {activeFullPageItem && (
+        <FullPageNoteModal
+          isOpen={Boolean(activeFullPageItem)}
+          onClose={() => setFullPageNoteItem(null)}
+          item={activeFullPageItem}
+          trackTitle={trackTitle}
+          onSave={handleSaveFromFullPage}
+          onOpenStudyWorkspace={(item) => {
+            setFullPageNoteItem(null);
+            handleOpenStudyModal(item);
+          }}
         />
       )}
 

@@ -30,6 +30,7 @@ import {
   ChevronRight,
   Eye,
   Columns,
+  FileText,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import { Select } from "@/components/ui/select";
@@ -61,6 +62,7 @@ interface TopicStudyModalProps {
     }
   ) => Promise<void>;
   onDeleteTopic?: (itemId: string) => Promise<void>;
+  onOpenFullPageNotes?: (item: LearningItem) => void;
 }
 
 export function TopicStudyModal({
@@ -71,6 +73,7 @@ export function TopicStudyModal({
   initialSubSectionId,
   onSave,
   onDeleteTopic,
+  onOpenFullPageNotes,
 }: TopicStudyModalProps) {
   const [topicTitle, setTopicTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -632,6 +635,23 @@ export function TopicStudyModal({
                       <span>Preview</span>
                     </button>
                   </div>
+
+                  {onOpenFullPageNotes && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (item) {
+                          onClose();
+                          onOpenFullPageNotes(item);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0"
+                      title="Open as beautiful edge-to-edge full-page Markdown study studio"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Full-Page Studio</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Quick Template Insertion Chips */}

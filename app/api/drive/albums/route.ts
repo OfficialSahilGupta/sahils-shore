@@ -37,7 +37,24 @@ export async function GET() {
       return NextResponse.json({ synced: false, message: "Drive not connected" });
     }
 
-    const { accessToken } = await refreshDriveAccessToken(creds.refreshToken);
+    let accessToken: string;
+    try {
+      const refreshed = await refreshDriveAccessToken(creds.refreshToken);
+      accessToken = refreshed.accessToken;
+    } catch (tokenErr: unknown) {
+      const msg = tokenErr instanceof Error ? tokenErr.message : "Token refresh failed";
+      if (msg.includes("REVOKED_ACCESS") || msg.includes("invalid_grant")) {
+        console.warn("[api/drive/albums GET] Google Drive access was revoked or expired. Returning gracefully.");
+        return NextResponse.json({
+          synced: false,
+          revoked: true,
+          error: "REVOKED_ACCESS",
+          message: "Google Drive access was revoked or expired. Please reconnect in Settings.",
+        });
+      }
+      throw tokenErr;
+    }
+
     const photosRootId = creds.folderTree?.photosRoot;
 
     const { data: albums } = await supabase
@@ -122,7 +139,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ driveConnected: false });
     }
 
-    const { accessToken } = await refreshDriveAccessToken(creds.refreshToken);
+    let accessToken: string;
+    try {
+      const refreshed = await refreshDriveAccessToken(creds.refreshToken);
+      accessToken = refreshed.accessToken;
+    } catch (tokenErr: unknown) {
+      const msg = tokenErr instanceof Error ? tokenErr.message : "Token refresh failed";
+      if (msg.includes("REVOKED_ACCESS") || msg.includes("invalid_grant")) {
+        return NextResponse.json({
+          driveConnected: false,
+          revoked: true,
+          error: "REVOKED_ACCESS",
+          message: "Google Drive access was revoked or expired.",
+        });
+      }
+      throw tokenErr;
+    }
     const rawDate = date || albumDate;
     const targetYearMonth = rawDate ? String(rawDate).substring(0, 7) : undefined;
 
@@ -168,7 +200,22 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ driveConnected: false });
     }
 
-    const { accessToken } = await refreshDriveAccessToken(creds.refreshToken);
+    let accessToken: string;
+    try {
+      const refreshed = await refreshDriveAccessToken(creds.refreshToken);
+      accessToken = refreshed.accessToken;
+    } catch (tokenErr: unknown) {
+      const msg = tokenErr instanceof Error ? tokenErr.message : "Token refresh failed";
+      if (msg.includes("REVOKED_ACCESS") || msg.includes("invalid_grant")) {
+        return NextResponse.json({
+          driveConnected: false,
+          revoked: true,
+          error: "REVOKED_ACCESS",
+          message: "Google Drive access was revoked or expired.",
+        });
+      }
+      throw tokenErr;
+    }
     const monthFolderId = await ensurePhotosMonthFolder(accessToken, creds.folderTree);
     const photosRootId = creds.folderTree?.photosRoot;
 

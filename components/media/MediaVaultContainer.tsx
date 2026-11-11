@@ -119,9 +119,20 @@ export function MediaVaultContainer() {
       setAlbums(loadedAlbums);
       setMemories(loadedMemories);
 
-      // Background ensure all albums exist in Google Drive
-      if (loadedAlbums.length > 0) {
-        fetch("/api/drive/albums").catch(() => {});
+      // Background ensure all albums exist in Google Drive (skip if token known revoked)
+      if (
+        loadedAlbums.length > 0 &&
+        typeof window !== "undefined" &&
+        sessionStorage.getItem("shore_drive_revoked") !== "true"
+      ) {
+        fetch("/api/drive/albums")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.revoked) {
+              sessionStorage.setItem("shore_drive_revoked", "true");
+            }
+          })
+          .catch(() => {});
       }
 
       const failed = loadedItems.filter((i) => i.sync_status === "failed").length;
