@@ -37,6 +37,7 @@ import {
   packTopicSubSections,
   hasExplicitSubTopics,
   getTopicChapterNotes,
+  parseTopicConceptMaps,
   type TopicSubSection,
 } from "@/lib/learning";
 import { MarkdownView } from "@/components/common/MarkdownView";
@@ -406,7 +407,7 @@ export function RoadmapChecklist({
               (acc, s) => acc + (s.resources?.length || 0),
               0
             );
-            const conceptMapsCount = (chapterNotes.match(/!\[([^\]]*)\]\(([^)]+)\)/g) || []).length;
+            const conceptMapsCount = parseTopicConceptMaps(item).length;
 
             const itemCategory =
               item.category ||

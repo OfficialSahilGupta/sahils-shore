@@ -7,11 +7,16 @@
 // CSS tokenized colors, and WCAG AA contrast.
 // ============================================================================
 
-export interface ConceptMapImage {
-  caption: string;
+export interface ChapterConceptMap {
+  id: string;
+  title: string;
   url: string;
-  id?: string;
+  caption?: string;
+  createdAt: string;
+  subSectionId?: string;
 }
+
+export type ConceptMapImage = ChapterConceptMap;
 
 export interface ConceptMapPreset {
   id: string;
@@ -120,10 +125,10 @@ export async function prepareConceptMapImage(
 /**
  * Extracts all markdown image tags `![alt](url)` from notes content.
  */
-export function extractConceptMapsFromMarkdown(markdown?: string | null): ConceptMapImage[] {
+export function extractConceptMapsFromMarkdown(markdown?: string | null): ChapterConceptMap[] {
   if (!markdown) return [];
 
-  const results: ConceptMapImage[] = [];
+  const results: ChapterConceptMap[] = [];
   const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
   let match: RegExpExecArray | null;
 
@@ -132,14 +137,128 @@ export function extractConceptMapsFromMarkdown(markdown?: string | null): Concep
     const rawUrl = match[2]?.trim() || "";
     if (rawUrl) {
       results.push({
+        id: `img-${results.length}-${rawCaption.slice(0, 16)}`,
+        title: rawCaption,
         caption: rawCaption,
         url: rawUrl,
-        id: `img-${results.length}-${rawCaption.slice(0, 16)}`,
+        createdAt: new Date().toISOString(),
       });
     }
   }
 
   return results;
+}
+
+/**
+ * Sanitizes markdown notes by cleanly stripping out embedded image tags
+ * (especially massive base64 data URLs) and converting them into structured
+ * ChapterConceptMap attachments, restoring human-readable, clean markdown.
+ */
+export function sanitizeNotesExtractingImages(markdown?: string | null): {
+  cleanNotes: string;
+  extractedMaps: ChapterConceptMap[];
+} {
+  if (!markdown) {
+    return { cleanNotes: "", extractedMaps: [] };
+  }
+
+  const extractedMaps: ChapterConceptMap[] = [];
+  const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  let match: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((match = imageRegex.exec(markdown)) !== null) {
+    const rawCaption = match[1]?.trim() || "Concept Map Diagram";
+    const rawUrl = match[2]?.trim() || "";
+    if (rawUrl) {
+      extractedMaps.push({
+        id: `cm-extracted-${idx++}-${Date.now()}`,
+        title: rawCaption,
+        caption: rawCaption,
+        url: rawUrl,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  // Remove the image markdown tags and clean up resulting blank lines
+  const cleanNotes = markdown
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return { cleanNotes, extractedMaps };
+}
+
+/**
+ * Parses all attached concept maps for a topic from:
+ * 1. `resources.concept_maps` (primary dedicated visual attachments)
+ * 2. `resources.subsections[].conceptMaps`
+ * 3. Fallback: Any legacy inline images in `notes`
+ * Deduplicates by image URL.
+ */
+export function parseTopicConceptMaps(
+  item: { notes?: string | null; resources?: any; status?: string } | null | undefined
+): ChapterConceptMap[] {
+  if (!item) return [];
+
+  const maps: ChapterConceptMap[] = [];
+  const seenUrls = new Set<string>();
+
+  const resourcesData = item.resources as any;
+
+  // 1. Direct concept_maps array in resources JSON
+  if (resourcesData && typeof resourcesData === "object" && !Array.isArray(resourcesData)) {
+    if (Array.isArray(resourcesData.concept_maps)) {
+      resourcesData.concept_maps.forEach((m: any, idx: number) => {
+        if (m && m.url && !seenUrls.has(m.url)) {
+          seenUrls.add(m.url);
+          maps.push({
+            id: m.id || `cm-${idx}-${Date.now()}`,
+            title: m.title || m.caption || "Concept Map Diagram",
+            caption: m.caption || m.title || "Concept Map Diagram",
+            url: m.url,
+            createdAt: m.createdAt || new Date().toISOString(),
+            subSectionId: m.subSectionId,
+          });
+        }
+      });
+    }
+
+    // 2. Subsections conceptMaps
+    if (Array.isArray(resourcesData.subsections)) {
+      resourcesData.subsections.forEach((sub: any, sIdx: number) => {
+        if (Array.isArray(sub.conceptMaps)) {
+          sub.conceptMaps.forEach((m: any, mIdx: number) => {
+            if (m && m.url && !seenUrls.has(m.url)) {
+              seenUrls.add(m.url);
+              maps.push({
+                id: m.id || `cm-sub-${sIdx}-${mIdx}`,
+                title: m.title || m.caption || "Concept Map Diagram",
+                caption: m.caption || m.title || "Concept Map Diagram",
+                url: m.url,
+                createdAt: m.createdAt || new Date().toISOString(),
+                subSectionId: sub.id,
+              });
+            }
+          });
+        }
+      });
+    }
+  }
+
+  // 3. Fallback: Legacy inline markdown images inside item.notes
+  if (item.notes) {
+    const legacyMaps = extractConceptMapsFromMarkdown(item.notes);
+    legacyMaps.forEach((m) => {
+      if (m.url && !seenUrls.has(m.url)) {
+        seenUrls.add(m.url);
+        maps.push(m);
+      }
+    });
+  }
+
+  return maps;
 }
 
 // ----------------------------------------------------------------------------

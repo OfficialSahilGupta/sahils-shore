@@ -48,6 +48,8 @@ import {
   FolderTree,
   Image as ImageIcon,
   ImagePlus,
+  Upload,
+  Trash2,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -59,10 +61,12 @@ import {
   parseTopicSubSections,
   packTopicSubSections,
   getTopicChapterNotes,
+  parseTopicConceptMaps,
+  sanitizeNotesExtractingImages,
   type TopicSubSection,
+  type ChapterConceptMap,
 } from "@/lib/learning";
 import {
-  extractConceptMapsFromMarkdown,
   prepareConceptMapImage,
   type ConceptMapImage,
 } from "@/lib/learning/concept-map";
@@ -94,8 +98,9 @@ export function FullPageNoteModal({
   onSave,
   onOpenStudyWorkspace,
 }: FullPageNoteModalProps) {
-  const [mode, setMode] = useState<"read" | "split" | "edit">("read");
+  const [mode, setMode] = useState<"read" | "split" | "edit" | "visuals">("read");
   const [notes, setNotes] = useState("");
+  const [conceptMaps, setConceptMaps] = useState<ChapterConceptMap[]>([]);
   const [status, setStatus] = useState<"planned" | "in_progress" | "completed">("planned");
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -123,11 +128,24 @@ export function FullPageNoteModal({
     if (item && isOpen) {
       const parsedSubs = parseTopicSubSections(item);
       setSubSections(parsedSubs);
-      const effectiveNotes = getTopicChapterNotes(item);
-      setNotes(effectiveNotes);
+      const rawEffectiveNotes = getTopicChapterNotes(item);
+      const { cleanNotes, extractedMaps } = sanitizeNotesExtractingImages(rawEffectiveNotes);
+      setNotes(cleanNotes);
+
+      const loadedMaps = parseTopicConceptMaps(item);
+      const seen = new Set<string>();
+      const deduplicated: ChapterConceptMap[] = [];
+      for (const m of [...loadedMaps, ...extractedMaps]) {
+        if (m && m.url && !seen.has(m.url)) {
+          seen.add(m.url);
+          deduplicated.push(m);
+        }
+      }
+      setConceptMaps(deduplicated);
+
       setStatus(item.status || "planned");
       // Default to read mode if notes exist, otherwise open edit mode
-      setMode(effectiveNotes.trim().length > 0 ? "read" : "edit");
+      setMode(cleanNotes.trim().length > 0 ? "read" : "edit");
       setSaveSuccess(false);
     }
   }, [item, isOpen]);
@@ -175,28 +193,17 @@ export function FullPageNoteModal({
     return headings;
   }, [notes]);
 
-  // Extract all attached concept maps from notes
-  const conceptMaps = useMemo(() => extractConceptMapsFromMarkdown(notes), [notes]);
+  const handleAttachConceptMap = (newMap: ChapterConceptMap) => {
+    setConceptMaps((prev) => {
+      if (prev.some((m) => m.url === newMap.url)) return prev;
+      return [...prev, newMap];
+    });
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  };
 
-  const handleInsertConceptMap = (caption: string, url: string) => {
-    const textarea = textareaRef.current;
-    const cleanCaption = caption.startsWith("Concept Map:") ? caption : `Concept Map: ${caption}`;
-    const mdSnippet = `\n\n![${cleanCaption}](${url})\n\n`;
-
-    if (!textarea) {
-      setNotes((prev) => `${prev.trim()}${mdSnippet}`);
-      return;
-    }
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const nextNotes = notes.substring(0, start) + mdSnippet + notes.substring(end);
-    setNotes(nextNotes);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + mdSnippet.length, start + mdSnippet.length);
-    }, 0);
+  const handleDeleteConceptMap = (mapId: string) => {
+    setConceptMaps((prev) => prev.filter((m) => m.id !== mapId));
   };
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -212,10 +219,14 @@ export function FullPageNoteModal({
 
         try {
           const prepared = await prepareConceptMapImage(file);
-          handleInsertConceptMap(
-            prepared.caption || `Concept Map: ${item?.topic || "Architecture"}`,
-            prepared.dataUrl
-          );
+          const caption = prepared.caption || `Concept Map: ${item?.topic || "Architecture"}`;
+          handleAttachConceptMap({
+            id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            title: caption,
+            caption,
+            url: prepared.dataUrl,
+            createdAt: new Date().toISOString(),
+          });
         } catch (err) {
           console.error("Failed to paste image into study notes:", err);
         }
@@ -245,12 +256,13 @@ export function FullPageNoteModal({
           codeSnippet: "",
           codeLanguage: "java",
           resources: [],
+          conceptMaps,
           isCompleted: status === "completed",
         });
       }
 
       const { notes: synthesizedNotes, resources: packedResources } =
-        packTopicSubSections(updatedSubs, item.category);
+        packTopicSubSections(updatedSubs, item.category, conceptMaps);
 
       await onSave(item.id, {
         topic: item.topic,
@@ -416,7 +428,7 @@ export function FullPageNoteModal({
                 <ImagePlus className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Add Map</span>
               </button>
-              {/* Segmented Mode Selector: Read | Split | Edit */}
+              {/* Segmented Mode Selector: Read | Split | Edit | Visuals */}
               <div className="flex items-center gap-1 rounded-xl bg-[var(--surface-muted)]/60 p-0.5 border border-[var(--border)]">
                 <button
                   type="button"
@@ -456,6 +468,19 @@ export function FullPageNoteModal({
                 >
                   <Edit3 className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("visuals")}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                    mode === "visuals"
+                      ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
+                      : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                  }`}
+                  title="Dedicated Chapter Visual Concept Maps & Flowcharts"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  <span>Visuals ({conceptMaps.length})</span>
                 </button>
               </div>
 
@@ -608,7 +633,7 @@ export function FullPageNoteModal({
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={cm.url}
-                                alt={cm.caption}
+                                alt={cm.title || cm.caption || "Concept Map"}
                                 className="max-h-full max-w-full object-contain group-hover/card:scale-105 transition-transform duration-200"
                                 loading="lazy"
                               />
@@ -621,7 +646,7 @@ export function FullPageNoteModal({
                             </div>
                             <div className="mt-2 flex items-center justify-between text-xs">
                               <span className="font-semibold text-[var(--text)] truncate text-[11px]">
-                                {cm.caption.replace(/^Concept Map:\s*/i, "")}
+                                {(cm.title || cm.caption || "Concept Map").replace(/^Concept Map:\s*/i, "")}
                               </span>
                               <span className="text-[10px] font-mono text-[var(--text-muted)] shrink-0 ml-1.5">
                                 #{idx + 1}
@@ -969,6 +994,159 @@ export function FullPageNoteModal({
                 </div>
               </div>
             )}
+
+            {/* 4. DEDICATED VISUAL CONCEPT MAPS & BLUEPRINTS STUDIO */}
+            {mode === "visuals" && (
+              <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[var(--background)]">
+                <div className="max-w-5xl mx-auto space-y-6">
+                  {/* Studio Header Card */}
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 shrink-0">
+                        <ImageIcon className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-[var(--text)]">
+                          Visual Concept Maps & Chapter Diagrams
+                        </h3>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          Dedicated visual studio for &ldquo;{item.topic}&rdquo;. Store flowcharts, whiteboards, and infographics without cluttering your Markdown notes.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsAttachMapOpen(true)}
+                        className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity"
+                      >
+                        <ImagePlus className="h-4 w-4" />
+                        <span>Upload Diagram</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Visual Diagrams Grid */}
+                  {conceptMaps.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {conceptMaps.map((cm, idx) => (
+                        <div
+                          key={cm.id || idx}
+                          className="group/card rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden shadow-2xs hover:border-[var(--primary)]/60 transition-all flex flex-col"
+                        >
+                          {/* Image Thumbnail Frame */}
+                          <div
+                            onClick={() => {
+                              setLightboxConceptMap(cm);
+                              setLightboxZoom(1);
+                            }}
+                            className="relative h-48 w-full overflow-hidden bg-[var(--background)] flex items-center justify-center p-2 cursor-pointer border-b border-[var(--border)]/70"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={cm.url}
+                              alt={cm.title || cm.caption || "Concept Map"}
+                              className="max-h-full max-w-full object-contain group-hover/card:scale-105 transition-transform duration-200"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover/card:opacity-100">
+                              <span className="rounded-xl bg-[var(--surface)]/95 backdrop-blur px-3 py-1.5 text-xs font-bold text-[var(--primary)] flex items-center gap-1.5 shadow-md">
+                                <Maximize2 className="h-3.5 w-3.5" />
+                                <span>Zoom Fullscreen</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Card Meta & Actions */}
+                          <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                              <h4 className="text-xs font-bold text-[var(--text)] line-clamp-2">
+                                {(cm.title || cm.caption || "Concept Map Diagram").replace(/^Concept Map:\s*/i, "")}
+                              </h4>
+                              {cm.createdAt && (
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1 font-mono">
+                                  Attached {new Date(cm.createdAt).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]/60">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const link = document.createElement("a");
+                                    link.href = cm.url;
+                                    link.download = `${(cm.title || "concept-map").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                  }}
+                                  className="rounded-lg p-1.5 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                                  title="Download image file"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(cm.url);
+                                      setCopied(true);
+                                      setTimeout(() => setCopied(false), 2000);
+                                    } catch {}
+                                  }}
+                                  className="rounded-lg p-1.5 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                                  title="Copy URL"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteConceptMap(cm.id)}
+                                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
+                                title="Remove from chapter visuals"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* Empty State */
+                    <div
+                      onClick={() => setIsAttachMapOpen(true)}
+                      className="rounded-2xl border-2 border-dashed border-[var(--border)] hover:border-[var(--primary)]/60 bg-[var(--surface)] p-12 text-center cursor-pointer transition-all space-y-3"
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] mx-auto">
+                        <ImagePlus className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-[var(--text)]">
+                          No Visual Diagrams Attached Yet
+                        </h4>
+                        <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md mx-auto">
+                          Upload architecture flowcharts, JVM execution diagrams, or system blueprints to master &ldquo;{item.topic}&rdquo; visually.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:opacity-90"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        <span>Upload or Pick Blueprint</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1069,7 +1247,7 @@ export function FullPageNoteModal({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={lightboxConceptMap.url}
-                alt={lightboxConceptMap.caption}
+                alt={lightboxConceptMap.caption || lightboxConceptMap.title || "Concept Map"}
                 style={{ transform: `scale(${lightboxZoom})` }}
                 className="max-h-[85vh] max-w-[90vw] object-contain transition-transform duration-150 origin-center drop-shadow-2xl rounded-lg"
                 onClick={(e) => e.stopPropagation()}
@@ -1084,7 +1262,7 @@ export function FullPageNoteModal({
         isOpen={isAttachMapOpen}
         onClose={() => setIsAttachMapOpen(false)}
         topicTitle={item.topic}
-        onInsertImage={handleInsertConceptMap}
+        onAttachConceptMap={handleAttachConceptMap}
       />
     </ModalPortal>
   );

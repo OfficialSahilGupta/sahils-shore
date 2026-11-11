@@ -33,6 +33,11 @@ import {
   FileText,
   Image as ImageIcon,
   ImagePlus,
+  Upload,
+  Download,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import { Select } from "@/components/ui/select";
@@ -41,8 +46,12 @@ import {
   packTopicSubSections,
   hasExplicitSubTopics,
   type TopicSubSection,
+  type ChapterConceptMap,
 } from "@/lib/learning";
-import { prepareConceptMapImage } from "@/lib/learning/concept-map";
+import {
+  prepareConceptMapImage,
+  type ConceptMapImage,
+} from "@/lib/learning/concept-map";
 import { AttachConceptMapModal } from "./AttachConceptMapModal";
 import { MarkdownView } from "@/components/common/MarkdownView";
 import { CodeEditor } from "../dsa/CodeEditor";
@@ -87,8 +96,8 @@ export function TopicStudyModal({
   const [subSections, setSubSections] = useState<TopicSubSection[]>([]);
   const [activeSubSectionId, setActiveSubSectionId] = useState<string>("");
 
-  // Sub-section active pillar: notes | code | resources
-  const [activePillar, setActivePillar] = useState<"notes" | "code" | "resources">("notes");
+  // Sub-section active pillar: notes | concept_maps | code | resources
+  const [activePillar, setActivePillar] = useState<"notes" | "concept_maps" | "code" | "resources">("notes");
   // Notes view mode: write | split | preview
   const [notesViewMode, setNotesViewMode] = useState<"write" | "split" | "preview">("write");
 
@@ -104,6 +113,8 @@ export function TopicStudyModal({
   const [isDeleteTopicModalOpen, setIsDeleteTopicModalOpen] = useState(false);
   const [deleteSubTarget, setDeleteSubTarget] = useState<TopicSubSection | null>(null);
   const [isAttachMapOpen, setIsAttachMapOpen] = useState(false);
+  const [lightboxConceptMap, setLightboxConceptMap] = useState<ConceptMapImage | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
 
   // Body scroll lock
   useEffect(() => {
@@ -201,12 +212,19 @@ export function TopicStudyModal({
     updateActiveSubSection({ notes: updated });
   };
 
-  const handleInsertConceptMap = (caption: string, url: string) => {
+  const handleAttachConceptMapToSub = (newMap: ChapterConceptMap) => {
     if (!activeSubSection) return;
-    const cleanCaption = caption.startsWith("Concept Map:") ? caption : `Concept Map: ${caption}`;
-    const mdSnippet = `\n\n![${cleanCaption}](${url})\n\n`;
-    const cur = activeSubSection.notes || "";
-    updateActiveSubSection({ notes: `${cur.trim()}${mdSnippet}` });
+    const existing = activeSubSection.conceptMaps || [];
+    if (existing.some((m) => m.url === newMap.url)) return;
+    updateActiveSubSection({ conceptMaps: [...existing, newMap] });
+  };
+
+  const handleDeleteConceptMapFromSub = (mapId: string) => {
+    if (!activeSubSection) return;
+    const existing = activeSubSection.conceptMaps || [];
+    updateActiveSubSection({
+      conceptMaps: existing.filter((m) => m.id !== mapId),
+    });
   };
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -222,10 +240,16 @@ export function TopicStudyModal({
 
         try {
           const prepared = await prepareConceptMapImage(file);
-          handleInsertConceptMap(
-            prepared.caption || `Concept Map: ${activeSubSection.title || topicTitle}`,
-            prepared.dataUrl
-          );
+          const caption = prepared.caption || `Concept Map: ${activeSubSection.title || topicTitle}`;
+          handleAttachConceptMapToSub({
+            id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            title: caption,
+            caption,
+            url: prepared.dataUrl,
+            createdAt: new Date().toISOString(),
+            subSectionId: activeSubSection.id,
+          });
+          setActivePillar("concept_maps");
         } catch (err) {
           console.error("Failed to paste image into sub-section notes:", err);
         }
@@ -569,12 +593,12 @@ export function TopicStudyModal({
           </div>
         )}
 
-        {/* 3 Pillar Tabs for Active Sub-Section */}
-        <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2 mb-3 shrink-0">
+        {/* 4 Pillar Tabs for Active Sub-Section */}
+        <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2 mb-3 shrink-0 overflow-x-auto scrollbar-thin">
           <button
             type="button"
             onClick={() => setActivePillar("notes")}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${
               activePillar === "notes"
                 ? "bg-[var(--primary)] text-white shadow-xs"
                 : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
@@ -589,8 +613,24 @@ export function TopicStudyModal({
 
           <button
             type="button"
+            onClick={() => setActivePillar("concept_maps")}
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${
+              activePillar === "concept_maps"
+                ? "bg-[var(--primary)] text-white shadow-xs"
+                : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
+            }`}
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            <span>Concept Maps ({activeSubSection?.conceptMaps?.length || 0})</span>
+            {(activeSubSection?.conceptMaps?.length || 0) > 0 && (
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActivePillar("code")}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${
               activePillar === "code"
                 ? "bg-[var(--primary)] text-white shadow-xs"
                 : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
@@ -606,7 +646,7 @@ export function TopicStudyModal({
           <button
             type="button"
             onClick={() => setActivePillar("resources")}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${
               activePillar === "resources"
                 ? "bg-[var(--primary)] text-white shadow-xs"
                 : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
@@ -614,7 +654,7 @@ export function TopicStudyModal({
           >
             <LinkIcon className="h-3.5 w-3.5" />
             <span>
-              Doc & Resource Links ({activeSubSection?.resources?.length || 0})
+              Doc Links ({activeSubSection?.resources?.length || 0})
             </span>
           </button>
         </div>
@@ -775,7 +815,144 @@ export function TopicStudyModal({
             </div>
           )}
 
-          {/* Pillar 2: Code Implementation */}
+          {/* Pillar 2: Concept Maps & Visuals */}
+          {activePillar === "concept_maps" && (
+            <div className="flex-1 flex flex-col space-y-4 min-h-[300px]">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <span className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+                    <ImageIcon className="h-3.5 w-3.5 text-[var(--primary)]" />
+                    <span>Visual Concept Maps & Flowcharts</span>
+                  </span>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                    Store high-definition flowcharts and system diagrams for &ldquo;{activeSubSection?.title}&rdquo; (kept out of Markdown notes text).
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAttachMapOpen(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity"
+                  >
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    <span>Attach Concept Map</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid of Concept Maps */}
+              {(activeSubSection?.conceptMaps?.length || 0) > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {activeSubSection.conceptMaps?.map((cm, idx) => (
+                    <div
+                      key={cm.id || idx}
+                      className="group/card rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden shadow-2xs hover:border-[var(--primary)]/60 transition-all flex flex-col"
+                    >
+                      <div
+                        onClick={() => {
+                          setLightboxConceptMap(cm);
+                          setLightboxZoom(1);
+                        }}
+                        className="relative h-36 w-full overflow-hidden bg-[var(--background)] flex items-center justify-center p-2 cursor-pointer border-b border-[var(--border)]/60"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={cm.url}
+                          alt={cm.title || cm.caption || "Concept Map"}
+                          className="max-h-full max-w-full object-contain group-hover/card:scale-105 transition-transform duration-200"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover/card:opacity-100">
+                          <span className="rounded-lg bg-[var(--surface)]/95 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-[var(--primary)] flex items-center gap-1 shadow-md">
+                            <Maximize2 className="h-3 w-3" />
+                            <span>Zoom</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
+                        <h4 className="text-xs font-bold text-[var(--text)] line-clamp-2">
+                          {(cm.title || cm.caption || "Concept Map Diagram").replace(/^Concept Map:\s*/i, "")}
+                        </h4>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]/60">
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const link = document.createElement("a");
+                                link.href = cm.url;
+                                link.download = `${(cm.title || "concept-map").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                              title="Download image"
+                            >
+                              <Download className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(cm.url);
+                                  setCopiedCode(true);
+                                  setTimeout(() => setCopiedCode(false), 2000);
+                                } catch {}
+                              }}
+                              className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                              title="Copy URL"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteConceptMapFromSub(cm.id)}
+                            className="flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
+                            title="Remove diagram"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Empty Dropzone State */
+                <div
+                  onClick={() => setIsAttachMapOpen(true)}
+                  className="rounded-2xl border-2 border-dashed border-[var(--border)] hover:border-[var(--primary)]/60 bg-[var(--surface-muted)]/15 p-10 text-center cursor-pointer transition-all space-y-2.5"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] mx-auto">
+                    <ImagePlus className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[var(--text)]">
+                      No Concept Maps Attached for this Sub-Section
+                    </h4>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5 max-w-sm mx-auto">
+                      Attach architecture flowcharts or system blueprints to master &ldquo;{activeSubSection?.title}&rdquo; visually.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>Upload or Pick Blueprint</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pillar 3: Code Implementation */}
           {activePillar === "code" && (
             <div className="flex-1 flex flex-col space-y-2.5 min-h-[300px]">
               <div className="flex items-center justify-between">
@@ -975,8 +1152,107 @@ export function TopicStudyModal({
             isOpen={isAttachMapOpen}
             onClose={() => setIsAttachMapOpen(false)}
             topicTitle={activeSubSection?.title || item.topic}
-            onInsertImage={handleInsertConceptMap}
+            onAttachConceptMap={handleAttachConceptMapToSub}
           />
+        )}
+
+        {/* Lightbox for Zooming Concept Maps */}
+        {lightboxConceptMap && (
+          <ModalPortal>
+            <div
+              className="fixed inset-0 z-[120] flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+              onClick={() => {
+                setLightboxConceptMap(null);
+                setLightboxZoom(1);
+              }}
+            >
+              <header
+                className="h-14 px-4 sm:px-6 border-b border-white/10 bg-black/40 backdrop-blur flex items-center justify-between gap-3 shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <ImageIcon className="h-4 w-4 text-[var(--primary)] shrink-0" />
+                  <span className="text-xs sm:text-sm font-bold text-white truncate">
+                    {lightboxConceptMap.caption || lightboxConceptMap.title}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxZoom((z) => Math.max(0.5, z - 0.25))}
+                    className="rounded-lg p-1.5 text-white/70 hover:text-white hover:bg-white/10"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </button>
+                  <span className="text-xs font-mono text-white/60 min-w-[40px] text-center">
+                    {Math.round(lightboxZoom * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxZoom((z) => Math.min(3, z + 0.25))}
+                    className="rounded-lg p-1.5 text-white/70 hover:text-white hover:bg-white/10"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxZoom(1)}
+                    className="rounded-lg p-1.5 text-white/70 hover:text-white hover:bg-white/10"
+                    title="Reset Zoom (100%)"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </button>
+                  <span className="h-4 w-px bg-white/20 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = lightboxConceptMap.url;
+                      link.download = `${(lightboxConceptMap.title || "concept-map").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="rounded-lg p-1.5 text-white/70 hover:text-white hover:bg-white/10"
+                    title="Download Image"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLightboxConceptMap(null);
+                      setLightboxZoom(1);
+                    }}
+                    className="rounded-lg p-1.5 text-white/70 hover:text-white hover:bg-white/10"
+                    title="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </header>
+
+              <div
+                className="flex-1 overflow-auto flex items-center justify-center p-4 sm:p-8 select-none"
+                onClick={() => {
+                  setLightboxConceptMap(null);
+                  setLightboxZoom(1);
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={lightboxConceptMap.url}
+                  alt={lightboxConceptMap.caption || "Concept Map"}
+                  style={{ transform: `scale(${lightboxZoom})` }}
+                  className="max-h-[85vh] max-w-[90vw] object-contain transition-transform duration-150 origin-center drop-shadow-2xl rounded-lg"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+          </ModalPortal>
         )}
       </div>
     </div>

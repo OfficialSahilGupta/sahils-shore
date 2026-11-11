@@ -2,8 +2,11 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   extractConceptMapsFromMarkdown,
+  sanitizeNotesExtractingImages,
+  parseTopicConceptMaps,
   CURATED_CONCEPT_MAP_PRESETS,
 } from "../lib/learning/concept-map.ts";
+import { packTopicSubSections, parseTopicSubSections } from "../lib/learning/index.ts";
 
 describe("Concept Map & Visual Diagrams Engine", () => {
   it("extracts single concept map image from markdown correctly", () => {
@@ -41,6 +44,101 @@ Some detailed text.
     assert.deepEqual(extractConceptMapsFromMarkdown(null), []);
     assert.deepEqual(extractConceptMapsFromMarkdown(undefined), []);
     assert.deepEqual(extractConceptMapsFromMarkdown(""), []);
+  });
+
+  it("sanitizes markdown notes by stripping huge base64 strings and extracting concept maps", () => {
+    const hugeBase64 = "data:image/webp;base64,UklGRhDqAABXRUJQVlA4WAoAAAAgAAAACQUAWwMASUNDUMgBAAAAAAHIAAAAAA";
+    const dirtyNotes = `# Client Server Architecture
+
+![Concept Map: Client Server Architecture](${hugeBase64})
+
+### Overview
+In this architecture, clients send HTTP requests to the upstream server.
+`;
+
+    const { cleanNotes, extractedMaps } = sanitizeNotesExtractingImages(dirtyNotes);
+
+    // Markdown text must NOT contain base64 characters
+    assert.ok(!cleanNotes.includes("data:image/webp;base64"));
+    assert.ok(!cleanNotes.includes("![Concept Map:"));
+    assert.ok(cleanNotes.includes("# Client Server Architecture"));
+    assert.ok(cleanNotes.includes("In this architecture, clients send HTTP requests"));
+
+    // Extracted maps must contain the image with full data URL safely preserved
+    assert.equal(extractedMaps.length, 1);
+    assert.equal(extractedMaps[0].caption, "Concept Map: Client Server Architecture");
+    assert.equal(extractedMaps[0].url, hugeBase64);
+  });
+
+  it("parses concept maps from resources.concept_maps, subsections, and legacy notes", () => {
+    const item = {
+      notes: "Clean notes text.\n\n![Legacy Map](https://example.com/legacy.png)",
+      resources: {
+        category: "Backend",
+        concept_maps: [
+          {
+            id: "cm-1",
+            title: "Spring Request Lifecycle",
+            url: "https://example.com/spring-lifecycle.png",
+          },
+        ],
+        subsections: [
+          {
+            id: "sub-1",
+            title: "DispatcherServlet",
+            notes: "Sub notes",
+            conceptMaps: [
+              {
+                id: "cm-sub-1",
+                title: "Servlet Filter Chain",
+                url: "https://example.com/filter-chain.png",
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const maps = parseTopicConceptMaps(item);
+    assert.equal(maps.length, 3);
+    assert.equal(maps[0].title, "Spring Request Lifecycle");
+    assert.equal(maps[1].title, "Servlet Filter Chain");
+    assert.equal(maps[2].title, "Legacy Map");
+  });
+
+  it("packTopicSubSections stores concept maps in resources and keeps notes pure text", () => {
+    const subSections = [
+      {
+        id: "sub-1",
+        title: "Architecture & Data Flow",
+        notes: "Detailed notes on MVC.\n\n![Sub Map](data:image/webp;base64,ABCDEF123456)",
+        codeSnippet: "public class App {}",
+        codeLanguage: "java",
+        resources: [],
+      },
+    ];
+
+    const chapterMaps = [
+      {
+        id: "cm-chap-1",
+        title: "System Blueprint",
+        url: "https://example.com/system-blueprint.png",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const { notes, resources } = packTopicSubSections(subSections, "Spring Boot", chapterMaps);
+
+    // Synthesized markdown notes must be completely free of base64
+    assert.ok(!notes.includes("data:image/webp;base64"));
+    assert.ok(notes.includes("Detailed notes on MVC."));
+
+    // Resources must contain the concept maps array
+    const packedObj = resources as any;
+    assert.ok(Array.isArray(packedObj.concept_maps));
+    assert.equal(packedObj.concept_maps.length, 2);
+    assert.equal(packedObj.concept_maps[0].title, "System Blueprint");
+    assert.equal(packedObj.concept_maps[1].caption, "Sub Map");
   });
 
   it("curated presets contain valid SVG blueprints for core engineering stacks", () => {

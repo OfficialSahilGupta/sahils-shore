@@ -25,19 +25,22 @@ import {
   prepareConceptMapImage,
   CURATED_CONCEPT_MAP_PRESETS,
   type ConceptMapPreset,
+  type ChapterConceptMap,
 } from "@/lib/learning/concept-map";
 
 interface AttachConceptMapModalProps {
   isOpen: boolean;
   onClose: () => void;
   topicTitle: string;
-  onInsertImage: (caption: string, url: string) => void;
+  onAttachConceptMap?: (conceptMap: ChapterConceptMap) => void;
+  onInsertImage?: (caption: string, url: string) => void;
 }
 
 export function AttachConceptMapModal({
   isOpen,
   onClose,
   topicTitle,
+  onAttachConceptMap,
   onInsertImage,
 }: AttachConceptMapModalProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "url" | "presets">("upload");
@@ -83,22 +86,38 @@ export function AttachConceptMapModal({
     }
   };
 
+  const deliverConceptMap = (caption: string, url: string) => {
+    const cleanCaption = caption.trim() || `Concept Map: ${topicTitle}`;
+    if (onAttachConceptMap) {
+      onAttachConceptMap({
+        id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        title: cleanCaption,
+        caption: cleanCaption,
+        url,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    if (onInsertImage) {
+      onInsertImage(cleanCaption, url);
+    }
+  };
+
   const handleInsertUpload = () => {
     if (!previewUrl) return;
     const caption = uploadCaption.trim() || `Concept Map: ${topicTitle}`;
-    onInsertImage(caption, previewUrl);
+    deliverConceptMap(caption, previewUrl);
     resetAndClose();
   };
 
   const handleInsertUrl = () => {
     if (!directUrl.trim()) return;
     const caption = urlCaption.trim() || `Concept Map: ${topicTitle}`;
-    onInsertImage(caption, directUrl.trim());
+    deliverConceptMap(caption, directUrl.trim());
     resetAndClose();
   };
 
   const handleInsertPreset = (preset: ConceptMapPreset) => {
-    onInsertImage(`Concept Map: ${preset.title}`, preset.svgDataUrl);
+    deliverConceptMap(`Concept Map: ${preset.title}`, preset.svgDataUrl);
     resetAndClose();
   };
 
@@ -384,7 +403,7 @@ export function AttachConceptMapModal({
           {/* Footer Actions */}
           <div className="border-t border-[var(--border)] px-5 py-3.5 bg-[var(--surface-muted)]/20 flex items-center justify-between shrink-0">
             <span className="text-[11px] text-[var(--text-muted)]">
-              Tip: You can also paste screenshots directly into notes with Cmd+V
+              Tip: Visual diagrams are saved cleanly to your chapter gallery without bloating Markdown notes
             </span>
 
             <div className="flex items-center gap-2">
@@ -404,7 +423,7 @@ export function AttachConceptMapModal({
                   className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
                   <Check className="h-3.5 w-3.5" />
-                  <span>Insert Concept Map</span>
+                  <span>Attach Concept Map</span>
                 </button>
               )}
 
@@ -416,7 +435,7 @@ export function AttachConceptMapModal({
                   className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
                   <Check className="h-3.5 w-3.5" />
-                  <span>Insert from URL</span>
+                  <span>Attach from URL</span>
                 </button>
               )}
             </div>

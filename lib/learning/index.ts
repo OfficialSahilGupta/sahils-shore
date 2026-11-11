@@ -19,6 +19,17 @@ import type {
 import { writeTimelineEvent } from "../timeline/index.ts";
 import { getActivities, logActivityTime } from "../tracker/index.ts";
 import { SPRING_TRACK_SEED, MERN_TRACK_SEED, type SeedTrackData } from "./seeds.ts";
+import {
+  type ChapterConceptMap,
+  parseTopicConceptMaps,
+  sanitizeNotesExtractingImages,
+} from "./concept-map.ts";
+
+export {
+  type ChapterConceptMap,
+  parseTopicConceptMaps,
+  sanitizeNotesExtractingImages,
+};
 
 export interface RoadmapProgress {
   total: number;
@@ -182,6 +193,7 @@ export interface TopicSubSection {
   codeSnippet: string;
   codeLanguage: string;
   resources: TopicSubSectionResource[];
+  conceptMaps?: ChapterConceptMap[];
   isCompleted?: boolean;
 }
 
@@ -198,24 +210,40 @@ export function parseTopicSubSections(
   // 1. Direct subsections array inside object
   if (resourcesData && typeof resourcesData === "object" && !Array.isArray(resourcesData)) {
     if (Array.isArray(resourcesData.subsections) && resourcesData.subsections.length > 0) {
-      return resourcesData.subsections.map((sub: any, idx: number) => ({
-        id: sub.id || `sub-${idx + 1}-${Date.now()}`,
-        title: sub.title || `Sub-Section ${idx + 1}`,
-        notes: typeof sub.notes === "string" ? sub.notes : "",
-        codeSnippet:
-          typeof (sub.codeSnippet || sub.code_snippet) === "string"
-            ? sub.codeSnippet || sub.code_snippet
-            : "",
-        codeLanguage: sub.codeLanguage || sub.language || "java",
-        resources: Array.isArray(sub.resources)
-          ? sub.resources.map((r: any) => ({
-              title: r.title || r.category || "Documentation",
-              url: r.url || "",
-              category: r.category || "Docs",
+      return resourcesData.subsections.map((sub: any, idx: number) => {
+        const rawNotes = typeof sub.notes === "string" ? sub.notes : "";
+        const { cleanNotes, extractedMaps } = sanitizeNotesExtractingImages(rawNotes);
+        const subConceptMaps: ChapterConceptMap[] = Array.isArray(sub.conceptMaps)
+          ? sub.conceptMaps.map((m: any, mIdx: number) => ({
+              id: m.id || `cm-sub-${idx}-${mIdx}`,
+              title: m.title || m.caption || "Concept Map Diagram",
+              caption: m.caption || m.title || "Concept Map Diagram",
+              url: m.url || "",
+              createdAt: m.createdAt || new Date().toISOString(),
+              subSectionId: sub.id,
             }))
-          : [],
-        isCompleted: Boolean(sub.isCompleted),
-      }));
+          : [];
+
+        return {
+          id: sub.id || `sub-${idx + 1}-${Date.now()}`,
+          title: sub.title || `Sub-Section ${idx + 1}`,
+          notes: cleanNotes,
+          codeSnippet:
+            typeof (sub.codeSnippet || sub.code_snippet) === "string"
+              ? sub.codeSnippet || sub.code_snippet
+              : "",
+          codeLanguage: sub.codeLanguage || sub.language || "java",
+          resources: Array.isArray(sub.resources)
+            ? sub.resources.map((r: any) => ({
+                title: r.title || r.category || "Documentation",
+                url: r.url || "",
+                category: r.category || "Docs",
+              }))
+            : [],
+          conceptMaps: [...subConceptMaps, ...extractedMaps],
+          isCompleted: Boolean(sub.isCompleted),
+        };
+      });
     }
   }
 
@@ -239,14 +267,18 @@ export function parseTopicSubSections(
     });
   }
 
+  const { cleanNotes: legacyCleanNotes, extractedMaps: legacyExtractedMaps } =
+    sanitizeNotesExtractingImages(item.notes || "");
+
   return [
     {
       id: "sub-default-1",
       title: "Overview & Core Architecture",
-      notes: item.notes || "",
+      notes: legacyCleanNotes,
       codeSnippet: parsedSnippet,
       codeLanguage: parsedLang,
       resources: parsedLinks,
+      conceptMaps: legacyExtractedMaps,
       isCompleted: item.status === "completed",
     },
   ];
@@ -292,7 +324,8 @@ export function hasExplicitSubTopics(
 }
 
 /**
- * Returns the effective chapter study notes, whether stored at topic root or inside the primary subsection.
+ * Returns the effective chapter study notes, sanitized from any raw base64 data URLs
+ * to ensure that notes text is 100% human-readable and clean.
  */
 export function getTopicChapterNotes(
   item: { notes?: string | null; resources?: Json } | null | undefined
@@ -300,18 +333,34 @@ export function getTopicChapterNotes(
   if (!item) return "";
   const subSections = parseTopicSubSections(item);
   const primarySubNote = subSections[0]?.notes?.trim();
-  if (primarySubNote) return primarySubNote;
-  return item.notes?.trim() || "";
+  const rawNotes = primarySubNote || item.notes?.trim() || "";
+  const { cleanNotes } = sanitizeNotesExtractingImages(rawNotes);
+  return cleanNotes;
 }
 
 /**
  * Packs multiple sub-sections into synthesized markdown notes and packed JSON resources.
+ * Strips all embedded base64 images from markdown notes and cleanly persists them
+ * inside `resources.concept_maps` as dedicated visual attachments.
  */
 export function packTopicSubSections(
   subSections: TopicSubSection[],
-  primaryCategory?: string | null
+  primaryCategory?: string | null,
+  chapterConceptMaps?: ChapterConceptMap[]
 ): { notes: string; resources: Json } {
-  const formattedSections = subSections.map((s, idx) => {
+  // Sanitize notes in every sub-section so no base64 clutter remains in notes text
+  const sanitizedSections = subSections.map((s) => {
+    const { cleanNotes, extractedMaps } = sanitizeNotesExtractingImages(s.notes);
+    const existingSubMaps = s.conceptMaps || [];
+    const mergedSubMaps = [...existingSubMaps, ...extractedMaps];
+    return {
+      ...s,
+      notes: cleanNotes,
+      conceptMaps: mergedSubMaps,
+    };
+  });
+
+  const formattedSections = sanitizedSections.map((s, idx) => {
     const header = `### ${s.title || `Sub-Section ${idx + 1}`}`;
     const statusNote = s.isCompleted ? "*(Status: Completed)*" : "";
     const notesContent = s.notes?.trim() || "";
@@ -333,10 +382,25 @@ export function packTopicSubSections(
 
   const combinedNotes = formattedSections.join("\n\n---\n\n");
 
+  // Collect all concept maps: explicit chapter concept maps + subsection maps
+  const allSubMaps = sanitizedSections.flatMap((s) => s.conceptMaps || []);
+  const allConceptMaps = [...(chapterConceptMaps || []), ...allSubMaps];
+
+  // Deduplicate concept maps by URL
+  const seenUrls = new Set<string>();
+  const deduplicatedMaps: ChapterConceptMap[] = [];
+  for (const map of allConceptMaps) {
+    if (map && map.url && !seenUrls.has(map.url)) {
+      seenUrls.add(map.url);
+      deduplicatedMaps.push(map);
+    }
+  }
+
   const packedData = {
     category: primaryCategory || "General",
-    subsections: subSections,
-    links: subSections.flatMap((s) => s.resources || []),
+    subsections: sanitizedSections,
+    links: sanitizedSections.flatMap((s) => s.resources || []),
+    concept_maps: deduplicatedMaps,
   };
 
   return {
