@@ -999,6 +999,19 @@ export async function createRoadmapItem(
     resourcesPayload = packTopicSubSections(initialSub, trimmedCategory).resources;
   }
 
+  // Guarantee order_index and category are embedded directly inside resources JSONB for cross-device consistency
+  let resObj: Record<string, any> = {};
+  if (typeof resourcesPayload === "object" && resourcesPayload !== null && !Array.isArray(resourcesPayload)) {
+    resObj = { ...(resourcesPayload as any) };
+  } else if (Array.isArray(resourcesPayload) && resourcesPayload[0] && typeof resourcesPayload[0] === "object") {
+    resObj = { ...(resourcesPayload[0] as any) };
+  }
+  resourcesPayload = {
+    ...resObj,
+    order_index: orderIndex,
+    category: trimmedCategory,
+  } as unknown as Json;
+
   let item: LearningItem | null = null;
   const hasValidTrackUUID = isValidUUID(input.track_id);
   const isRealUser = Boolean(userId && userId !== "preview");
@@ -1262,18 +1275,26 @@ export async function getRoadmapItems(
     }
 
     if (rawList.length > 0) {
-      const mapped = rawList.map((row) => {
-        const res =
-          row.resources && typeof row.resources === "object" && !Array.isArray(row.resources)
-            ? row.resources
-            : {};
-        const category = row.category || res.category || "Core";
+      const mapped = rawList.map((row, idx) => {
+        let res: Record<string, any> = {};
+        let cat = "Core";
+
+        if (Array.isArray(row.resources)) {
+          if (row.resources[0] && typeof row.resources[0] === "object") {
+            cat = (row.resources[0] as any).category || cat;
+          }
+        } else if (typeof row.resources === "object" && row.resources !== null) {
+          res = row.resources;
+          cat = res.category || cat;
+        }
+
+        const category = row.category || cat;
         const order_index =
           row.order_index !== undefined && row.order_index !== null
             ? row.order_index
             : res.order_index !== undefined && res.order_index !== null
               ? res.order_index
-              : 0;
+              : idx;
 
         return {
           ...row,
@@ -1282,8 +1303,12 @@ export async function getRoadmapItems(
         } as LearningItem;
       });
 
-      // Sort by order_index ascending
-      mapped.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+      // Sort by order_index ascending, tie-breaking deterministically by created_at ASC
+      mapped.sort((a, b) => {
+        const diff = (a.order_index ?? 0) - (b.order_index ?? 0);
+        if (diff !== 0) return diff;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
       return mapped;
     }
   } catch (err) {
@@ -1331,28 +1356,51 @@ export async function persistRoadmapOrder(
   }
 
   try {
-    const updates = reorderedItems.map((item, idx) => {
-      const existingRes =
-        typeof item.resources === "object" && item.resources !== null && !Array.isArray(item.resources)
-          ? (item.resources as any)
-          : {};
+    const updatePromises = reorderedItems.map(async (item, idx) => {
+      let existingRes: Record<string, any> = {};
+      let category = item.category || "Core";
+
+      if (Array.isArray(item.resources)) {
+        if (item.resources[0] && typeof item.resources[0] === "object") {
+          category = (item.resources[0] as any).category || category;
+        }
+      } else if (typeof item.resources === "object" && item.resources !== null) {
+        existingRes = { ...(item.resources as any) };
+        category = existingRes.category || item.category || category;
+      }
+
       const updatedRes = {
         ...existingRes,
         order_index: idx,
-        category: item.category || existingRes.category || "Core",
+        category,
       };
 
-      return supabase
+      // 1. Try column update if schema supports it
+      const { error: primaryErr } = await supabase
         .from("learning_items")
         .update({
           order_index: idx,
+          category,
           resources: updatedRes as unknown as Json,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq("id", item.id)
         .eq("user_id", userId);
+
+      // 2. If column update failed (e.g. order_index column does not exist in Postgres), update resources JSONB
+      if (primaryErr) {
+        await supabase
+          .from("learning_items")
+          .update({
+            resources: updatedRes as unknown as Json,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.id)
+          .eq("user_id", userId);
+      }
     });
-    await Promise.allSettled(updates);
+
+    await Promise.all(updatePromises);
   } catch (err) {
     console.warn("[persistRoadmapOrder] Supabase update warning:", err);
   }

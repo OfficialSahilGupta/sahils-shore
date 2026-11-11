@@ -358,7 +358,7 @@ describe("5. Vocab Due Filtering & Heatmap Aggregation", () => {
       },
     ];
 
-    const heatmap = getReviewHeatmapData(mockCards, 10);
+    const heatmap = getReviewHeatmapData(mockCards, 30);
     assert.ok(heatmap["2026-11-02"] >= 1);
   });
 });

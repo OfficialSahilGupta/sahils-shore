@@ -305,7 +305,7 @@ export function LearningContainer() {
         getResourceLinks(supabase, userId, activeTrackId),
       ]);
 
-      // Reconcile with local items to preserve custom order, categories, and offline edits
+      // Cloud-first synchronization: Supabase database order is the authoritative source of truth across all browsers and devices
       let finalRoadmap = rItems;
       if (typeof window !== "undefined") {
         try {
@@ -318,54 +318,34 @@ export function LearningContainer() {
           if (localRaw) {
             const localItems: LearningItem[] = JSON.parse(localRaw);
             if (Array.isArray(localItems) && localItems.length > 0) {
-              const remoteMapById = new Map(rItems.map((i) => [i.id, i]));
-              const remoteMapByTopic = new Map(rItems.map((i) => [i.topic.toLowerCase().trim(), i]));
+              if (rItems.length > 0) {
+                // Cloud data exists: use rItems order from Supabase, appending any un-synced offline drafts
+                const remoteIds = new Set(rItems.map((i) => i.id));
+                const remoteTopics = new Set(rItems.map((i) => i.topic.toLowerCase().trim()));
+                const offlineDrafts = localItems.filter(
+                  (loc) => !remoteIds.has(loc.id) && !remoteTopics.has(loc.topic.toLowerCase().trim())
+                );
 
-              // Start with local items in their exact saved order!
-              const reconciled: LearningItem[] = [];
-              const accountedRemoteIds = new Set<string>();
-
-              for (const loc of localItems) {
-                const remote =
-                  remoteMapById.get(loc.id) ||
-                  remoteMapByTopic.get(loc.topic.toLowerCase().trim());
-
-                if (remote) {
-                  accountedRemoteIds.add(remote.id);
-                  // Merge remote with local; local takes priority for ordering, category, notes, and sub-sections
-                  const res = loc.resources || remote.resources;
-                  const cat = loc.category || (res as any)?.category || remote.category || "Core";
-                  reconciled.push({
-                    ...remote,
-                    ...loc,
-                    id: remote.id,
-                    category: cat,
-                    notes: loc.notes !== undefined ? loc.notes : remote.notes,
-                    resources: res,
-                    status: loc.status || remote.status,
-                  });
+                if (offlineDrafts.length > 0) {
+                  finalRoadmap = [...rItems, ...offlineDrafts].map((it, idx) => ({
+                    ...it,
+                    order_index: idx,
+                  }));
                 } else {
-                  reconciled.push(loc);
+                  finalRoadmap = rItems;
                 }
+              } else {
+                // No cloud records returned (e.g. offline / preview user): rely on local items
+                finalRoadmap = localItems.map((it, idx) => ({ ...it, order_index: idx }));
               }
-
-              // Append any remote items not present in local items
-              for (const rem of rItems) {
-                if (!accountedRemoteIds.has(rem.id)) {
-                  reconciled.push(rem);
-                }
-              }
-
-              // Re-assign sequential order_index
-              finalRoadmap = reconciled.map((item, idx) => ({ ...item, order_index: idx }));
-
-              // Keep storage keys synchronized
-              localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(finalRoadmap));
-              localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(finalRoadmap));
             }
           }
+
+          // Cache the authoritative sequence to localStorage
+          localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(finalRoadmap));
+          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(finalRoadmap));
         } catch (e) {
-          console.warn("[LearningContainer] Reconciliation warning:", e);
+          console.warn("[LearningContainer] Cloud sync warning:", e);
         }
       }
 
@@ -808,22 +788,19 @@ export function LearningContainer() {
         });
 
         if (created) {
-          setRoadmapItems((prev) => {
-            const next = prev.map((item) => (item.id === tempId ? created : item));
-            if (typeof window !== "undefined") {
-              try {
-                localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
-              } catch (e) {}
-            }
-            return next;
-          });
+          const fullList = placeAtTop
+            ? [created, ...roadmapItems.map((item, idx) => ({ ...item, order_index: idx + 1 }))]
+            : [...roadmapItems, created].map((item, idx) => ({ ...item, order_index: idx }));
 
-          if (placeAtTop) {
-            await persistRoadmapOrder(supabase, userId, activeTrackId, [
-              created,
-              ...roadmapItems.map((item, idx) => ({ ...item, order_index: idx + 1 })),
-            ]);
+          setRoadmapItems(fullList);
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(fullList));
+              localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(fullList));
+            } catch (e) {}
           }
+
+          await persistRoadmapOrder(supabase, userId, activeTrackId, fullList);
         }
       } catch (err: any) {
         console.warn("[handleAddTopic] Supabase insert warning, safely retained locally:", err);
@@ -832,21 +809,23 @@ export function LearningContainer() {
   };
 
   const handleDeleteTopic = async (itemId: string) => {
-    setRoadmapItems((prev) => {
-      const next = prev.filter((item) => item.id !== itemId);
-      if (typeof window !== "undefined" && activeTrackId) {
-        try {
-          localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
-          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
-        } catch (e) {}
-      }
-      return next;
-    });
+    const next = roadmapItems
+      .filter((item) => item.id !== itemId)
+      .map((item, idx) => ({ ...item, order_index: idx }));
+
+    setRoadmapItems(next);
+    if (typeof window !== "undefined" && activeTrackId) {
+      try {
+        localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
+        localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
+      } catch (e) {}
+    }
     showToast("Topic removed from roadmap.");
 
     if (userId) {
       try {
         await deleteRoadmapItem(supabase, userId, itemId);
+        await persistRoadmapOrder(supabase, userId, activeTrackId, next);
       } catch (e) {
         console.warn("Delete topic warning:", e);
       }
