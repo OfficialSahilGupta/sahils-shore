@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { useQuickCapture } from "@/lib/quick-capture/QuickCaptureContext";
 import { useThemeConfig } from "@/lib/theme/ThemeContext";
-import { useTheme } from "next-themes";
 import { SearchResultItem } from "@/app/api/search/route";
 import {
   Search,
@@ -52,7 +51,7 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const router = useRouter();
   const { open: openQuickCapture } = useQuickCapture();
-  const { theme, setTheme } = useTheme();
+  const { resolvedMode, setMode } = useThemeConfig();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -236,15 +235,15 @@ export function CommandPalette({
               <Command.Item
                 value="Toggle Theme Dark Light Mode"
                 onSelect={() =>
-                  runAction(() => setTheme(theme === "dark" ? "light" : "dark"))
+                  runAction(() => setMode(resolvedMode === "dark" ? "light" : "dark"))
                 }
                 className="flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-xs transition-colors hover:bg-surface-muted aria-selected:bg-surface-muted"
               >
                 <div className="flex items-center gap-2.5">
-                  {theme === "dark" ? (
-                    <Sun className="h-4 w-4 text-amber-400" />
+                  {resolvedMode === "dark" ? (
+                    <Sun className="h-4 w-4 text-accent-warm drop-shadow-[0_0_6px_rgba(232,178,106,0.6)]" />
                   ) : (
-                    <Moon className="h-4 w-4 text-primary" />
+                    <Moon className="h-4 w-4 text-primary drop-shadow-[0_0_6px_rgba(31,122,140,0.6)]" />
                   )}
                   <span className="font-medium text-text">Toggle Theme Mode</span>
                 </div>

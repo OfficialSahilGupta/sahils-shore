@@ -62,17 +62,21 @@ export function ThemeConfigProvider({ children }: { children: React.ReactNode })
   const [config, setConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG);
   const [mounted, setMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const initialLoadDone = React.useRef(false);
 
   // Fallback to "light" during SSR to guarantee deterministic hydration
   const resolvedMode: "light" | "dark" = mounted
-    ? (resolvedTheme === "dark" || theme === "dark")
+    ? (config.mode === "dark" || (config.mode === "system" && resolvedTheme === "dark") || (config.mode !== "light" && (resolvedTheme === "dark" || theme === "dark")))
       ? "dark"
       : "light"
     : "light";
 
   // Load from localStorage and Supabase ONCE on mount
   useEffect(() => {
+    if (initialLoadDone.current) return;
+    initialLoadDone.current = true;
     setMounted(true);
+
     let hasLocalConfig = false;
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
@@ -127,6 +131,14 @@ export function ThemeConfigProvider({ children }: { children: React.ReactNode })
       if (typeof document === "undefined") return;
 
       const root = document.documentElement;
+
+      // Ensure Tailwind dark class is perfectly synchronized with mode
+      if (mode === "dark") {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+
       const preset = THEME_PRESETS[cfg.preset] || THEME_PRESETS.shore;
       const colors = mode === "dark" ? preset.dark : preset.light;
 
