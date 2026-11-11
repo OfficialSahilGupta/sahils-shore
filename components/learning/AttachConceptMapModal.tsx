@@ -3,7 +3,8 @@
 // ============================================================================
 // Sahil's Shore: Attach Concept Map & Architecture Diagram Modal
 // Allows inserting high-definition concept maps, architecture blueprints,
-// and system flowcharts into study notes via file upload, URL, or preset blueprints.
+// and system flowcharts into study notes via multi-file batch upload,
+// direct URLs, or built-in curated engineering architecture blueprints.
 // Strictly adheres to Shore rules: Zero Emojis (Lucide SVGs only),
 // CSS tokenized colors, and WCAG AA contrast.
 // ============================================================================
@@ -19,19 +20,37 @@ import {
   Layers,
   ArrowRight,
   FileImage,
+  Trash2,
+  Plus,
+  Database,
+  ShieldCheck,
+  Info,
+  Loader2,
 } from "lucide-react";
 import { ModalPortal } from "@/components/ui/modal-portal";
 import {
   prepareConceptMapImage,
+  formatImageFileSize,
   CURATED_CONCEPT_MAP_PRESETS,
   type ConceptMapPreset,
   type ChapterConceptMap,
 } from "@/lib/learning/concept-map";
 
+export interface QueuedUploadImage {
+  id: string;
+  file: File;
+  previewUrl: string;
+  caption: string;
+  width: number;
+  height: number;
+  sizeFormatted: string;
+}
+
 interface AttachConceptMapModalProps {
   isOpen: boolean;
   onClose: () => void;
   topicTitle: string;
+  onAttachConceptMaps?: (conceptMaps: ChapterConceptMap[]) => void;
   onAttachConceptMap?: (conceptMap: ChapterConceptMap) => void;
   onInsertImage?: (caption: string, url: string) => void;
 }
@@ -40,40 +59,57 @@ export function AttachConceptMapModal({
   isOpen,
   onClose,
   topicTitle,
+  onAttachConceptMaps,
   onAttachConceptMap,
   onInsertImage,
 }: AttachConceptMapModalProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "url" | "presets">("upload");
 
-  // Upload tab state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [uploadCaption, setUploadCaption] = useState<string>("");
+  // Multi-image batch queue
+  const [queuedImages, setQueuedImages] = useState<QueuedUploadImage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // URL tab state
   const [directUrl, setDirectUrl] = useState("");
   const [urlCaption, setUrlCaption] = useState("");
-  const [urlPreviewValid, setUrlPreviewValid] = useState<boolean | null>(null);
 
   if (!isOpen) return null;
 
-  // File selection & processing
-  const handleFileChange = async (file: File) => {
-    setSelectedFile(file);
+  // Multi-file batch processing
+  const handleFilesAdded = async (files: FileList | File[]) => {
+    const validFiles = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") || f.name.endsWith(".svg")
+    );
+    if (validFiles.length === 0) return;
+
     setIsProcessing(true);
+    setProcessingProgress({ current: 0, total: validFiles.length });
+
     try {
-      const prepared = await prepareConceptMapImage(file);
-      setPreviewUrl(prepared.dataUrl);
-      if (!uploadCaption.trim()) {
-        setUploadCaption(prepared.caption);
+      const newItems: QueuedUploadImage[] = [];
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
+        setProcessingProgress({ current: i + 1, total: validFiles.length });
+        const prepared = await prepareConceptMapImage(file);
+        newItems.push({
+          id: `queue-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          file,
+          previewUrl: prepared.dataUrl,
+          caption: prepared.caption,
+          width: prepared.width,
+          height: prepared.height,
+          sizeFormatted: formatImageFileSize(file.size),
+        });
       }
+      setQueuedImages((prev) => [...prev, ...newItems]);
     } catch (err) {
-      console.error("Failed to prepare concept map image:", err);
+      console.error("Failed to process batch concept map images:", err);
     } finally {
       setIsProcessing(false);
+      setProcessingProgress(null);
     }
   };
 
@@ -82,52 +118,101 @@ export function AttachConceptMapModal({
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      await handleFileChange(files[0]);
+      await handleFilesAdded(files);
     }
   };
 
-  const deliverConceptMap = (caption: string, url: string) => {
-    const cleanCaption = caption.trim() || `Concept Map: ${topicTitle}`;
-    if (onAttachConceptMap) {
-      onAttachConceptMap({
-        id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  const handleUpdateCaption = (id: string, newCaption: string) => {
+    setQueuedImages((prev) =>
+      prev.map((img) => (img.id === id ? { ...img, caption: newCaption } : img))
+    );
+  };
+
+  const handleRemoveQueuedImage = (id: string) => {
+    setQueuedImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleClearQueue = () => {
+    setQueuedImages([]);
+  };
+
+  // Submit batch uploads
+  const handleInsertBatchUpload = () => {
+    if (queuedImages.length === 0) return;
+
+    const newMaps: ChapterConceptMap[] = queuedImages.map((q, idx) => {
+      const cleanCaption = q.caption.trim() || `Concept Map: ${q.file.name}`;
+      return {
+        id: `cm-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
         title: cleanCaption,
         caption: cleanCaption,
-        url,
+        url: q.previewUrl,
         createdAt: new Date().toISOString(),
-      });
-    }
-    if (onInsertImage) {
-      onInsertImage(cleanCaption, url);
-    }
-  };
+      };
+    });
 
-  const handleInsertUpload = () => {
-    if (!previewUrl) return;
-    const caption = uploadCaption.trim() || `Concept Map: ${topicTitle}`;
-    deliverConceptMap(caption, previewUrl);
+    if (onAttachConceptMaps) {
+      onAttachConceptMaps(newMaps);
+    } else if (onAttachConceptMap) {
+      newMaps.forEach((m) => onAttachConceptMap(m));
+    }
+
+    if (onInsertImage && newMaps.length > 0) {
+      newMaps.forEach((m) => onInsertImage(m.title, m.url));
+    }
+
     resetAndClose();
   };
 
   const handleInsertUrl = () => {
     if (!directUrl.trim()) return;
-    const caption = urlCaption.trim() || `Concept Map: ${topicTitle}`;
-    deliverConceptMap(caption, directUrl.trim());
+    const cleanCaption = urlCaption.trim() || `Concept Map: ${topicTitle}`;
+    const newMap: ChapterConceptMap = {
+      id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title: cleanCaption,
+      caption: cleanCaption,
+      url: directUrl.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    if (onAttachConceptMaps) {
+      onAttachConceptMaps([newMap]);
+    } else if (onAttachConceptMap) {
+      onAttachConceptMap(newMap);
+    }
+    if (onInsertImage) {
+      onInsertImage(cleanCaption, directUrl.trim());
+    }
     resetAndClose();
   };
 
   const handleInsertPreset = (preset: ConceptMapPreset) => {
-    deliverConceptMap(`Concept Map: ${preset.title}`, preset.svgDataUrl);
+    const cleanCaption = `Concept Map: ${preset.title}`;
+    const newMap: ChapterConceptMap = {
+      id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title: cleanCaption,
+      caption: cleanCaption,
+      url: preset.svgDataUrl,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (onAttachConceptMaps) {
+      onAttachConceptMaps([newMap]);
+    } else if (onAttachConceptMap) {
+      onAttachConceptMap(newMap);
+    }
+    if (onInsertImage) {
+      onInsertImage(cleanCaption, preset.svgDataUrl);
+    }
     resetAndClose();
   };
 
   const resetAndClose = () => {
-    setSelectedFile(null);
-    setPreviewUrl("");
-    setUploadCaption("");
+    setQueuedImages([]);
     setDirectUrl("");
     setUrlCaption("");
-    setUrlPreviewValid(null);
+    setIsProcessing(false);
+    setProcessingProgress(null);
     onClose();
   };
 
@@ -138,7 +223,7 @@ export function AttachConceptMapModal({
         onClick={resetAndClose}
       >
         <div
-          className="w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
+          className="w-full max-w-3xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -149,10 +234,10 @@ export function AttachConceptMapModal({
               </div>
               <div>
                 <h3 className="text-sm sm:text-base font-bold text-[var(--text)]">
-                  Add Concept Map or Architecture Diagram
+                  Attach Concept Maps & Architecture Diagrams
                 </h3>
                 <p className="text-xs text-[var(--text-muted)] truncate max-w-sm sm:max-w-md">
-                  Attach visual maps & system blueprints to &ldquo;{topicTitle}&rdquo;
+                  Upload multiple diagrams at once for &ldquo;{topicTitle}&rdquo;
                 </p>
               </div>
             </div>
@@ -179,7 +264,12 @@ export function AttachConceptMapModal({
               }`}
             >
               <Upload className="h-3.5 w-3.5" />
-              <span>Upload Image File</span>
+              <span>Upload Images (Batch Supported)</span>
+              {queuedImages.length > 0 && (
+                <span className="rounded-full bg-[var(--primary)] text-white px-1.5 py-0.2 text-[10px] font-bold">
+                  {queuedImages.length}
+                </span>
+              )}
             </button>
 
             <button
@@ -192,7 +282,7 @@ export function AttachConceptMapModal({
               }`}
             >
               <LinkIcon className="h-3.5 w-3.5" />
-              <span>Image URL / Web</span>
+              <span>Direct Image URL</span>
             </button>
 
             <button
@@ -205,13 +295,13 @@ export function AttachConceptMapModal({
               }`}
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Architecture Blueprints</span>
+              <span>Curated Blueprints</span>
             </button>
           </div>
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {/* TAB 1: UPLOAD FILE */}
+            {/* TAB 1: UPLOAD FILES (BATCH SUPPORTED) */}
             {activeTab === "upload" && (
               <div className="space-y-4">
                 {/* Drag-and-drop zone */}
@@ -232,69 +322,138 @@ export function AttachConceptMapModal({
                   <input
                     ref={fileInputRef}
                     type="file"
+                    multiple
                     accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
                     className="hidden"
                     onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        void handleFileChange(e.target.files[0]);
+                      if (e.target.files && e.target.files.length > 0) {
+                        void handleFilesAdded(e.target.files);
                       }
+                      // Reset file input so re-selecting same files triggers change
+                      e.target.value = "";
                     }}
                   />
 
                   <FileImage className="h-8 w-8 text-[var(--primary)] mx-auto mb-2 opacity-80" />
-                  <p className="text-xs font-bold text-[var(--text)]">
-                    Click to browse or drag and drop your concept map
+                  <p className="text-xs sm:text-sm font-bold text-[var(--text)]">
+                    Click to select multiple images or drag & drop all files here
                   </p>
                   <p className="text-[11px] text-[var(--text-muted)] mt-1">
-                    Supports PNG, JPG, WebP, SVG vector diagrams, & whiteboard captures (up to 20MB)
+                    Multi-select enabled: choose 1, 5, 10, or more images at once (PNG, JPG, WebP, SVG vector diagrams)
                   </p>
+                  <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[var(--primary)]/10 px-3 py-1 text-[11px] font-semibold text-[var(--primary)] border border-[var(--primary)]/20">
+                    <Plus className="h-3 w-3" />
+                    <span>Select multiple files (<kbd className="font-mono text-[10px]">Cmd</kbd>/<kbd className="font-mono text-[10px]">Ctrl</kbd> + click or drag a folder)</span>
+                  </div>
                 </div>
 
-                {/* Preview and Caption */}
-                {previewUrl && (
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 p-3.5 space-y-3 animate-in fade-in">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-[var(--text)] flex items-center gap-1.5">
-                        <Check className="h-3.5 w-3.5 text-[var(--success)]" />
-                        <span>Ready to attach ({selectedFile?.name})</span>
+                {/* Processing Indicator */}
+                {isProcessing && processingProgress && (
+                  <div className="rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3 flex items-center justify-between text-xs text-[var(--primary)]">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="font-semibold">
+                        Optimizing diagram {processingProgress.current} of {processingProgress.total}...
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedFile(null);
-                          setPreviewUrl("");
-                        }}
-                        className="text-[11px] text-[var(--danger)] hover:underline"
-                      >
-                        Remove
-                      </button>
+                    </div>
+                    <span className="font-mono text-[11px]">
+                      {Math.round((processingProgress.current / processingProgress.total) * 100)}%
+                    </span>
+                  </div>
+                )}
+
+                {/* Queued Images List */}
+                {queuedImages.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-[var(--success)]" />
+                        <span>Ready to attach ({queuedImages.length} {queuedImages.length === 1 ? "diagram" : "diagrams"})</span>
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-[var(--primary)] hover:underline"
+                        >
+                          <Plus className="h-3 w-3" />
+                          <span>Add More</span>
+                        </button>
+                        <span className="text-[var(--border)]">•</span>
+                        <button
+                          type="button"
+                          onClick={handleClearQueue}
+                          className="text-[11px] font-semibold text-[var(--danger)] hover:underline"
+                        >
+                          Clear All
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Image Thumbnail */}
-                    <div className="max-h-52 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] flex items-center justify-center p-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="max-h-48 w-auto max-w-full object-contain"
-                      />
-                    </div>
+                    <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1 scrollbar-thin">
+                      {queuedImages.map((img, idx) => (
+                        <div
+                          key={img.id}
+                          className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-2.5 flex items-center gap-3 transition-all hover:border-[var(--primary)]/40"
+                        >
+                          {/* Thumbnail */}
+                          <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-[var(--background)] flex items-center justify-center border border-[var(--border)]/70 p-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={img.previewUrl}
+                              alt={img.caption}
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
 
-                    {/* Caption Input */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-[var(--text)] mb-1">
-                        Diagram Caption / Concept Map Title
-                      </label>
-                      <input
-                        type="text"
-                        value={uploadCaption}
-                        onChange={(e) => setUploadCaption(e.target.value)}
-                        placeholder={`e.g. Concept Map: ${topicTitle} Architecture & Internal Pipeline`}
-                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors"
-                      />
+                          {/* Editable Caption & Metadata */}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <input
+                              type="text"
+                              value={img.caption}
+                              onChange={(e) => handleUpdateCaption(img.id, e.target.value)}
+                              placeholder="Diagram title / caption..."
+                              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--text)] font-semibold placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+                            />
+                            <div className="flex items-center gap-2 text-[10px] text-[var(--text-muted)] font-mono truncate">
+                              <span>#{idx + 1}</span>
+                              <span>•</span>
+                              <span className="truncate">{img.file.name}</span>
+                              <span>•</span>
+                              <span>{img.width}×{img.height}</span>
+                              <span>•</span>
+                              <span>{img.sizeFormatted}</span>
+                            </div>
+                          </div>
+
+                          {/* Remove Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveQueuedImage(img.id)}
+                            className="rounded-lg p-1.5 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors shrink-0"
+                            title="Remove from upload queue"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
+
+                {/* Storage Transparency Banner */}
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 p-3 flex items-start gap-2.5 text-xs text-[var(--text-muted)]">
+                  <Database className="h-4 w-4 text-[var(--primary)] shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-[var(--text)] text-[11px]">
+                      Where are these images saved?
+                    </p>
+                    <p className="text-[11px] leading-relaxed">
+                      All images are securely saved in your Supabase PostgreSQL cloud database under <code className="font-mono text-[10px] text-[var(--primary)]">learning_items.resources.concept_maps</code>. They are completely separated from your Markdown notes text, keeping your notes 100% clean and readable. Protected by Row-Level Security (<code className="font-mono text-[10px]">auth.uid() = user_id</code>) and included in your automated backups.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -308,10 +467,7 @@ export function AttachConceptMapModal({
                   <input
                     type="url"
                     value={directUrl}
-                    onChange={(e) => {
-                      setDirectUrl(e.target.value);
-                      setUrlPreviewValid(null);
-                    }}
+                    onChange={(e) => setDirectUrl(e.target.value)}
                     placeholder="https://example.com/architecture-diagram.png"
                     className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors"
                   />
@@ -322,50 +478,44 @@ export function AttachConceptMapModal({
 
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--text)] mb-1">
-                    Diagram Caption / Concept Map Title
+                    Caption / Title
                   </label>
                   <input
                     type="text"
                     value={urlCaption}
                     onChange={(e) => setUrlCaption(e.target.value)}
-                    placeholder={`e.g. Concept Map: ${topicTitle} Schema Blueprint`}
+                    placeholder={`Concept Map: ${topicTitle}`}
                     className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors"
                   />
                 </div>
 
                 {directUrl.trim() && (
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3">
-                    <span className="text-[11px] font-bold text-[var(--text-muted)] block mb-1.5">
-                      URL Image Preview:
-                    </span>
-                    <div className="max-h-44 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] flex items-center justify-center p-2">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 p-3 space-y-2">
+                    <span className="text-[11px] font-bold text-[var(--text)]">URL Image Preview:</span>
+                    <div className="max-h-48 overflow-hidden rounded-lg bg-[var(--background)] flex items-center justify-center p-2 border border-[var(--border)]/70">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={directUrl}
-                        alt="URL Preview"
-                        onLoad={() => setUrlPreviewValid(true)}
-                        onError={() => setUrlPreviewValid(false)}
+                        alt="Preview"
                         className="max-h-40 w-auto max-w-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
                       />
                     </div>
-                    {urlPreviewValid === false && (
-                      <p className="text-[11px] text-[var(--danger)] mt-1.5">
-                        Unable to load image from this URL. Please verify the link is accessible.
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* TAB 3: ARCHITECTURE BLUEPRINTS */}
+            {/* TAB 3: CURATED ARCHITECTURE PRESETS */}
             {activeTab === "presets" && (
               <div className="space-y-3">
                 <p className="text-xs text-[var(--text-muted)]">
-                  Pick a pre-designed, razor-sharp vector architecture blueprint to embed directly into your notes:
+                  Pick from battle-tested architecture blueprints. Preserved as 100% vector SVG blueprints for razor-sharp clarity:
                 </p>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {CURATED_CONCEPT_MAP_PRESETS.map((preset) => (
                     <div
                       key={preset.id}
@@ -390,7 +540,7 @@ export function AttachConceptMapModal({
                         onClick={() => handleInsertPreset(preset)}
                         className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity shrink-0"
                       >
-                        <span>Insert Map</span>
+                        <span>Attach Blueprint</span>
                         <ArrowRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -402,9 +552,10 @@ export function AttachConceptMapModal({
 
           {/* Footer Actions */}
           <div className="border-t border-[var(--border)] px-5 py-3.5 bg-[var(--surface-muted)]/20 flex items-center justify-between shrink-0">
-            <span className="text-[11px] text-[var(--text-muted)]">
-              Tip: Visual diagrams are saved cleanly to your chapter gallery without bloating Markdown notes
-            </span>
+            <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+              <ShieldCheck className="h-3.5 w-3.5 text-[var(--success)] shrink-0" />
+              <span>Multi-select active: select multiple files with Cmd/Ctrl + click</span>
+            </div>
 
             <div className="flex items-center gap-2">
               <button
@@ -418,12 +569,16 @@ export function AttachConceptMapModal({
               {activeTab === "upload" && (
                 <button
                   type="button"
-                  onClick={handleInsertUpload}
-                  disabled={!previewUrl || isProcessing}
-                  className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-40"
+                  onClick={handleInsertBatchUpload}
+                  disabled={queuedImages.length === 0 || isProcessing}
+                  className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
                   <Check className="h-3.5 w-3.5" />
-                  <span>Attach Concept Map</span>
+                  <span>
+                    {queuedImages.length <= 1
+                      ? "Attach Diagram"
+                      : `Attach All (${queuedImages.length} Diagrams)`}
+                  </span>
                 </button>
               )}
 
@@ -432,7 +587,7 @@ export function AttachConceptMapModal({
                   type="button"
                   onClick={handleInsertUrl}
                   disabled={!directUrl.trim()}
-                  className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
                   <Check className="h-3.5 w-3.5" />
                   <span>Attach from URL</span>

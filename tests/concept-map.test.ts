@@ -5,6 +5,7 @@ import {
   sanitizeNotesExtractingImages,
   parseTopicConceptMaps,
   CURATED_CONCEPT_MAP_PRESETS,
+  formatImageFileSize,
 } from "../lib/learning/concept-map.ts";
 import { packTopicSubSections, parseTopicSubSections } from "../lib/learning/index.ts";
 
@@ -162,5 +163,12 @@ In this architecture, clients send HTTP requests to the upstream server.
     );
     assert.ok(microservicesPreset, "Microservices preset must exist");
     assert.ok(microservicesPreset.svgDataUrl.startsWith("data:image/svg+xml"));
+  });
+
+  it("formats image file size into human-readable strings (B, KB, MB)", () => {
+    assert.equal(formatImageFileSize(512), "512 B");
+    assert.equal(formatImageFileSize(1024), "1.0 KB");
+    assert.equal(formatImageFileSize(150 * 1024), "150.0 KB");
+    assert.equal(formatImageFileSize(2.5 * 1024 * 1024), "2.5 MB");
   });
 });

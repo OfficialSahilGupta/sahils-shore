@@ -219,6 +219,15 @@ export function TopicStudyModal({
     updateActiveSubSection({ conceptMaps: [...existing, newMap] });
   };
 
+  const handleAttachMultipleConceptMapsToSub = (newMaps: ChapterConceptMap[]) => {
+    if (!activeSubSection) return;
+    const existing = activeSubSection.conceptMaps || [];
+    const existingUrls = new Set(existing.map((m) => m.url));
+    const additions = newMaps.filter((m) => !existingUrls.has(m.url));
+    updateActiveSubSection({ conceptMaps: [...existing, ...additions] });
+    setActivePillar("concept_maps");
+  };
+
   const handleDeleteConceptMapFromSub = (mapId: string) => {
     if (!activeSubSection) return;
     const existing = activeSubSection.conceptMaps || [];
@@ -1153,6 +1162,7 @@ export function TopicStudyModal({
             onClose={() => setIsAttachMapOpen(false)}
             topicTitle={activeSubSection?.title || item.topic}
             onAttachConceptMap={handleAttachConceptMapToSub}
+            onAttachConceptMaps={handleAttachMultipleConceptMapsToSub}
           />
         )}
 

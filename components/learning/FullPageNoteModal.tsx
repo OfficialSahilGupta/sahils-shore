@@ -202,6 +202,16 @@ export function FullPageNoteModal({
     setTimeout(() => setSaveSuccess(false), 2000);
   };
 
+  const handleAttachMultipleConceptMaps = (newMaps: ChapterConceptMap[]) => {
+    setConceptMaps((prev) => {
+      const existingUrls = new Set(prev.map((m) => m.url));
+      const additions = newMaps.filter((m) => !existingUrls.has(m.url));
+      return [...prev, ...additions];
+    });
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2500);
+  };
+
   const handleDeleteConceptMap = (mapId: string) => {
     setConceptMaps((prev) => prev.filter((m) => m.id !== mapId));
   };
@@ -1263,6 +1273,7 @@ export function FullPageNoteModal({
         onClose={() => setIsAttachMapOpen(false)}
         topicTitle={item.topic}
         onAttachConceptMap={handleAttachConceptMap}
+        onAttachConceptMaps={handleAttachMultipleConceptMaps}
       />
     </ModalPortal>
   );

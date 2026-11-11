@@ -123,6 +123,37 @@ export async function prepareConceptMapImage(
 }
 
 /**
+ * Prepares multiple image files concurrently for batch concept map attachments.
+ */
+export async function prepareMultipleConceptMapImages(
+  files: File[],
+  maxDimension = 1800
+): Promise<Array<{ file: File; dataUrl: string; caption: string; width: number; height: number }>> {
+  const imageFiles = files.filter(
+    (f) => f.type.startsWith("image/") || f.name.endsWith(".svg")
+  );
+
+  return Promise.all(
+    imageFiles.map(async (file) => {
+      const prepared = await prepareConceptMapImage(file, maxDimension);
+      return {
+        file,
+        ...prepared,
+      };
+    })
+  );
+}
+
+/**
+ * Formats image file bytes into human-readable size (e.g. "124 KB", "2.1 MB").
+ */
+export function formatImageFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
  * Extracts all markdown image tags `![alt](url)` from notes content.
  */
 export function extractConceptMapsFromMarkdown(markdown?: string | null): ChapterConceptMap[] {
