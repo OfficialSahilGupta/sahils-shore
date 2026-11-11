@@ -31,6 +31,8 @@ import {
   Eye,
   Columns,
   FileText,
+  Image as ImageIcon,
+  ImagePlus,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import { Select } from "@/components/ui/select";
@@ -40,6 +42,8 @@ import {
   hasExplicitSubTopics,
   type TopicSubSection,
 } from "@/lib/learning";
+import { prepareConceptMapImage } from "@/lib/learning/concept-map";
+import { AttachConceptMapModal } from "./AttachConceptMapModal";
 import { MarkdownView } from "@/components/common/MarkdownView";
 import { CodeEditor } from "../dsa/CodeEditor";
 import { SafeDeleteModal } from "./SafeDeleteModal";
@@ -99,6 +103,7 @@ export function TopicStudyModal({
   // Safe delete modals state
   const [isDeleteTopicModalOpen, setIsDeleteTopicModalOpen] = useState(false);
   const [deleteSubTarget, setDeleteSubTarget] = useState<TopicSubSection | null>(null);
+  const [isAttachMapOpen, setIsAttachMapOpen] = useState(false);
 
   // Body scroll lock
   useEffect(() => {
@@ -194,6 +199,39 @@ export function TopicStudyModal({
     const existing = activeSubSection.notes || "";
     const updated = existing ? `${existing.trim()}\n\n${template}` : template;
     updateActiveSubSection({ notes: updated });
+  };
+
+  const handleInsertConceptMap = (caption: string, url: string) => {
+    if (!activeSubSection) return;
+    const cleanCaption = caption.startsWith("Concept Map:") ? caption : `Concept Map: ${caption}`;
+    const mdSnippet = `\n\n![${cleanCaption}](${url})\n\n`;
+    const cur = activeSubSection.notes || "";
+    updateActiveSubSection({ notes: `${cur.trim()}${mdSnippet}` });
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items || !activeSubSection) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const itemFile = items[i];
+      if (itemFile.type.indexOf("image") !== -1) {
+        e.preventDefault();
+        const file = itemFile.getAsFile();
+        if (!file) continue;
+
+        try {
+          const prepared = await prepareConceptMapImage(file);
+          handleInsertConceptMap(
+            prepared.caption || `Concept Map: ${activeSubSection.title || topicTitle}`,
+            prepared.dataUrl
+          );
+        } catch (err) {
+          console.error("Failed to paste image into sub-section notes:", err);
+        }
+        return;
+      }
+    }
   };
 
   const handleAddLink = () => {
@@ -658,6 +696,15 @@ export function TopicStudyModal({
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
+                    onClick={() => setIsAttachMapOpen(true)}
+                    className="rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors flex items-center gap-1"
+                    title="Attach Concept Map or Architecture Diagram"
+                  >
+                    <ImagePlus className="h-3 w-3" />
+                    <span>+ Map</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() =>
                       insertTemplate(
                         "### Core Architecture & Invariant\n- Principle: \n- Why this design is chosen: \n- Trade-offs considered: "
@@ -698,7 +745,8 @@ export function TopicStudyModal({
                   rows={13}
                   value={activeSubSection?.notes || ""}
                   onChange={(e) => updateActiveSubSection({ notes: e.target.value })}
-                  placeholder={`Write detailed architecture notes, trade-offs, and mental models for "${activeSubSection?.title || "this chapter"}"... (Markdown supported)`}
+                  onPaste={handlePaste}
+                  placeholder={`Write detailed architecture notes, trade-offs, and mental models for "${activeSubSection?.title || "this chapter"}"... (Markdown & Cmd+V screenshot paste supported)`}
                   className="w-full flex-1 min-h-[260px] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3.5 text-xs text-[var(--text)] font-sans leading-relaxed placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-none"
                 />
               )}
@@ -715,7 +763,8 @@ export function TopicStudyModal({
                     rows={13}
                     value={activeSubSection?.notes || ""}
                     onChange={(e) => updateActiveSubSection({ notes: e.target.value })}
-                    placeholder="Write markdown architecture notes here..."
+                    onPaste={handlePaste}
+                    placeholder="Write markdown architecture notes here (Cmd+V to paste screenshots)..."
                     className="w-full h-full min-h-[260px] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3.5 text-xs text-[var(--text)] font-sans leading-relaxed placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-none"
                   />
                   <div className="w-full h-full min-h-[260px] max-h-[520px] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs scrollbar-thin">
@@ -917,6 +966,16 @@ export function TopicStudyModal({
             itemName={deleteSubTarget.title}
             itemType="sub-topic"
             warningText={`This will permanently delete sub-section "${deleteSubTarget.title}" and its notes, code implementations, and reference links.`}
+          />
+        )}
+
+        {/* Attach Concept Map / Diagram Modal */}
+        {isAttachMapOpen && (
+          <AttachConceptMapModal
+            isOpen={isAttachMapOpen}
+            onClose={() => setIsAttachMapOpen(false)}
+            topicTitle={activeSubSection?.title || item.topic}
+            onInsertImage={handleInsertConceptMap}
           />
         )}
       </div>

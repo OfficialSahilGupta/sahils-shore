@@ -46,6 +46,11 @@ import {
   CheckSquare,
   FileText,
   FolderTree,
+  Image as ImageIcon,
+  ImagePlus,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import { ModalPortal } from "@/components/ui/modal-portal";
@@ -56,6 +61,12 @@ import {
   getTopicChapterNotes,
   type TopicSubSection,
 } from "@/lib/learning";
+import {
+  extractConceptMapsFromMarkdown,
+  prepareConceptMapImage,
+  type ConceptMapImage,
+} from "@/lib/learning/concept-map";
+import { AttachConceptMapModal } from "./AttachConceptMapModal";
 
 interface FullPageNoteModalProps {
   isOpen: boolean;
@@ -90,6 +101,9 @@ export function FullPageNoteModal({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [subSections, setSubSections] = useState<TopicSubSection[]>([]);
+  const [isAttachMapOpen, setIsAttachMapOpen] = useState(false);
+  const [lightboxConceptMap, setLightboxConceptMap] = useState<ConceptMapImage | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -160,6 +174,55 @@ export function FullPageNoteModal({
     }
     return headings;
   }, [notes]);
+
+  // Extract all attached concept maps from notes
+  const conceptMaps = useMemo(() => extractConceptMapsFromMarkdown(notes), [notes]);
+
+  const handleInsertConceptMap = (caption: string, url: string) => {
+    const textarea = textareaRef.current;
+    const cleanCaption = caption.startsWith("Concept Map:") ? caption : `Concept Map: ${caption}`;
+    const mdSnippet = `\n\n![${cleanCaption}](${url})\n\n`;
+
+    if (!textarea) {
+      setNotes((prev) => `${prev.trim()}${mdSnippet}`);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const nextNotes = notes.substring(0, start) + mdSnippet + notes.substring(end);
+    setNotes(nextNotes);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + mdSnippet.length, start + mdSnippet.length);
+    }, 0);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const itemFile = items[i];
+      if (itemFile.type.indexOf("image") !== -1) {
+        e.preventDefault();
+        const file = itemFile.getAsFile();
+        if (!file) continue;
+
+        try {
+          const prepared = await prepareConceptMapImage(file);
+          handleInsertConceptMap(
+            prepared.caption || `Concept Map: ${item?.topic || "Architecture"}`,
+            prepared.dataUrl
+          );
+        } catch (err) {
+          console.error("Failed to paste image into study notes:", err);
+        }
+        return;
+      }
+    }
+  };
 
   if (!isOpen || !item) return null;
 
@@ -332,6 +395,7 @@ export function FullPageNoteModal({
             <div className="hidden lg:flex items-center gap-2 text-xs text-[var(--text-muted)] shrink-0">
               <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-0.5 font-mono text-[11px]">
                 {readTimeMinutes} min read • {wordCount} words
+                {conceptMaps.length > 0 && ` • ${conceptMaps.length} visual maps`}
               </span>
               {saveSuccess && (
                 <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--success)] animate-in fade-in">
@@ -343,6 +407,15 @@ export function FullPageNoteModal({
 
             {/* Right: Mode Switcher & Actions */}
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAttachMapOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0"
+                title="Attach Concept Map or Architecture Diagram (Upload / URL / Presets)"
+              >
+                <ImagePlus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Add Map</span>
+              </button>
               {/* Segmented Mode Selector: Read | Split | Edit */}
               <div className="flex items-center gap-1 rounded-xl bg-[var(--surface-muted)]/60 p-0.5 border border-[var(--border)]">
                 <button
@@ -493,6 +566,73 @@ export function FullPageNoteModal({
                     )}
                   </div>
 
+                  {/* Concept Maps & Architecture Blueprints Gallery (if any) */}
+                  {conceptMaps.length > 0 && (
+                    <div className="rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-4 sm:p-5 space-y-3 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20">
+                            <ImageIcon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs sm:text-sm font-bold text-[var(--text)]">
+                              Visual Concept Maps & Diagrams ({conceptMaps.length})
+                            </h4>
+                            <p className="text-[11px] text-[var(--text-muted)]">
+                              Click any diagram to inspect in full-screen zoomable lightbox
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsAttachMapOpen(true)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-[var(--primary)] hover:underline"
+                        >
+                          <ImagePlus className="h-3 w-3" />
+                          <span>Attach Map</span>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                        {conceptMaps.map((cm, idx) => (
+                          <div
+                            key={cm.id || idx}
+                            onClick={() => {
+                              setLightboxConceptMap(cm);
+                              setLightboxZoom(1);
+                            }}
+                            className="group/card rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 hover:border-[var(--primary)]/60 transition-all cursor-pointer shadow-2xs hover:shadow-sm"
+                          >
+                            <div className="relative h-28 w-full overflow-hidden rounded-lg bg-[var(--background)] flex items-center justify-center p-1.5 border border-[var(--border)]/60">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={cm.url}
+                                alt={cm.caption}
+                                className="max-h-full max-w-full object-contain group-hover/card:scale-105 transition-transform duration-200"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/card:opacity-100">
+                                <span className="rounded-lg bg-[var(--surface)]/90 backdrop-blur px-2 py-1 text-[10px] font-bold text-[var(--primary)] flex items-center gap-1 shadow-xs">
+                                  <Maximize2 className="h-3 w-3" />
+                                  <span>Zoom</span>
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between text-xs">
+                              <span className="font-semibold text-[var(--text)] truncate text-[11px]">
+                                {cm.caption.replace(/^Concept Map:\s*/i, "")}
+                              </span>
+                              <span className="text-[10px] font-mono text-[var(--text-muted)] shrink-0 ml-1.5">
+                                #{idx + 1}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Rendered Markdown Body */}
                   {notes.trim() ? (
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8 shadow-xs">
@@ -619,6 +759,15 @@ export function FullPageNoteModal({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
+                        onClick={() => setIsAttachMapOpen(true)}
+                        className="rounded border border-[var(--primary)]/40 bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors flex items-center gap-1"
+                        title="Attach Concept Map or Architecture Diagram (Upload / URL / Presets)"
+                      >
+                        <ImagePlus className="h-3 w-3" />
+                        <span>+ Map</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() =>
                           insertTemplate(
                             "### Core Architecture & Invariant\n- Principle: \n- Why this design is chosen: \n- Trade-offs considered: "
@@ -646,7 +795,8 @@ export function FullPageNoteModal({
                     ref={textareaRef}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Write detailed architecture notes, trade-offs, and design patterns in Markdown..."
+                    onPaste={handlePaste}
+                    placeholder="Write detailed architecture notes, trade-offs, and design patterns in Markdown (Paste screenshots directly with Cmd+V)..."
                     className="flex-1 w-full p-4 sm:p-6 text-xs text-[var(--text)] font-mono leading-relaxed placeholder-[var(--text-muted)] bg-transparent resize-none focus:outline-none overflow-y-auto scrollbar-thin"
                   />
                 </div>
@@ -754,6 +904,18 @@ export function FullPageNoteModal({
                     >
                       <List className="h-3.5 w-3.5" />
                     </button>
+
+                    <span className="h-4 w-px bg-[var(--border)] mx-1" />
+
+                    <button
+                      type="button"
+                      onClick={() => setIsAttachMapOpen(true)}
+                      className="rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors flex items-center gap-1.5 shrink-0"
+                      title="Attach Concept Map or Architecture Diagram"
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" />
+                      <span>+ Concept Map / Diagram</span>
+                    </button>
                   </div>
 
                   {/* Architecture Engineering Templates */}
@@ -800,7 +962,8 @@ export function FullPageNoteModal({
                     ref={textareaRef}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Write detailed architecture notes, trade-offs, and mental models for this chapter in Markdown..."
+                    onPaste={handlePaste}
+                    placeholder="Write detailed architecture notes, trade-offs, and mental models for this chapter in Markdown (Paste screenshots directly with Cmd+V)..."
                     className="flex-1 w-full text-xs sm:text-sm text-[var(--text)] font-sans leading-relaxed placeholder-[var(--text-muted)] bg-transparent resize-none focus:outline-none overflow-y-auto scrollbar-thin"
                   />
                 </div>
@@ -809,6 +972,120 @@ export function FullPageNoteModal({
           </div>
         </div>
       </div>
+
+      {/* Lightbox for Gallery clicked Concept Map */}
+      {lightboxConceptMap && (
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-[120] flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => {
+              setLightboxConceptMap(null);
+              setLightboxZoom(1);
+            }}
+          >
+            <header
+              className="h-14 px-4 sm:px-6 border-b border-white/10 bg-black/40 backdrop-blur flex items-center justify-between gap-3 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <ImageIcon className="h-4 w-4 text-[var(--primary)] shrink-0" />
+                <h3 className="text-xs sm:text-sm font-bold text-white truncate">
+                  {lightboxConceptMap.caption}
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1 rounded-xl bg-white/10 p-0.5 border border-white/10 text-white">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))
+                    }
+                    className="rounded-lg p-1.5 hover:bg-white/20 transition-colors"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-[11px] font-mono px-1.5 min-w-[48px] text-center">
+                    {Math.round(lightboxZoom * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxZoom((z) => Math.min(3.5, Number((z + 0.25).toFixed(2))))
+                    }
+                    className="rounded-lg p-1.5 hover:bg-white/20 transition-colors"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxZoom(1)}
+                    className="rounded-lg p-1.5 hover:bg-white/20 transition-colors"
+                    title="Reset Zoom"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = lightboxConceptMap.url;
+                    link.download = "concept-map.png";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="rounded-xl p-2 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Download Diagram"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLightboxConceptMap(null);
+                    setLightboxZoom(1);
+                  }}
+                  className="rounded-xl p-2 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Close (Esc)"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </header>
+
+            <div
+              className="flex-1 overflow-auto flex items-center justify-center p-4 sm:p-8 select-none"
+              onClick={() => {
+                setLightboxConceptMap(null);
+                setLightboxZoom(1);
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightboxConceptMap.url}
+                alt={lightboxConceptMap.caption}
+                style={{ transform: `scale(${lightboxZoom})` }}
+                className="max-h-[85vh] max-w-[90vw] object-contain transition-transform duration-150 origin-center drop-shadow-2xl rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Attach Concept Map / Diagram Modal */}
+      <AttachConceptMapModal
+        isOpen={isAttachMapOpen}
+        onClose={() => setIsAttachMapOpen(false)}
+        topicTitle={item.topic}
+        onInsertImage={handleInsertConceptMap}
+      />
     </ModalPortal>
   );
 }

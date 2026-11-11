@@ -19,7 +19,15 @@ import {
   Quote,
   Table as TableIcon,
   FileText,
+  Image as ImageIcon,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Download,
+  X,
 } from "lucide-react";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 interface MarkdownViewProps {
   content?: string | null;
@@ -28,25 +36,247 @@ interface MarkdownViewProps {
 }
 
 // ----------------------------------------------------------------------------
-// Inline Formatter: parses bold, italic, inline code, links, and strikethroughs
+// Concept Map & Architecture Diagram Renderer with Lightbox Zoom
+// ----------------------------------------------------------------------------
+function MarkdownImage({
+  src,
+  alt,
+  isBlock = false,
+}: {
+  src: string;
+  alt?: string;
+  isBlock?: boolean;
+}) {
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const cleanCaption =
+    (alt || "").replace(/^Concept Map:\s*/i, "").trim() ||
+    "Concept Map & Architecture Diagram";
+
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(src);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {}
+  };
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = `${cleanCaption.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "concept-map"}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <>
+      <figure
+        onClick={() => setIsLightboxOpen(true)}
+        className={`group/img relative rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]/30 overflow-hidden my-4 shadow-2xs hover:border-[var(--primary)]/50 transition-all cursor-zoom-in ${
+          isBlock ? "w-full" : "inline-block max-w-full"
+        }`}
+      >
+        {/* Top-right Floating action bar */}
+        <div className="absolute top-2.5 right-2.5 opacity-0 group-hover/img:opacity-100 transition-opacity z-10 flex items-center gap-1.5 bg-[var(--surface)]/90 backdrop-blur rounded-xl p-1 border border-[var(--border)] shadow-md">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+            title="Copy Image URL"
+          >
+            {copiedLink ? (
+              <Check className="h-3 w-3 text-[var(--success)]" />
+            ) : (
+              <Copy className="h-3 w-3" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+            title="Download Image"
+          >
+            <Download className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsLightboxOpen(true)}
+            className="flex items-center gap-1 rounded-lg bg-[var(--primary)] px-2 py-0.5 text-[10px] font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity"
+            title="Open in Full-Screen Lightbox"
+          >
+            <Maximize2 className="h-3 w-3" />
+            <span>Zoom</span>
+          </button>
+        </div>
+
+        {/* Visual Preview Frame */}
+        <div className="p-2 sm:p-3 flex items-center justify-center bg-[var(--background)]/60 min-h-[140px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={alt || "Concept Map Diagram"}
+            className="max-h-[500px] w-auto max-w-full object-contain rounded-lg transition-transform duration-200 group-hover/img:scale-[1.008]"
+            loading="lazy"
+          />
+        </div>
+
+        {/* Caption Banner */}
+        <figcaption className="px-4 py-2 border-t border-[var(--border)]/70 bg-[var(--surface)] flex items-center justify-between text-xs text-[var(--text-muted)]">
+          <div className="flex items-center gap-1.5 min-w-0 font-medium">
+            <ImageIcon className="h-3.5 w-3.5 text-[var(--primary)] shrink-0" />
+            <span className="truncate text-[var(--text)]">{cleanCaption}</span>
+          </div>
+          <span className="rounded-md bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider shrink-0 ml-2 border border-[var(--primary)]/20">
+            Concept Map
+          </span>
+        </figcaption>
+      </figure>
+
+      {/* Lightbox Modal with Zoom */}
+      {isLightboxOpen && (
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-[110] flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => {
+              setIsLightboxOpen(false);
+              setZoomLevel(1);
+            }}
+          >
+            {/* Lightbox Header Bar */}
+            <header
+              className="h-14 px-4 sm:px-6 border-b border-white/10 bg-black/40 backdrop-blur flex items-center justify-between gap-3 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <ImageIcon className="h-4 w-4 text-[var(--primary)] shrink-0" />
+                <h3 className="text-xs sm:text-sm font-bold text-white truncate">
+                  {cleanCaption}
+                </h3>
+              </div>
+
+              {/* Lightbox Controls */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1 rounded-xl bg-white/10 p-0.5 border border-white/10 text-white">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomLevel((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))
+                    }
+                    className="rounded-lg p-1.5 hover:bg-white/20 transition-colors"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-[11px] font-mono px-1.5 min-w-[48px] text-center">
+                    {Math.round(zoomLevel * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomLevel((z) => Math.min(3.5, Number((z + 0.25).toFixed(2))))
+                    }
+                    className="rounded-lg p-1.5 hover:bg-white/20 transition-colors"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel(1)}
+                    className="rounded-lg p-1.5 hover:bg-white/20 transition-colors"
+                    title="Reset Zoom"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  className="rounded-xl p-2 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Download Image"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLightboxOpen(false);
+                    setZoomLevel(1);
+                  }}
+                  className="rounded-xl p-2 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Close (Esc)"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </header>
+
+            {/* Lightbox Canvas */}
+            <div
+              className="flex-1 overflow-auto flex items-center justify-center p-4 sm:p-8 select-none"
+              onClick={() => {
+                setIsLightboxOpen(false);
+                setZoomLevel(1);
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={alt || "Concept Map"}
+                style={{ transform: `scale(${zoomLevel})` }}
+                className="max-h-[85vh] max-w-[90vw] object-contain transition-transform duration-150 origin-center drop-shadow-2xl rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+    </>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Inline Formatter: parses bold, italic, inline code, links, images, and strikethroughs
 // ----------------------------------------------------------------------------
 function renderInline(text: string): React.ReactNode[] {
   if (!text) return [];
 
   // Token regex for inline styles:
-  // 1: links [text](url)
-  // 2: inline code `code`
-  // 3: bold-italic ***text***
-  // 4: bold **text**
-  // 5: italic *text*
-  // 6: strikethrough ~~text~~
+  // 1: image ![alt](url)
+  // 2: links [text](url)
+  // 3: inline code `code`
+  // 4: bold-italic ***text***
+  // 5: bold **text**
+  // 6: italic *text*
+  // 7: strikethrough ~~text~~
   const tokenRegex =
-    /(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|`[^`]+`|\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~)/g;
+    /(!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|`[^`]+`|\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~)/g;
 
   const parts = text.split(tokenRegex);
 
   return parts.map((part, idx) => {
     if (!part) return null;
+
+    // Image: ![alt](url)
+    const imageMatch = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imageMatch) {
+      return (
+        <MarkdownImage
+          key={`img-${idx}`}
+          alt={imageMatch[1]}
+          src={imageMatch[2]}
+        />
+      );
+    }
 
     // Link: [label](url)
     const linkMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
@@ -316,6 +546,20 @@ export function MarkdownView({ content, className = "", compact = false }: Markd
     if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
       elements.push(
         <hr key={`hr-${i}`} className="my-3 border-[var(--border)]" />
+      );
+      continue;
+    }
+
+    // Standalone Concept Map / Image: ![alt](url)
+    const blockImageMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (blockImageMatch) {
+      elements.push(
+        <MarkdownImage
+          key={`block-img-${i}`}
+          alt={blockImageMatch[1]}
+          src={blockImageMatch[2]}
+          isBlock
+        />
       );
       continue;
     }

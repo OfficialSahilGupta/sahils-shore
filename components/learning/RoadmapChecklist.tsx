@@ -28,6 +28,7 @@ import {
   ArrowUpToLine,
   FileText,
   Maximize2,
+  Image as ImageIcon,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import {
@@ -405,6 +406,7 @@ export function RoadmapChecklist({
               (acc, s) => acc + (s.resources?.length || 0),
               0
             );
+            const conceptMapsCount = (chapterNotes.match(/!\[([^\]]*)\]\(([^)]+)\)/g) || []).length;
 
             const itemCategory =
               item.category ||
@@ -568,6 +570,17 @@ export function RoadmapChecklist({
                           >
                             <BookOpen className="h-2.5 w-2.5" />
                             <span>Notes</span>
+                          </button>
+                        )}
+                        {conceptMapsCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenFullPageNotes(item)}
+                            className="flex items-center gap-1 rounded bg-[var(--primary)]/15 px-1.5 py-0.2 text-[10px] font-semibold text-[var(--primary)] shrink-0 hover:bg-[var(--primary)]/25 transition-colors border border-[var(--primary)]/20 cursor-pointer"
+                            title={`Contains ${conceptMapsCount} visual concept map diagram${conceptMapsCount > 1 ? "s" : ""}`}
+                          >
+                            <ImageIcon className="h-2.5 w-2.5" />
+                            <span>{conceptMapsCount} {conceptMapsCount === 1 ? "map" : "maps"}</span>
                           </button>
                         )}
                         {hasCode && (
