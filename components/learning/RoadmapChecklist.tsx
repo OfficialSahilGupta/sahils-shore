@@ -23,6 +23,9 @@ import {
   ChevronUp,
   Trash2,
   Edit3,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpToLine,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import {
@@ -52,6 +55,7 @@ interface RoadmapChecklistProps {
       status?: "planned" | "in_progress" | "completed";
       notes?: string | null;
       resources?: Json;
+      targetPosition?: number;
     }
   ) => Promise<void>;
   onAddTopic: (input: {
@@ -59,8 +63,10 @@ interface RoadmapChecklistProps {
     category: string;
     notes?: string;
     status: "planned" | "in_progress" | "completed";
+    placement?: "top" | "bottom";
   }) => Promise<void>;
   onDeleteTopic?: (itemId: string) => Promise<void>;
+  onReorderTopics?: (fromIndex: number, toIndex: number) => Promise<void>;
 }
 
 export function RoadmapChecklist({
@@ -71,6 +77,7 @@ export function RoadmapChecklist({
   onUpdateTopic,
   onAddTopic,
   onDeleteTopic,
+  onReorderTopics,
 }: RoadmapChecklistProps) {
   const [filter, setFilter] = useState<string>("all");
   const [selectedItemForStudy, setSelectedItemForStudy] = useState<LearningItem | null>(null);
@@ -348,6 +355,9 @@ export function RoadmapChecklist({
               (Array.isArray(item.resources) && (item.resources[0] as { category?: string })?.category) ||
               "Core";
 
+            const trueIndex = items.findIndex((i) => i.id === item.id);
+            const displayIndex = trueIndex >= 0 ? trueIndex + 1 : index + 1;
+
             return (
               <div
                 key={item.id}
@@ -374,9 +384,40 @@ export function RoadmapChecklist({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono text-[var(--text-muted)] shrink-0">
-                          #{index + 1}
-                        </span>
+                        {/* Position Badge & Up/Down Toggling Controls */}
+                        <div className="flex items-center gap-1 shrink-0 bg-[var(--surface-muted)]/40 rounded-lg px-1.5 py-0.5 border border-[var(--border)]">
+                          {onReorderTopics && (
+                            <div className="flex flex-col -space-y-1">
+                              <button
+                                type="button"
+                                disabled={trueIndex <= 0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onReorderTopics(trueIndex, trueIndex - 1);
+                                }}
+                                className="rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface-muted)] disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                                title="Move topic up (Shift above)"
+                              >
+                                <ArrowUp className="h-2.5 w-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={trueIndex < 0 || trueIndex >= items.length - 1}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onReorderTopics(trueIndex, trueIndex + 1);
+                                }}
+                                className="rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface-muted)] disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                                title="Move topic down (Shift below)"
+                              >
+                                <ArrowDown className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          )}
+                          <span className="text-xs font-mono font-bold text-[var(--text-muted)]">
+                            #{displayIndex}
+                          </span>
+                        </div>
 
                         {/* Topic title button - Clicking toggles sub-topic drawer */}
                         <button
@@ -456,11 +497,23 @@ export function RoadmapChecklist({
 
                   {/* Actions on topic */}
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {onReorderTopics && trueIndex > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onReorderTopics(trueIndex, 0)}
+                        className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2 py-1.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface-muted)] transition-all shrink-0"
+                        title="Move directly to #1 (Top of curriculum)"
+                      >
+                        <ArrowUpToLine className="h-3.5 w-3.5 text-[var(--primary)]" />
+                        <span className="hidden md:inline">To Top</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setEditingTopicItem(item)}
                       className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] hover:text-[var(--primary)] transition-all shrink-0"
-                      title="Edit Topic Title, Category & Architecture Notes"
+                      title="Edit Topic Title, Category & Position"
                     >
                       <Edit3 className="h-3.5 w-3.5 text-[var(--text-muted)] group-hover:text-[var(--primary)]" />
                       <span>Edit</span>
@@ -696,6 +749,7 @@ export function RoadmapChecklist({
         isOpen={isAddTopicOpen}
         onClose={() => setIsAddTopicOpen(false)}
         trackTitle={trackTitle}
+        totalTopics={items.length}
         onAddTopic={onAddTopic}
       />
 
@@ -706,6 +760,8 @@ export function RoadmapChecklist({
           onClose={() => setEditingTopicItem(null)}
           item={editingTopicItem}
           trackTitle={trackTitle}
+          totalTopics={items.length}
+          currentPosition={items.findIndex((i) => i.id === editingTopicItem.id) + 1}
           onSave={onUpdateTopic}
           onOpenStudyWorkspace={(item) => {
             setEditingTopicItem(null);

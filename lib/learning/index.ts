@@ -1134,6 +1134,56 @@ export async function getRoadmapItems(
   return [];
 }
 
+/**
+ * Pure array reordering utility: moves an element from fromIndex to toIndex,
+ * reassigning order_index (0, 1, 2, ...) to ensure deterministic ordering.
+ */
+export function reorderLearningItems(
+  items: LearningItem[],
+  fromIndex: number,
+  toIndex: number
+): LearningItem[] {
+  if (fromIndex < 0 || fromIndex >= items.length) return items;
+  if (toIndex < 0 || toIndex >= items.length) return items;
+  if (fromIndex === toIndex) return items;
+
+  const result = [...items];
+  const [removed] = result.splice(fromIndex, 1);
+  result.splice(toIndex, 0, removed);
+
+  return result.map((item, idx) => ({
+    ...item,
+    order_index: idx,
+  }));
+}
+
+/**
+ * Persists the updated order_index sequence for items across a track in Supabase.
+ */
+export async function persistRoadmapOrder(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  trackId: string | null | undefined,
+  reorderedItems: LearningItem[]
+): Promise<void> {
+  if (!trackId || !isValidUUID(trackId) || !userId || userId === "preview") {
+    return;
+  }
+
+  try {
+    const updates = reorderedItems.map((item, idx) =>
+      supabase
+        .from("learning_items")
+        .update({ order_index: idx, updated_at: new Date().toISOString() })
+        .eq("id", item.id)
+        .eq("user_id", userId)
+    );
+    await Promise.allSettled(updates);
+  } catch (err) {
+    console.warn("[persistRoadmapOrder] Supabase update warning:", err);
+  }
+}
+
 export async function toggleRoadmapStatus(
   supabase: SupabaseClient<Database>,
   userId: string,

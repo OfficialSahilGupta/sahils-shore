@@ -31,6 +31,8 @@ interface EditTopicModalProps {
   onClose: () => void;
   item: LearningItem | null;
   trackTitle: string;
+  totalTopics?: number;
+  currentPosition?: number;
   onSave: (
     itemId: string,
     updates: {
@@ -39,6 +41,7 @@ interface EditTopicModalProps {
       status?: "planned" | "in_progress" | "completed";
       notes?: string | null;
       resources?: Json;
+      targetPosition?: number;
     }
   ) => Promise<void>;
   onOpenStudyWorkspace?: (item: LearningItem) => void;
@@ -65,6 +68,8 @@ export function EditTopicModal({
   onClose,
   item,
   trackTitle,
+  totalTopics = 1,
+  currentPosition = 1,
   onSave,
   onOpenStudyWorkspace,
   onDeleteTopic,
@@ -73,6 +78,7 @@ export function EditTopicModal({
   const [category, setCategory] = useState("Core Principles");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"planned" | "in_progress" | "completed">("planned");
+  const [selectedPosition, setSelectedPosition] = useState<number>(currentPosition || 1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -97,6 +103,7 @@ export function EditTopicModal({
         "Core Principles";
       setCategory(itemCat);
       setStatus(item.status || "planned");
+      setSelectedPosition(currentPosition || 1);
 
       // Extract overview notes from subsections or legacy notes
       const subSections = parseTopicSubSections(item);
@@ -105,7 +112,7 @@ export function EditTopicModal({
       setNotes(overviewNote);
       setErrorMessage(null);
     }
-  }, [item, isOpen]);
+  }, [item, isOpen, currentPosition]);
 
   if (!isOpen || !item) return null;
 
@@ -149,6 +156,7 @@ export function EditTopicModal({
         status,
         notes: synthesizedNotes || null,
         resources: packedResources,
+        targetPosition: selectedPosition !== currentPosition ? selectedPosition : undefined,
       });
 
       onClose();
@@ -240,6 +248,68 @@ export function EditTopicModal({
                 />
               </div>
             </div>
+
+            {/* Curriculum Position & Order */}
+            {totalTopics > 1 && (
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/15 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-[var(--text)]">
+                    Curriculum Position & Order
+                  </label>
+                  <span className="text-[11px] text-[var(--text-muted)] font-mono">
+                    Currently #{currentPosition} of {totalTopics}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Select
+                      value={String(selectedPosition)}
+                      onChange={(e) => setSelectedPosition(Number(e.target.value))}
+                      options={Array.from({ length: totalTopics }, (_, i) => ({
+                        value: String(i + 1),
+                        label:
+                          i === 0
+                            ? `Position #1 (Top of Curriculum — shifts others down)`
+                            : i === totalTopics - 1
+                              ? `Position #${i + 1} (End of Curriculum)`
+                              : `Position #${i + 1}`,
+                      }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPosition(1)}
+                      className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                        selectedPosition === 1
+                          ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
+                          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-muted)]"
+                      }`}
+                      title="Set to Position #1"
+                    >
+                      Top (#1)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPosition(totalTopics)}
+                      className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                        selectedPosition === totalTopics
+                          ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
+                          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-muted)]"
+                      }`}
+                      title={`Set to Position #${totalTopics}`}
+                    >
+                      Bottom
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  Changing position shifts other topics automatically to accommodate this order.
+                </p>
+              </div>
+            )}
 
             {/* Quick Category Chips */}
             <div>

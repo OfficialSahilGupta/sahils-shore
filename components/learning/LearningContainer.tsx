@@ -57,6 +57,8 @@ import {
   logStudySession,
   calculateDynamicTrackMastery,
   packTopicSubSections,
+  reorderLearningItems,
+  persistRoadmapOrder,
   PRESET_TRACK_TEMPLATES,
   type CreateTrackInput,
   type CreateConceptInput,
@@ -580,6 +582,31 @@ export function LearningContainer() {
     }
   };
 
+  const handleReorderTopics = async (fromIndex: number, toIndex: number) => {
+    if (!activeTrackId || fromIndex === toIndex) return;
+    if (fromIndex < 0 || fromIndex >= roadmapItems.length) return;
+    if (toIndex < 0 || toIndex >= roadmapItems.length) return;
+
+    const movedTopic = roadmapItems[fromIndex];
+    const reordered = reorderLearningItems(roadmapItems, fromIndex, toIndex);
+    setRoadmapItems(reordered);
+
+    if (typeof window !== "undefined") {
+      try {
+        const key = userId
+          ? `shore_roadmap_${activeTrackId}`
+          : `shore_preview_roadmap_${activeTrackId}`;
+        localStorage.setItem(key, JSON.stringify(reordered));
+      } catch (e) {}
+    }
+
+    showToast(`Moved "${movedTopic?.topic || "Topic"}" to position #${toIndex + 1}!`);
+
+    if (userId) {
+      await persistRoadmapOrder(supabase, userId, activeTrackId, reordered);
+    }
+  };
+
   const handleUpdateTopic = async (
     itemId: string,
     updates: {
@@ -588,10 +615,48 @@ export function LearningContainer() {
       status?: "planned" | "in_progress" | "completed";
       notes?: string | null;
       resources?: Json;
+      targetPosition?: number;
     }
   ) => {
+    const { targetPosition, ...fieldUpdates } = updates;
+
+    // Handle position move if requested
+    if (targetPosition !== undefined && targetPosition >= 1 && targetPosition <= roadmapItems.length) {
+      const fromIndex = roadmapItems.findIndex((it) => it.id === itemId);
+      const toIndex = targetPosition - 1;
+      if (fromIndex !== -1 && fromIndex !== toIndex) {
+        const reordered = reorderLearningItems(roadmapItems, fromIndex, toIndex);
+        const updatedList = reordered.map((item) =>
+          item.id === itemId ? { ...item, ...fieldUpdates } : item
+        );
+        setRoadmapItems(updatedList);
+
+        if (typeof window !== "undefined" && activeTrackId) {
+          try {
+            const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
+            localStorage.setItem(key, JSON.stringify(updatedList));
+          } catch (e) {}
+        }
+
+        showToast(`Updated topic & moved to position #${targetPosition}!`);
+
+        if (userId) {
+          try {
+            await updateRoadmapItem(supabase, userId, itemId, {
+              ...fieldUpdates,
+              order_index: toIndex,
+            });
+            await persistRoadmapOrder(supabase, userId, activeTrackId, updatedList);
+          } catch (e) {
+            console.warn("Update & reorder topic warning:", e);
+          }
+        }
+        return;
+      }
+    }
+
     setRoadmapItems((prev) => {
-      const next = prev.map((item) => (item.id === itemId ? { ...item, ...updates } : item));
+      const next = prev.map((item) => (item.id === itemId ? { ...item, ...fieldUpdates } : item));
       if (typeof window !== "undefined" && activeTrackId) {
         try {
           const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
@@ -604,7 +669,7 @@ export function LearningContainer() {
 
     if (userId) {
       try {
-        const updated = await updateRoadmapItem(supabase, userId, itemId, updates);
+        const updated = await updateRoadmapItem(supabase, userId, itemId, fieldUpdates);
         if (updated) {
           setRoadmapItems((prev) =>
             prev.map((item) => (item.id === itemId ? updated : item))
@@ -621,6 +686,7 @@ export function LearningContainer() {
     category: string;
     notes?: string;
     status: "planned" | "in_progress" | "completed";
+    placement?: "top" | "bottom";
   }) => {
     if (!activeTrackId) return;
 
@@ -628,6 +694,7 @@ export function LearningContainer() {
     if (!trimmedTopic) return;
 
     const trimmedCategory = input.category.trim() || "Core Principles";
+    const placeAtTop = input.placement === "top";
 
     // 1. Pack standard resources with initial sub-section
     const initialSub = [
@@ -654,15 +721,24 @@ export function LearningContainer() {
       notes: input.notes?.trim() || null,
       status: input.status,
       resources: packed.resources,
-      order_index: roadmapItems.length,
+      order_index: placeAtTop ? 0 : roadmapItems.length,
       completed_at: input.status === "completed" ? new Date().toISOString() : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    // 3. Immediately update UI state & localStorage
+    // 3. Update UI state & localStorage immediately
     setRoadmapItems((prev) => {
-      const next = [...prev, optimisticItem];
+      let next: LearningItem[];
+      if (placeAtTop) {
+        next = [
+          optimisticItem,
+          ...prev.map((item, idx) => ({ ...item, order_index: idx + 1 })),
+        ];
+      } else {
+        next = [...prev, optimisticItem];
+      }
+
       if (typeof window !== "undefined") {
         try {
           const key = userId ? `shore_roadmap_${activeTrackId}` : `shore_preview_roadmap_${activeTrackId}`;
@@ -671,7 +747,12 @@ export function LearningContainer() {
       }
       return next;
     });
-    showToast(`Added topic "${trimmedTopic}" to roadmap!`);
+
+    showToast(
+      placeAtTop
+        ? `Added "${trimmedTopic}" at Position #1 (Top of curriculum)!`
+        : `Added topic "${trimmedTopic}" to roadmap!`
+    );
 
     // 4. If logged in, persist to database & reconcile permanent ID
     if (userId) {
@@ -683,10 +764,10 @@ export function LearningContainer() {
           notes: input.notes,
           status: input.status,
           resources: packed.resources,
-          order_index: roadmapItems.length,
+          order_index: placeAtTop ? 0 : roadmapItems.length,
         });
 
-        if (created && created.id !== tempId) {
+        if (created) {
           setRoadmapItems((prev) => {
             const next = prev.map((item) => (item.id === tempId ? created : item));
             if (typeof window !== "undefined") {
@@ -696,6 +777,13 @@ export function LearningContainer() {
             }
             return next;
           });
+
+          if (placeAtTop) {
+            await persistRoadmapOrder(supabase, userId, activeTrackId, [
+              created,
+              ...roadmapItems.map((item, idx) => ({ ...item, order_index: idx + 1 })),
+            ]);
+          }
         }
       } catch (err: any) {
         console.warn("[handleAddTopic] Supabase insert warning, safely retained locally:", err);
@@ -1147,6 +1235,7 @@ export function LearningContainer() {
             onUpdateTopic={handleUpdateTopic}
             onAddTopic={handleAddTopic}
             onDeleteTopic={handleDeleteTopic}
+            onReorderTopics={handleReorderTopics}
           />
         )}
 

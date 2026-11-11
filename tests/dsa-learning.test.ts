@@ -26,6 +26,7 @@ import {
   isValidUUID,
   updateRoadmapItem,
   deleteRoadmapItem,
+  reorderLearningItems,
 } from "../lib/learning/index.ts";
 import { todayIST, yesterdayIST } from "../lib/date-utils.ts";
 import type { DsaProblem, LearningItem, InterviewQa, LearningConcept, Project } from "../types/index.ts";
@@ -826,6 +827,68 @@ describe("12. Curriculum Growth Beyond 16 Topics & Dynamic Mastery Recalculation
       expandedMastery.overallScore >= baselineMastery.overallScore,
       "Adding and mastering topic #17 should increase overall mastery score"
     );
+  });
+});
+
+describe("8. Topic Position Switching & Reordering Engine", () => {
+  const sampleTopics: LearningItem[] = [
+    { id: "t1", topic: "Spring Boot Basics", order_index: 0 } as any,
+    { id: "t2", topic: "Spring Data JPA", order_index: 1 } as any,
+    { id: "t3", topic: "Spring Security", order_index: 2 } as any,
+    { id: "t4", topic: "Microservices", order_index: 3 } as any,
+    { id: "t5", topic: "Spring Intro", order_index: 4 } as any,
+  ];
+
+  test("moving a custom topic (e.g. 'Spring Intro') from last to 1st automatically shifts all other topics down", () => {
+    // Move topic 'Spring Intro' at index 4 to index 0 (Position #1)
+    const reordered = reorderLearningItems(sampleTopics, 4, 0);
+
+    assert.equal(reordered.length, 5);
+    assert.equal(reordered[0].topic, "Spring Intro");
+    assert.equal(reordered[0].order_index, 0);
+
+    assert.equal(reordered[1].topic, "Spring Boot Basics");
+    assert.equal(reordered[1].order_index, 1);
+
+    assert.equal(reordered[2].topic, "Spring Data JPA");
+    assert.equal(reordered[2].order_index, 2);
+
+    assert.equal(reordered[3].topic, "Spring Security");
+    assert.equal(reordered[3].order_index, 3);
+
+    assert.equal(reordered[4].topic, "Microservices");
+    assert.equal(reordered[4].order_index, 4);
+  });
+
+  test("moving a topic up one slot swaps positions with predecessor", () => {
+    // Move 'Spring Security' (index 2) up to index 1
+    const reordered = reorderLearningItems(sampleTopics, 2, 1);
+
+    assert.equal(reordered[1].topic, "Spring Security");
+    assert.equal(reordered[1].order_index, 1);
+    assert.equal(reordered[2].topic, "Spring Data JPA");
+    assert.equal(reordered[2].order_index, 2);
+  });
+
+  test("moving a topic down one slot swaps positions with successor", () => {
+    // Move 'Spring Boot Basics' (index 0) down to index 1
+    const reordered = reorderLearningItems(sampleTopics, 0, 1);
+
+    assert.equal(reordered[0].topic, "Spring Data JPA");
+    assert.equal(reordered[0].order_index, 0);
+    assert.equal(reordered[1].topic, "Spring Boot Basics");
+    assert.equal(reordered[1].order_index, 1);
+  });
+
+  test("edge cases: out-of-bounds or same-index moves return unchanged list safely", () => {
+    const noopSame = reorderLearningItems(sampleTopics, 2, 2);
+    assert.deepEqual(noopSame, sampleTopics);
+
+    const noopNegative = reorderLearningItems(sampleTopics, -1, 2);
+    assert.deepEqual(noopNegative, sampleTopics);
+
+    const noopBeyond = reorderLearningItems(sampleTopics, 1, 99);
+    assert.deepEqual(noopBeyond, sampleTopics);
   });
 });
 

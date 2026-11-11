@@ -331,4 +331,11 @@ _Update this section after every phase so context survives between sessions._
     - Renamed module from rigid "Full-Stack Learning Hub" to standardized **"Learning Hub"** across `LearningContainer.tsx`, `modules.ts`, `app/learning/page.tsx`, `CommandPalette.tsx`, and `README.md`.
     - Modernized header subtitle to general, future-proof copy: "Master your core engineering tracks and technical approaches with structured roadmaps, architecture notes, code implementations, and project milestones."
     - Added interactive "Active Approaches" track pills directly in the page header allowing one-click track toggling across Java Full-Stack, MERN, and custom technical tracks.
+  - Built Comprehensive Topic Positioning & Reordering Architecture:
+    - Implemented `reorderLearningItems` pure array movement utility and `persistRoadmapOrder` in `lib/learning/index.ts` automatically re-indexing `order_index` (0, 1, 2, ...) and syncing to Supabase and localStorage.
+    - Added dedicated Up/Down step toggling buttons (`ArrowUp`, `ArrowDown`) next to each topic row's position badge (`#1`, `#2`, ...) in `RoadmapChecklist.tsx` for fast 1-slot adjustments.
+    - Added 1-click **"To Top"** quick-action button (`ArrowUpToLine`) on every topic row, immediately elevating any topic (e.g. newly added topics) to Position #1 while automatically shifting all existing topics down.
+    - Enhanced `EditTopicModal.tsx` with a custom `Select` dropdown for exact Curriculum Position selection (Positions 1 through N), complete with "Top (#1)" and "Bottom" quick jump chips.
+    - Enhanced `AddTopicModal.tsx` with a "Curriculum Placement & Order" selector, allowing new topics (such as "Spring Intro") to be placed directly at Position #1 on creation, shifting all other topics down automatically.
+    - Wrote 4 new unit tests covering moving topics to position #1, shifting down, swapping up/down slots, and out-of-bounds boundary safety (217 tests passing total).
 - Known issues / TODOs: _(none yet)_

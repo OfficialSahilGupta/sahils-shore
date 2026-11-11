@@ -13,11 +13,13 @@ interface AddTopicModalProps {
   isOpen: boolean;
   onClose: () => void;
   trackTitle: string;
+  totalTopics?: number;
   onAddTopic: (input: {
     topic: string;
     category: string;
     notes?: string;
     status: "planned" | "in_progress" | "completed";
+    placement?: "top" | "bottom";
   }) => Promise<void>;
 }
 
@@ -25,12 +27,14 @@ export function AddTopicModal({
   isOpen,
   onClose,
   trackTitle,
+  totalTopics = 0,
   onAddTopic,
 }: AddTopicModalProps) {
   const [topic, setTopic] = useState("");
   const [category, setCategory] = useState("Core Principles");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"planned" | "in_progress" | "completed">("planned");
+  const [placement, setPlacement] = useState<"bottom" | "top">("bottom");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -63,11 +67,13 @@ export function AddTopicModal({
         category: category.trim() || "Core",
         notes: notes.trim() || undefined,
         status,
+        placement,
       });
       setTopic("");
       setNotes("");
       setCategory("Core Principles");
       setStatus("planned");
+      setPlacement("bottom");
       setErrorMessage(null);
       onClose();
     } catch (err: any) {
@@ -155,6 +161,26 @@ export function AddTopicModal({
                   ]}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
+                Curriculum Placement & Order
+              </label>
+              <Select
+                value={placement}
+                onChange={(e) => setPlacement(e.target.value as "top" | "bottom")}
+                options={[
+                  {
+                    value: "bottom",
+                    label: `At the End (Position #${totalTopics + 1})`,
+                  },
+                  {
+                    value: "top",
+                    label: "At the Beginning (Position #1 - shifts all topics down)",
+                  },
+                ]}
+              />
             </div>
 
             <div>
