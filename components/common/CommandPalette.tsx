@@ -289,7 +289,7 @@ export function CommandPalette({
                 { label: "Todos & Planner", route: "/todos", icon: CheckSquare },
                 { label: "Daily Tracker & Timer", route: "/tracker", icon: Clock },
                 { label: "DSA Tracker", route: "/dsa", shortcut: "g d", icon: Code2 },
-                { label: "Full-Stack Learning Hub", route: "/learning", shortcut: "g l", icon: BookOpen },
+                { label: "Learning Hub", route: "/learning", shortcut: "g l", icon: BookOpen },
                 { label: "German Hub & Pronunciation Lab", route: "/german", shortcut: "g g", icon: Languages },
                 { label: "Resume & Career Hub", route: "/career", shortcut: "g c", icon: Briefcase },
                 { label: "Expense Tracker", route: "/expenses", shortcut: "g e", icon: Wallet },

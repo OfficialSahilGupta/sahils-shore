@@ -95,14 +95,14 @@ export const MODULES: AppModule[] = [
     category: "growth",
     phase: 6,
   },
-  // 6. Full-Stack Learning Hub
+  // 6. Learning Hub
   {
     id: "learning",
-    name: "Full-Stack Learning Hub",
+    name: "Learning Hub",
     shortName: "Learning",
     description:
-      "Spring Boot & MERN roadmaps, concept logs, projects portfolio, and interview Q&A.",
-    tagline: "Java, Spring, Next.js & MERN mastery",
+      "Structured engineering tracks, concept logs, projects portfolio, and technical interview preparation.",
+    tagline: "Master your engineering stacks & roadmaps",
     iconName: "Layers",
     route: "/learning",
     enabled: true,

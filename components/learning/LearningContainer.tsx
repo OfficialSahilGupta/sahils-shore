@@ -982,14 +982,39 @@ export function LearningContainer() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text)] flex items-center gap-2.5">
             <Layers className="h-6 w-6 text-[var(--primary)]" />
-            Full-Stack Learning Hub
+            Learning Hub
           </h1>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Master Spring Boot, MERN, System Design, DevOps, and custom tracks with deep study notes, code implementations, and project milestones
+          <p className="text-xs text-[var(--text-muted)] mt-1 max-w-2xl">
+            Master your core engineering tracks and technical approaches with structured roadmaps, architecture notes, code implementations, and project milestones.
           </p>
+
+          {tracks.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)]">
+                Active Approaches:
+              </span>
+              {tracks.map((t) => {
+                const isSelected = t.id === activeTrackId;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setActiveTrackId(t.id)}
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all ${
+                      isSelected
+                        ? "bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30 font-semibold shadow-2xs"
+                        : "bg-[var(--surface-muted)]/50 text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]"
+                    }`}
+                  >
+                    <span>{t.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           <button
             type="button"
             onClick={fetchTrackData}
