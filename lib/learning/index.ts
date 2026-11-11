@@ -253,6 +253,58 @@ export function parseTopicSubSections(
 }
 
 /**
+ * Determines whether a topic has user-defined, explicit sub-topics.
+ * Standalone topics with only a default synthesized single subsection (e.g. "Overview & Core Architecture")
+ * or no subsections return false, treating the notes as direct chapter notes rather than a sub-topic tree.
+ */
+export function hasExplicitSubTopics(
+  item: { notes?: string | null; resources?: Json; status?: string; topic?: string } | null | undefined
+): boolean {
+  if (!item) return false;
+  const resourcesData = item.resources as any;
+  if (resourcesData && typeof resourcesData === "object" && !Array.isArray(resourcesData)) {
+    if (Array.isArray(resourcesData.subsections) && resourcesData.subsections.length > 0) {
+      const subs = resourcesData.subsections;
+      // If there are 2 or more sub-sections, it definitely has explicit sub-topics
+      if (subs.length > 1) return true;
+      // If exactly 1 sub-section: check if it's the legacy dummy name or matches chapter root
+      if (subs.length === 1) {
+        const title = (subs[0]?.title || "").trim().toLowerCase();
+        const topic = (item.topic || "").trim().toLowerCase();
+        if (
+          !title ||
+          title === "overview & core architecture" ||
+          title === "overview and core architecture" ||
+          title === "chapter study notes" ||
+          title === "chapter notes" ||
+          title === "core concepts & architecture" ||
+          title === "sub-section 1" ||
+          (topic && title === topic) ||
+          (topic && title === `core ${topic}`)
+        ) {
+          return false;
+        }
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Returns the effective chapter study notes, whether stored at topic root or inside the primary subsection.
+ */
+export function getTopicChapterNotes(
+  item: { notes?: string | null; resources?: Json } | null | undefined
+): string {
+  if (!item) return "";
+  const subSections = parseTopicSubSections(item);
+  const primarySubNote = subSections[0]?.notes?.trim();
+  if (primarySubNote) return primarySubNote;
+  return item.notes?.trim() || "";
+}
+
+/**
  * Packs multiple sub-sections into synthesized markdown notes and packed JSON resources.
  */
 export function packTopicSubSections(

@@ -11,6 +11,7 @@ import React, { useState, useEffect } from "react";
 import {
   X,
   Edit3,
+  Eye,
   BookOpen,
   Sparkles,
   Save,
@@ -24,7 +25,9 @@ import { ModalPortal } from "@/components/ui/modal-portal";
 import {
   parseTopicSubSections,
   packTopicSubSections,
+  hasExplicitSubTopics,
 } from "@/lib/learning";
+import { MarkdownView } from "@/components/common/MarkdownView";
 
 interface EditTopicModalProps {
   isOpen: boolean;
@@ -77,6 +80,7 @@ export function EditTopicModal({
   const [topic, setTopic] = useState("");
   const [category, setCategory] = useState("Core Principles");
   const [notes, setNotes] = useState("");
+  const [notesTab, setNotesTab] = useState<"edit" | "preview">("edit");
   const [status, setStatus] = useState<"planned" | "in_progress" | "completed">("planned");
   const [selectedPosition, setSelectedPosition] = useState<number>(currentPosition || 1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -132,12 +136,17 @@ export function EditTopicModal({
 
       // Parse existing sub-sections and update the primary overview note
       const subSections = parseTopicSubSections(item);
+      const hasExplicit = hasExplicitSubTopics(item);
       if (subSections.length > 0) {
         subSections[0].notes = notes.trim();
+        // If it was the legacy dummy title and not explicit sub-topics, clean it up
+        if (!hasExplicit && subSections[0].title.toLowerCase().includes("overview")) {
+          subSections[0].title = trimmedTopic || "Chapter Notes";
+        }
       } else {
         subSections.push({
           id: `sub-init-${Date.now()}`,
-          title: "Overview & Core Architecture",
+          title: trimmedTopic || "Chapter Notes",
           notes: notes.trim(),
           codeSnippet: "",
           codeLanguage: "java",
@@ -336,21 +345,51 @@ export function EditTopicModal({
 
             {/* Architecture Overview Notes */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-[var(--text)]">
-                  Architecture Overview & Key Notes
+                  Architecture & Study Notes
                 </label>
-                <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                  Markdown supported
-                </span>
+                <div className="flex items-center gap-1 rounded-lg bg-[var(--surface-muted)]/50 p-0.5 border border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => setNotesTab("edit")}
+                    className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all ${
+                      notesTab === "edit"
+                        ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
+                        : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                    }`}
+                  >
+                    <Edit3 className="h-2.5 w-2.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNotesTab("preview")}
+                    className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all ${
+                      notesTab === "preview"
+                        ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
+                        : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                    }`}
+                  >
+                    <Eye className="h-2.5 w-2.5" />
+                    <span>Preview</span>
+                  </button>
+                </div>
               </div>
-              <textarea
-                rows={4}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="High-level engineering takeaways, JVM internals, design tradeoffs..."
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-y font-sans"
-              />
+
+              {notesTab === "edit" ? (
+                <textarea
+                  rows={4}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="High-level engineering takeaways, JVM internals, design tradeoffs... (Markdown supported)"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-y font-sans leading-relaxed"
+                />
+              ) : (
+                <div className="w-full min-h-[100px] max-h-[220px] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-xs scrollbar-thin">
+                  <MarkdownView content={notes} />
+                </div>
+              )}
             </div>
 
             {/* Link to Deep Study Workspace */}

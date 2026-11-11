@@ -32,8 +32,11 @@ import {
   type TrackMasteryBreakdown,
   parseTopicSubSections,
   packTopicSubSections,
+  hasExplicitSubTopics,
+  getTopicChapterNotes,
   type TopicSubSection,
 } from "@/lib/learning";
+import { MarkdownView } from "@/components/common/MarkdownView";
 import { TopicStudyModal } from "./TopicStudyModal";
 import { AddTopicModal } from "./AddTopicModal";
 import { EditTopicModal } from "./EditTopicModal";
@@ -159,6 +162,8 @@ export function RoadmapChecklist({
     if (!text) return;
 
     const subSections = parseTopicSubSections(item);
+    const hasSubTopics = hasExplicitSubTopics(item);
+
     const newSub: TopicSubSection = {
       id: `sub-${Date.now()}`,
       title: text,
@@ -169,7 +174,28 @@ export function RoadmapChecklist({
       isCompleted: false,
     };
 
-    const updatedSubs = [...subSections, newSub];
+    let updatedSubs: TopicSubSection[];
+    if (!hasSubTopics && subSections.length === 1) {
+      // If the single subsection had NO custom notes, code, or links, replace it
+      const hasContent =
+        Boolean(subSections[0].notes?.trim()) ||
+        Boolean(subSections[0].codeSnippet?.trim()) ||
+        (subSections[0].resources && subSections[0].resources.length > 0);
+
+      if (!hasContent) {
+        updatedSubs = [newSub];
+      } else {
+        // Keep existing notes/code, but use a clean title instead of dummy overview
+        const cleanedTitle =
+          subSections[0].title.toLowerCase().includes("overview")
+            ? "Core Concepts & Architecture"
+            : subSections[0].title;
+        updatedSubs = [{ ...subSections[0], title: cleanedTitle }, newSub];
+      }
+    } else {
+      updatedSubs = [...subSections, newSub];
+    }
+
     const { notes, resources } = packTopicSubSections(updatedSubs, item.category);
 
     await onUpdateTopic(item.id, {
@@ -337,6 +363,8 @@ export function RoadmapChecklist({
         <div className="divide-y divide-[var(--border)] w-full">
           {filteredItems.map((item, index) => {
             const subSections = parseTopicSubSections(item);
+            const hasSubTopics = hasExplicitSubTopics(item);
+            const chapterNotes = getTopicChapterNotes(item);
             const isExpanded = expandedTopicIds.has(item.id);
             const completedSubSections = subSections.filter((s) => s.isCompleted).length;
             const hasNotes =
@@ -448,23 +476,57 @@ export function RoadmapChecklist({
                           {item.status.replace("_", " ")}
                         </span>
 
-                        {/* Sub-sections count badge (clicking also toggles expansion) */}
-                        <button
-                          type="button"
-                          onClick={() => toggleExpand(item.id)}
-                          className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--primary)] border border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 transition-colors shrink-0"
-                          title="Click to view and add sub-topics"
-                        >
-                          <FolderTree className="h-2.5 w-2.5" />
-                          <span>
-                            {completedSubSections}/{subSections.length} sub-topics
-                          </span>
-                          {isExpanded ? (
-                            <ChevronUp className="h-2.5 w-2.5 ml-0.5" />
-                          ) : (
-                            <ChevronDown className="h-2.5 w-2.5 ml-0.5" />
-                          )}
-                        </button>
+                        {/* Sub-topics count badge or Notes trigger button */}
+                        {hasSubTopics ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(item.id)}
+                            className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--primary)] border border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 transition-colors shrink-0"
+                            title="Click to view and manage sub-topics"
+                          >
+                            <FolderTree className="h-2.5 w-2.5" />
+                            <span>
+                              {completedSubSections}/{subSections.length} sub-topics
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUp className="h-2.5 w-2.5 ml-0.5" />
+                            ) : (
+                              <ChevronDown className="h-2.5 w-2.5 ml-0.5" />
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(item.id)}
+                            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors shrink-0 ${
+                              isExpanded
+                                ? "bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30 font-semibold"
+                                : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/80"
+                            }`}
+                            title={
+                              chapterNotes
+                                ? "View chapter architecture notes"
+                                : "Add chapter notes or sub-topics"
+                            }
+                          >
+                            {chapterNotes ? (
+                              <>
+                                <BookOpen className="h-2.5 w-2.5 text-[var(--primary)]" />
+                                <span>{isExpanded ? "Hide Notes" : "View Notes"}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-2.5 w-2.5 text-[var(--primary)]" />
+                                <span>Add Sub-topics</span>
+                              </>
+                            )}
+                            {isExpanded ? (
+                              <ChevronUp className="h-2.5 w-2.5 ml-0.5" />
+                            ) : (
+                              <ChevronDown className="h-2.5 w-2.5 ml-0.5" />
+                            )}
+                          </button>
+                        )}
 
                         {/* Badges for notes, code, links */}
                         {hasNotes && (
@@ -487,9 +549,9 @@ export function RoadmapChecklist({
                         )}
                       </div>
 
-                      {item.notes && !isExpanded && (
-                        <p className="mt-1 text-xs text-[var(--text-muted)] line-clamp-1 italic font-sans">
-                          {item.notes}
+                      {chapterNotes && !isExpanded && (
+                        <p className="mt-1 text-xs text-[var(--text-muted)] line-clamp-1 font-sans">
+                          {chapterNotes.replace(/[#*`_~>-]/g, "").trim()}
                         </p>
                       )}
                     </div>
@@ -549,139 +611,233 @@ export function RoadmapChecklist({
 
                 {/* Inline Sub-Topics Tree & Quick Adder Drawer */}
                 {isExpanded && (
-                  <div className="mt-3 pl-5 sm:pl-8 pr-1 space-y-2.5 border-l-2 border-[var(--primary)]/30 ml-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
-                        <FolderTree className="h-3.5 w-3.5 text-[var(--primary)]" />
-                        <span>Sub-Topics Inside &ldquo;{item.topic}&rdquo; ({subSections.length})</span>
-                      </div>
-                      <span className="text-[11px] text-[var(--text-muted)] font-mono">
-                        {completedSubSections}/{subSections.length} Mastered
-                      </span>
-                    </div>
-
-                    {/* Sub-topics list */}
-                    <div className="space-y-1.5 pt-1">
-                      {subSections.map((sub, sIdx) => (
-                        <div
-                          key={sub.id}
-                          className="flex items-center justify-between gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3 py-2 text-xs hover:border-[var(--primary)]/30 transition-all group/sub"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            {/* Sub-topic toggle completion */}
-                            <button
-                              type="button"
-                              onClick={() => handleToggleSubTopic(item, sub.id)}
-                              className="shrink-0 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
-                              title={sub.isCompleted ? "Completed. Click to uncheck." : "Mark complete."}
-                            >
-                              {sub.isCompleted ? (
-                                <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
-                              ) : (
-                                <Circle className="h-4 w-4 text-[var(--text-muted)]" />
-                              )}
-                            </button>
-
-                            <span className="text-[11px] font-mono text-[var(--text-muted)] shrink-0">
-                              {sIdx + 1}.
-                            </span>
-
-                            <span
-                              onClick={() => handleOpenStudyModal(item, sub.id)}
-                              className={`font-semibold cursor-pointer hover:text-[var(--primary)] hover:underline truncate ${
-                                sub.isCompleted
-                                  ? "text-[var(--text-muted)] line-through"
-                                  : "text-[var(--text)]"
-                              }`}
-                            >
-                              {sub.title}
-                            </span>
-
-                            {/* Indicators */}
-                            <div className="flex items-center gap-1 shrink-0">
-                              {sub.notes && (
-                                <span className="flex items-center gap-0.5 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[9px] font-medium text-[var(--primary)]">
-                                  <BookOpen className="h-2 w-2" />
-                                  <span>Notes</span>
-                                </span>
-                              )}
-                              {sub.codeSnippet && (
-                                <span className="flex items-center gap-0.5 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[9px] font-medium text-[var(--primary)]">
-                                  <Code2 className="h-2 w-2" />
-                                  <span>Code</span>
-                                </span>
-                              )}
-                              {sub.resources?.length > 0 && (
-                                <span className="flex items-center gap-0.5 rounded bg-[var(--surface)] px-1.5 py-0.2 text-[9px] font-medium text-[var(--text-muted)] border border-[var(--border)]">
-                                  <ExternalLink className="h-2 w-2" />
-                                  <span>{sub.resources.length} docs</span>
-                                </span>
-                              )}
-                            </div>
+                  <div className="mt-3 pl-5 sm:pl-8 pr-1 space-y-3 border-l-2 border-[var(--primary)]/30 ml-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    {hasSubTopics ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
+                            <FolderTree className="h-3.5 w-3.5 text-[var(--primary)]" />
+                            <span>Sub-Topics Inside &ldquo;{item.topic}&rdquo; ({subSections.length})</span>
                           </div>
-
-                          {/* Action buttons */}
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenStudyModal(item, sub.id)}
-                              className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
-                            >
-                              <BookOpen className="h-3 w-3 text-[var(--primary)]" />
-                              <span>Study & Code</span>
-                            </button>
-
-                            {subSections.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSafeDeleteTarget({
-                                    type: "sub-topic",
-                                    itemId: item.id,
-                                    subId: sub.id,
-                                    title: sub.title,
-                                  })
-                                }
-                                className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-0 group-hover/sub:opacity-100 transition-opacity"
-                                title="Delete this sub-topic"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
+                          <span className="text-[11px] text-[var(--text-muted)] font-mono">
+                            {completedSubSections}/{subSections.length} Mastered
+                          </span>
                         </div>
-                      ))}
-                    </div>
 
-                    {/* Quick Add Sub-Topic Input Row */}
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleQuickAddSubTopic(item);
-                      }}
-                      className="flex items-center gap-2 pt-1"
-                    >
-                      <input
-                        type="text"
-                        value={quickAddSubTopicText[item.id] || ""}
-                        onChange={(e) =>
-                          setQuickAddSubTopicText((prev) => ({
-                            ...prev,
-                            [item.id]: e.target.value,
-                          }))
-                        }
-                        placeholder={`+ Add sub-topic to "${item.topic}" (e.g. Bean Scopes & Lifecycle)...`}
-                        className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!(quickAddSubTopicText[item.id] || "").trim()}
-                        className="flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        <span>Add Sub-Topic</span>
-                      </button>
-                    </form>
+                        {/* Sub-topics list */}
+                        <div className="space-y-1.5 pt-1">
+                          {subSections.map((sub, sIdx) => (
+                            <div
+                              key={sub.id}
+                              className="flex items-center justify-between gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3 py-2 text-xs hover:border-[var(--primary)]/30 transition-all group/sub"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                {/* Sub-topic toggle completion */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSubTopic(item, sub.id)}
+                                  className="shrink-0 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                                  title={sub.isCompleted ? "Completed. Click to uncheck." : "Mark complete."}
+                                >
+                                  {sub.isCompleted ? (
+                                    <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
+                                  ) : (
+                                    <Circle className="h-4 w-4 text-[var(--text-muted)]" />
+                                  )}
+                                </button>
+
+                                <span className="text-[11px] font-mono text-[var(--text-muted)] shrink-0">
+                                  {sIdx + 1}.
+                                </span>
+
+                                <span
+                                  onClick={() => handleOpenStudyModal(item, sub.id)}
+                                  className={`font-semibold cursor-pointer hover:text-[var(--primary)] hover:underline truncate ${
+                                    sub.isCompleted
+                                      ? "text-[var(--text-muted)] line-through"
+                                      : "text-[var(--text)]"
+                                  }`}
+                                >
+                                  {sub.title}
+                                </span>
+
+                                {/* Indicators */}
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {sub.notes && (
+                                    <span className="flex items-center gap-0.5 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[9px] font-medium text-[var(--primary)]">
+                                      <BookOpen className="h-2 w-2" />
+                                      <span>Notes</span>
+                                    </span>
+                                  )}
+                                  {sub.codeSnippet && (
+                                    <span className="flex items-center gap-0.5 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[9px] font-medium text-[var(--primary)]">
+                                      <Code2 className="h-2 w-2" />
+                                      <span>Code</span>
+                                    </span>
+                                  )}
+                                  {sub.resources?.length > 0 && (
+                                    <span className="flex items-center gap-0.5 rounded bg-[var(--surface)] px-1.5 py-0.2 text-[9px] font-medium text-[var(--text-muted)] border border-[var(--border)]">
+                                      <ExternalLink className="h-2 w-2" />
+                                      <span>{sub.resources.length} docs</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Action buttons */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenStudyModal(item, sub.id)}
+                                  className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
+                                >
+                                  <BookOpen className="h-3 w-3 text-[var(--primary)]" />
+                                  <span>Study & Code</span>
+                                </button>
+
+                                {subSections.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setSafeDeleteTarget({
+                                        type: "sub-topic",
+                                        itemId: item.id,
+                                        subId: sub.id,
+                                        title: sub.title,
+                                      })
+                                    }
+                                    className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-0 group-hover/sub:opacity-100 transition-opacity"
+                                    title="Delete this sub-topic"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Quick Add Sub-Topic Input Row */}
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            handleQuickAddSubTopic(item);
+                          }}
+                          className="flex items-center gap-2 pt-1"
+                        >
+                          <input
+                            type="text"
+                            value={quickAddSubTopicText[item.id] || ""}
+                            onChange={(e) =>
+                              setQuickAddSubTopicText((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.value,
+                              }))
+                            }
+                            placeholder={`+ Add sub-topic to "${item.topic}" (e.g. Bean Scopes & Lifecycle)...`}
+                            className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!(quickAddSubTopicText[item.id] || "").trim()}
+                            className="flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>Add Sub-Topic</span>
+                          </button>
+                        </form>
+                      </>
+                    ) : (
+                      <>
+                        {/* Standalone Chapter View with Beautiful Markdown */}
+                        <div className="flex items-center justify-between pb-1">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
+                            <BookOpen className="h-3.5 w-3.5 text-[var(--primary)]" />
+                            <span>Chapter Architecture & Study Notes</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenStudyModal(item)}
+                            className="flex items-center gap-1 text-[11px] font-semibold text-[var(--primary)] hover:underline"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                            <span>Open Study Workspace</span>
+                          </button>
+                        </div>
+
+                        {chapterNotes ? (
+                          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs">
+                            <MarkdownView content={chapterNotes} />
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-center bg-[var(--surface-muted)]/10">
+                            <BookOpen className="h-6 w-6 text-[var(--text-muted)] mx-auto mb-1.5 opacity-40" />
+                            <p className="text-xs text-[var(--text-muted)]">
+                              No notes documented yet for &ldquo;{item.topic}&rdquo;.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenStudyModal(item)}
+                              className="mt-2 inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity"
+                            >
+                              <BookOpen className="h-3.5 w-3.5" />
+                              <span>Write Architecture Notes</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Optional standalone code snippet */}
+                        {subSections[0]?.codeSnippet && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1">
+                              <Code2 className="h-3 w-3 text-[var(--primary)]" />
+                              <span>Code Implementation</span>
+                            </span>
+                            <MarkdownView
+                              content={`\`\`\`${subSections[0].codeLanguage || "java"}\n${subSections[0].codeSnippet}\n\`\`\``}
+                            />
+                          </div>
+                        )}
+
+                        {/* Quick Add Sub-Topic Input Row to break down into sub-topics */}
+                        <div className="pt-2 border-t border-[var(--border)]/60">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[11px] font-semibold text-[var(--text-muted)] flex items-center gap-1">
+                              <FolderTree className="h-3 w-3 text-[var(--primary)]" />
+                              <span>Break this chapter down into sub-topics:</span>
+                            </span>
+                          </div>
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleQuickAddSubTopic(item);
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <input
+                              type="text"
+                              value={quickAddSubTopicText[item.id] || ""}
+                              onChange={(e) =>
+                                setQuickAddSubTopicText((prev) => ({
+                                  ...prev,
+                                  [item.id]: e.target.value,
+                                }))
+                              }
+                              placeholder={`+ Add first sub-topic (e.g. Bean Scopes & Lifecycle)...`}
+                              className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+                            />
+                            <button
+                              type="submit"
+                              disabled={!(quickAddSubTopicText[item.id] || "").trim()}
+                              className="flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              <span>Add Sub-Topic</span>
+                            </button>
+                          </form>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

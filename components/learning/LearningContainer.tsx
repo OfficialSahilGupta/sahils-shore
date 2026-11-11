@@ -700,7 +700,7 @@ export function LearningContainer() {
     const initialSub = [
       {
         id: `sub-init-${Date.now()}`,
-        title: "Overview & Core Architecture",
+        title: trimmedTopic || "Chapter Notes",
         notes: input.notes?.trim() || "",
         codeSnippet: "",
         codeLanguage: "java",

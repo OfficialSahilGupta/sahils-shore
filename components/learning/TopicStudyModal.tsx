@@ -28,14 +28,18 @@ import {
   Edit3,
   FolderTree,
   ChevronRight,
+  Eye,
+  Columns,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
 import { Select } from "@/components/ui/select";
 import {
   parseTopicSubSections,
   packTopicSubSections,
+  hasExplicitSubTopics,
   type TopicSubSection,
 } from "@/lib/learning";
+import { MarkdownView } from "@/components/common/MarkdownView";
 import { CodeEditor } from "../dsa/CodeEditor";
 import { SafeDeleteModal } from "./SafeDeleteModal";
 import { ModalPortal } from "@/components/ui/modal-portal";
@@ -78,6 +82,8 @@ export function TopicStudyModal({
 
   // Sub-section active pillar: notes | code | resources
   const [activePillar, setActivePillar] = useState<"notes" | "code" | "resources">("notes");
+  // Notes view mode: write | split | preview
+  const [notesViewMode, setNotesViewMode] = useState<"write" | "split" | "preview">("write");
 
   // Links input state for active sub-section
   const [newUrlTitle, setNewUrlTitle] = useState("");
@@ -109,11 +115,22 @@ export function TopicStudyModal({
       setStatus(item.status || "planned");
 
       const parsed = parseTopicSubSections(item);
-      setSubSections(parsed);
-      if (initialSubSectionId && parsed.some((s) => s.id === initialSubSectionId)) {
+      const hasExplicit = hasExplicitSubTopics(item);
+      const cleaned = parsed.map((s) => {
+        if (!hasExplicit && parsed.length === 1) {
+          const lower = s.title.toLowerCase();
+          if (lower.includes("overview") || lower === "sub-section 1") {
+            return { ...s, title: item.topic ? `Core ${item.topic}` : "Chapter Study Notes" };
+          }
+        }
+        return s;
+      });
+
+      setSubSections(cleaned);
+      if (initialSubSectionId && cleaned.some((s) => s.id === initialSubSectionId)) {
         setActiveSubSectionId(initialSubSectionId);
-      } else if (parsed.length > 0) {
-        setActiveSubSectionId(parsed[0].id);
+      } else if (cleaned.length > 0) {
+        setActiveSubSectionId(cleaned[0].id);
       }
     }
   }, [item, isOpen, initialSubSectionId]);
@@ -359,104 +376,128 @@ export function TopicStudyModal({
 
         {/* Sub-Section Navigator Strip */}
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 mb-3 shrink-0">
-          <div className="flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
-              <FolderTree className="h-3.5 w-3.5 text-[var(--primary)]" />
-              <span>Topic Sub-Sections ({subSections.length})</span>
+              {subSections.length > 1 ? (
+                <>
+                  <FolderTree className="h-3.5 w-3.5 text-[var(--primary)]" />
+                  <span>Topic Sub-Sections ({subSections.length})</span>
+                </>
+              ) : (
+                <>
+                  <BookOpen className="h-3.5 w-3.5 text-[var(--primary)]" />
+                  <span>Chapter Study Workspace</span>
+                </>
+              )}
             </div>
             <button
               type="button"
               onClick={handleAddSubSection}
               className="flex items-center gap-1 rounded-lg bg-[var(--primary)] px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity"
+              title="Add a sub-topic to break down this chapter"
             >
               <Plus className="h-3 w-3" />
-              <span>Add Sub-Section</span>
+              <span>Add Sub-Topic</span>
             </button>
           </div>
 
-          {/* Sub-section horizontal pill list */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-            {subSections.map((sub, idx) => {
-              const isActive = sub.id === (activeSubSection?.id || "");
-              const hasNotes = Boolean(sub.notes && sub.notes.trim().length > 0);
-              const hasCode = Boolean(sub.codeSnippet && sub.codeSnippet.trim().length > 0);
-              const linkCount = (sub.resources || []).length;
+          {/* Sub-section horizontal pill list (only show when multiple sub-sections exist) */}
+          {subSections.length > 1 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-1 scrollbar-thin">
+              {subSections.map((sub, idx) => {
+                const isActive = sub.id === (activeSubSection?.id || "");
+                const hasNotes = Boolean(sub.notes && sub.notes.trim().length > 0);
+                const hasCode = Boolean(sub.codeSnippet && sub.codeSnippet.trim().length > 0);
+                const linkCount = (sub.resources || []).length;
 
-              return (
-                <div
-                  key={sub.id}
-                  onClick={() => setActiveSubSectionId(sub.id)}
-                  className={`group flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium cursor-pointer transition-all shrink-0 border ${
-                    isActive
-                      ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] font-semibold shadow-2xs"
-                      : "border-[var(--border)] bg-[var(--surface-muted)]/20 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    {sub.isCompleted ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)] shrink-0" />
-                    ) : (
-                      <span className="h-4 w-4 rounded-full bg-[var(--border)] text-[var(--text-muted)] flex items-center justify-center text-[10px] font-mono shrink-0">
-                        {idx + 1}
+                return (
+                  <div
+                    key={sub.id}
+                    onClick={() => setActiveSubSectionId(sub.id)}
+                    className={`group flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium cursor-pointer transition-all shrink-0 border ${
+                      isActive
+                        ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] font-semibold shadow-2xs"
+                        : "border-[var(--border)] bg-[var(--surface-muted)]/20 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {sub.isCompleted ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)] shrink-0" />
+                      ) : (
+                        <span className="h-4 w-4 rounded-full bg-[var(--border)] text-[var(--text-muted)] flex items-center justify-center text-[10px] font-mono shrink-0">
+                          {idx + 1}
+                        </span>
+                      )}
+                      <span className="truncate max-w-[150px] sm:max-w-[190px]">
+                        {sub.title || `Sub-Section ${idx + 1}`}
                       </span>
+                    </div>
+
+                    {/* Indicator badges */}
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-70">
+                      {hasNotes && (
+                        <span title="Has Architecture Notes">
+                          <BookOpen className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                      {hasCode && (
+                        <span title="Has Code Snippet">
+                          <Code2 className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                      {linkCount > 0 && (
+                        <span title={`${linkCount} doc links`}>
+                          <LinkIcon className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Delete button (if more than 1 subsection) */}
+                    {subSections.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteSubSectionClick(sub, e)}
+                        className="opacity-0 group-hover:opacity-100 hover:text-[var(--danger)] transition-opacity p-0.5 ml-0.5"
+                        title="Delete this sub-section"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     )}
-                    <span className="truncate max-w-[150px] sm:max-w-[190px]">
-                      {sub.title || `Sub-Section ${idx + 1}`}
-                    </span>
                   </div>
-
-                  {/* Indicator badges */}
-                  <div className="flex items-center gap-0.5 shrink-0 opacity-70">
-                    {hasNotes && (
-                      <span title="Has Architecture Notes">
-                        <BookOpen className="h-2.5 w-2.5" />
-                      </span>
-                    )}
-                    {hasCode && (
-                      <span title="Has Code Snippet">
-                        <Code2 className="h-2.5 w-2.5" />
-                      </span>
-                    )}
-                    {linkCount > 0 && (
-                      <span title={`${linkCount} doc links`}>
-                        <LinkIcon className="h-2.5 w-2.5" />
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Delete button (if more than 1 subsection) */}
-                  {subSections.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeleteSubSectionClick(sub, e)}
-                      className="opacity-0 group-hover:opacity-100 hover:text-[var(--danger)] transition-opacity p-0.5 ml-0.5"
-                      title="Delete this sub-section"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Active Sub-Section Header: Title & Completion */}
         {activeSubSection && (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 p-2.5 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] shrink-0 flex items-center gap-1">
-                <Edit3 className="h-3 w-3 text-[var(--primary)]" />
-                <span>Sub-Section Title:</span>
-              </span>
-              <input
-                type="text"
-                value={activeSubSection.title}
-                onChange={(e) => updateActiveSubSection({ title: e.target.value })}
-                placeholder="e.g. Cache Invalidation & Eviction Strategies"
-                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--text)] font-semibold focus:border-[var(--primary)] focus:outline-none"
-              />
-            </div>
+            {subSections.length > 1 ? (
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] shrink-0 flex items-center gap-1">
+                  <Edit3 className="h-3 w-3 text-[var(--primary)]" />
+                  <span>Sub-Section Title:</span>
+                </span>
+                <input
+                  type="text"
+                  value={activeSubSection.title}
+                  onChange={(e) => updateActiveSubSection({ title: e.target.value })}
+                  placeholder="e.g. Cache Invalidation & Eviction Strategies"
+                  className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--text)] font-semibold focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] shrink-0 flex items-center gap-1">
+                  <BookOpen className="h-3 w-3 text-[var(--primary)]" />
+                  <span>Study Notes:</span>
+                </span>
+                <span className="text-xs font-bold text-[var(--text)] truncate">
+                  {topicTitle || "Chapter Overview"}
+                </span>
+              </div>
+            )}
 
             <button
               type="button"
@@ -475,7 +516,13 @@ export function TopicStudyModal({
                 <Circle className="h-3.5 w-3.5" />
               )}
               <span>
-                {activeSubSection.isCompleted ? "Sub-Section Completed" : "Mark as Completed"}
+                {activeSubSection.isCompleted
+                  ? subSections.length > 1
+                    ? "Sub-Section Completed"
+                    : "Chapter Completed"
+                  : subSections.length > 1
+                    ? "Mark Sub-Section Completed"
+                    : "Mark Chapter Completed"}
               </span>
             </button>
           </div>
@@ -537,10 +584,55 @@ export function TopicStudyModal({
           {activePillar === "notes" && (
             <div className="flex-1 flex flex-col space-y-2.5 min-h-[300px]">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-[var(--primary)]" />
-                  <span>Architecture, Trade-offs & Engineering Mental Model</span>
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-[var(--primary)]" />
+                    <span>Architecture, Trade-offs & Mental Models</span>
+                  </span>
+
+                  {/* Mode Selector: Write | Split | Preview */}
+                  <div className="flex items-center gap-1 rounded-xl bg-[var(--surface-muted)]/50 p-0.5 border border-[var(--border)]">
+                    <button
+                      type="button"
+                      onClick={() => setNotesViewMode("write")}
+                      className={`flex items-center gap-1 rounded-lg px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
+                        notesViewMode === "write"
+                          ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
+                          : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                      }`}
+                      title="Write / Edit Markdown"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      <span>Write</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotesViewMode("split")}
+                      className={`hidden sm:flex items-center gap-1 rounded-lg px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
+                        notesViewMode === "split"
+                          ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
+                          : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                      }`}
+                      title="Side-by-side Editor & Formatted Preview"
+                    >
+                      <Columns className="h-3 w-3" />
+                      <span>Split</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotesViewMode("preview")}
+                      className={`flex items-center gap-1 rounded-lg px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
+                        notesViewMode === "preview"
+                          ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
+                          : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                      }`}
+                      title="Full Formatted Markdown View"
+                    >
+                      <Eye className="h-3 w-3" />
+                      <span>Preview</span>
+                    </button>
+                  </div>
+                </div>
 
                 {/* Quick Template Insertion Chips */}
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -580,13 +672,37 @@ export function TopicStudyModal({
                 </div>
               </div>
 
-              <textarea
-                rows={13}
-                value={activeSubSection?.notes || ""}
-                onChange={(e) => updateActiveSubSection({ notes: e.target.value })}
-                placeholder={`Write detailed architecture notes, trade-offs, and mental models for "${activeSubSection?.title || "this sub-section"}"...`}
-                className="w-full flex-1 min-h-[260px] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3.5 text-xs text-[var(--text)] font-sans leading-relaxed placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-none"
-              />
+              {/* View Rendering based on notesViewMode */}
+              {notesViewMode === "write" && (
+                <textarea
+                  rows={13}
+                  value={activeSubSection?.notes || ""}
+                  onChange={(e) => updateActiveSubSection({ notes: e.target.value })}
+                  placeholder={`Write detailed architecture notes, trade-offs, and mental models for "${activeSubSection?.title || "this chapter"}"... (Markdown supported)`}
+                  className="w-full flex-1 min-h-[260px] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3.5 text-xs text-[var(--text)] font-sans leading-relaxed placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-none"
+                />
+              )}
+
+              {notesViewMode === "preview" && (
+                <div className="w-full flex-1 min-h-[260px] max-h-[520px] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xs scrollbar-thin">
+                  <MarkdownView content={activeSubSection?.notes} />
+                </div>
+              )}
+
+              {notesViewMode === "split" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-h-[260px]">
+                  <textarea
+                    rows={13}
+                    value={activeSubSection?.notes || ""}
+                    onChange={(e) => updateActiveSubSection({ notes: e.target.value })}
+                    placeholder="Write markdown architecture notes here..."
+                    className="w-full h-full min-h-[260px] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-3.5 text-xs text-[var(--text)] font-sans leading-relaxed placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none resize-none"
+                  />
+                  <div className="w-full h-full min-h-[260px] max-h-[520px] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs scrollbar-thin">
+                    <MarkdownView content={activeSubSection?.notes} />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

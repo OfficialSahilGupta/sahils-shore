@@ -27,6 +27,8 @@ import {
   updateRoadmapItem,
   deleteRoadmapItem,
   reorderLearningItems,
+  hasExplicitSubTopics,
+  getTopicChapterNotes,
 } from "../lib/learning/index.ts";
 import { todayIST, yesterdayIST } from "../lib/date-utils.ts";
 import type { DsaProblem, LearningItem, InterviewQa, LearningConcept, Project } from "../types/index.ts";
@@ -889,6 +891,138 @@ describe("8. Topic Position Switching & Reordering Engine", () => {
 
     const noopBeyond = reorderLearningItems(sampleTopics, 1, 99);
     assert.deepEqual(noopBeyond, sampleTopics);
+  });
+});
+
+describe("14. Sub-Topic Differentiation & Chapter Notes Handling", () => {
+  test("returns false for legacy items without subsections in resources", () => {
+    const item = {
+      topic: "Spring Boot Basics",
+      notes: "Direct notes without subsections array.",
+      resources: [],
+    } as unknown as LearningItem;
+
+    assert.equal(hasExplicitSubTopics(item), false);
+  });
+
+  test("returns false for items with single default 'Overview & Core Architecture' subsection", () => {
+    const item = {
+      topic: "Spring Boot Actuator",
+      notes: "Metrics and health endpoints.",
+      resources: {
+        category: "Monitoring",
+        subsections: [
+          {
+            id: "sub-1",
+            title: "Overview & Core Architecture",
+            notes: "Metrics and health endpoints.",
+            codeSnippet: "",
+            resources: [],
+          },
+        ],
+      },
+    } as unknown as LearningItem;
+
+    assert.equal(hasExplicitSubTopics(item), false);
+  });
+
+  test("returns false when single subsection title matches the topic title", () => {
+    const item = {
+      topic: "Spring Security Filters",
+      notes: "Filter chain architecture.",
+      resources: {
+        category: "Security",
+        subsections: [
+          {
+            id: "sub-1",
+            title: "Spring Security Filters",
+            notes: "Filter chain architecture.",
+            codeSnippet: "",
+            resources: [],
+          },
+        ],
+      },
+    } as unknown as LearningItem;
+
+    assert.equal(hasExplicitSubTopics(item), false);
+  });
+
+  test("returns true for items with multiple explicit sub-sections", () => {
+    const item = {
+      topic: "Spring Boot Architecture",
+      notes: "Multi-chapter study.",
+      resources: {
+        category: "Architecture",
+        subsections: [
+          {
+            id: "sub-1",
+            title: "Bean Lifecycle & Scopes",
+            notes: "Singleton vs Prototype scopes.",
+            codeSnippet: "",
+            resources: [],
+          },
+          {
+            id: "sub-2",
+            title: "Auto-Configuration Internals",
+            notes: "@EnableAutoConfiguration and spring.factories.",
+            codeSnippet: "",
+            resources: [],
+          },
+        ],
+      },
+    } as unknown as LearningItem;
+
+    assert.equal(hasExplicitSubTopics(item), true);
+  });
+
+  test("returns true for single subsection if user gave it a custom, non-default sub-topic title", () => {
+    const item = {
+      topic: "Spring Boot",
+      notes: "Specific sub-topic.",
+      resources: {
+        category: "Core",
+        subsections: [
+          {
+            id: "sub-1",
+            title: "Custom ConditionalOnProperty Annotations",
+            notes: "Creating custom condition matchers.",
+            codeSnippet: "",
+            resources: [],
+          },
+        ],
+      },
+    } as unknown as LearningItem;
+
+    assert.equal(hasExplicitSubTopics(item), true);
+  });
+
+  test("getTopicChapterNotes extracts notes from primary subsection or root notes safely", () => {
+    const itemWithSubNote = {
+      topic: "Kafka",
+      notes: "Root note",
+      resources: {
+        subsections: [
+          {
+            id: "sub-1",
+            title: "Core Kafka",
+            notes: "Partition and offset management details.",
+            codeSnippet: "",
+            resources: [],
+          },
+        ],
+      },
+    } as unknown as LearningItem;
+
+    assert.equal(getTopicChapterNotes(itemWithSubNote), "Partition and offset management details.");
+
+    const itemWithoutSubNote = {
+      topic: "Kafka",
+      notes: "Fallback root note.",
+      resources: {},
+    } as unknown as LearningItem;
+
+    assert.equal(getTopicChapterNotes(itemWithoutSubNote), "Fallback root note.");
+    assert.equal(getTopicChapterNotes(null), "");
   });
 });
 
