@@ -162,9 +162,21 @@ export function TopicStudyModal({
 
   const updateActiveSubSection = (updates: Partial<TopicSubSection>) => {
     if (!activeSubSection) return;
-    setSubSections((prev) =>
-      prev.map((s) => (s.id === activeSubSection.id ? { ...s, ...updates } : s))
-    );
+    setSubSections((prev) => {
+      const next = prev.map((s) => (s.id === activeSubSection.id ? { ...s, ...updates } : s));
+      if (updates.isCompleted !== undefined) {
+        const allDone = next.every((s) => s.isCompleted);
+        const someDone = next.some((s) => s.isCompleted);
+        if (allDone) {
+          setStatus("completed");
+        } else if (someDone) {
+          setStatus("in_progress");
+        } else {
+          setStatus("planned");
+        }
+      }
+      return next;
+    });
   };
 
   // Add new sub-section
@@ -306,10 +318,14 @@ export function TopicStudyModal({
       const { notes: synthesizedNotes, resources: packedResources } =
         packTopicSubSections(subSections, category);
 
+      const allDone = subSections.every((s) => s.isCompleted);
+      const someDone = subSections.some((s) => s.isCompleted);
+      const resolvedStatus = allDone ? "completed" : someDone ? "in_progress" : status;
+
       await onSave(item.id, {
         topic: topicTitle.trim(),
         category: category.trim() || null,
-        status,
+        status: resolvedStatus,
         notes: synthesizedNotes || null,
         resources: packedResources,
       });

@@ -149,11 +149,29 @@ export function RoadmapChecklist({
     return true;
   });
 
-  const handleToggle = (item: LearningItem) => {
+  const handleToggle = async (item: LearningItem) => {
     let nextStatus: "planned" | "in_progress" | "completed";
     if (item.status === "planned") nextStatus = "in_progress";
     else if (item.status === "in_progress") nextStatus = "completed";
     else nextStatus = "planned";
+
+    const subSections = parseTopicSubSections(item);
+    let updatedSubs = subSections;
+    if (nextStatus === "completed") {
+      updatedSubs = subSections.map((s) => ({ ...s, isCompleted: true }));
+    } else if (nextStatus === "planned") {
+      updatedSubs = subSections.map((s) => ({ ...s, isCompleted: false }));
+    }
+
+    const { notes, resources } = packTopicSubSections(updatedSubs, item.category);
+
+    await onUpdateTopic(item.id, {
+      topic: item.topic,
+      category: item.category,
+      status: nextStatus,
+      notes,
+      resources,
+    });
 
     onToggleStatus(item.id, nextStatus);
   };
@@ -255,8 +273,10 @@ export function RoadmapChecklist({
     let nextTopicStatus = item.status;
     if (allCompleted) {
       nextTopicStatus = "completed";
-    } else if (someCompleted && item.status === "planned") {
+    } else if (someCompleted) {
       nextTopicStatus = "in_progress";
+    } else {
+      nextTopicStatus = "planned";
     }
 
     const { notes, resources } = packTopicSubSections(updatedSubs, item.category);
@@ -268,6 +288,8 @@ export function RoadmapChecklist({
       notes,
       resources,
     });
+
+    onToggleStatus(item.id, nextTopicStatus);
   };
 
   // Confirm safe delete action
@@ -522,24 +544,45 @@ export function RoadmapChecklist({
                           </span>
                         )}
 
-                        {/* Sub-topics count badge or Notes trigger button */}
+                        {/* Sub-topics count badge with real-time visual progress bar */}
                         {hasSubTopics ? (
                           <div className="flex items-center gap-0.5 shrink-0">
                             <button
                               type="button"
                               onClick={() => handleOpenStudyModal(item)}
-                              className="flex items-center gap-1 rounded-l-lg bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)] border border-r-0 border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 transition-colors"
+                              className={`flex items-center gap-1.5 rounded-l-lg px-2.5 py-0.5 text-[10px] font-semibold border border-r-0 transition-colors ${
+                                item.status === "completed" || (subSections.length > 0 && completedSubSections === subSections.length)
+                                  ? "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30 hover:bg-[var(--success)]/20"
+                                  : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 hover:bg-[var(--primary)]/20"
+                              }`}
                               title="Click to open full-screen study workspace"
                             >
                               <FolderTree className="h-2.5 w-2.5" />
                               <span>
                                 {completedSubSections}/{subSections.length} sub-topics
                               </span>
+                              {/* Visual Progress Bar */}
+                              <div className="w-8 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                <div
+                                  className={`h-full transition-all duration-300 ${
+                                    item.status === "completed" || (subSections.length > 0 && completedSubSections === subSections.length)
+                                      ? "bg-[var(--success)]"
+                                      : "bg-[var(--primary)]"
+                                  }`}
+                                  style={{
+                                    width: `${subSections.length > 0 ? (completedSubSections / subSections.length) * 100 : 0}%`,
+                                  }}
+                                />
+                              </div>
                             </button>
                             <button
                               type="button"
                               onClick={() => toggleExpand(item.id)}
-                              className="rounded-r-lg bg-[var(--primary)]/10 p-1 text-[var(--primary)] border border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 transition-colors"
+                              className={`rounded-r-lg p-1 border transition-colors ${
+                                item.status === "completed" || (subSections.length > 0 && completedSubSections === subSections.length)
+                                  ? "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30 hover:bg-[var(--success)]/20"
+                                  : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 hover:bg-[var(--primary)]/20"
+                              }`}
                               title={isExpanded ? "Collapse inline preview" : "Expand inline preview"}
                             >
                               {isExpanded ? (
