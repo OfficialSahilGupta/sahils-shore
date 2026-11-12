@@ -61,6 +61,7 @@ import {
   DSA_STATUSES,
   SUPPORTED_LANGUAGES,
   canonicalDsaTopic,
+  DSA_PATTERNS_CATALOG,
   type DsaDifficulty,
   type DsaStatus,
   type SupportedLanguage,
@@ -177,6 +178,30 @@ export function DsaProblemModal({
   const [language, setLanguage] = useState<SupportedLanguage>("java");
   const [isFavorite, setIsFavorite] = useState(false);
   const [selectedPattern, setSelectedPattern] = useState<string>("");
+  const [patternSearch, setPatternSearch] = useState<string>("");
+  const [patternCategory, setPatternCategory] = useState<string>("All");
+
+  const patternCategories = useMemo(() => {
+    const cats = new Set(DSA_PATTERNS_CATALOG.map((p) => p.category));
+    return ["All", ...Array.from(cats)];
+  }, []);
+
+  const filteredPatterns = useMemo(() => {
+    return DSA_PATTERNS_CATALOG.filter((p) => {
+      if (patternCategory !== "All" && p.category !== patternCategory) {
+        return false;
+      }
+      if (patternSearch.trim()) {
+        const q = patternSearch.toLowerCase();
+        return (
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [patternCategory, patternSearch]);
 
   // Spaced Repetition Scheduling
   const [revisionIntervalDays, setRevisionIntervalDays] = useState<number>(1);
@@ -1065,33 +1090,130 @@ export function DsaProblemModal({
                   </div>
                 </div>
 
-                {/* Algorithmic Pattern Tags */}
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-4 space-y-2.5">
-                  <label className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
-                    <Tag className="h-4 w-4 text-[var(--primary)]" />
-                    <span>Algorithmic Pattern & Paradigm</span>
-                  </label>
-                  <p className="text-[11px] text-[var(--text-muted)]">
-                    Tag the core architectural pattern used to solve this problem:
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                    {COMMON_DSA_PATTERNS.map((pattern) => {
-                      const isSelected = selectedPattern === pattern;
-                      return (
+                {/* Algorithmic Pattern & Paradigm Catalog */}
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]/20 p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <label className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+                        <Tag className="h-4 w-4 text-[var(--primary)]" />
+                        <span>Algorithmic Pattern & Paradigm Catalog ({filteredPatterns.length} of {DSA_PATTERNS_CATALOG.length})</span>
+                      </label>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                        Select from 40+ industry patterns or search by name / algorithmic technique
+                      </p>
+                    </div>
+
+                    {/* Pattern Search Bar */}
+                    <div className="relative w-full sm:w-64">
+                      <input
+                        type="text"
+                        value={patternSearch}
+                        onChange={(e) => setPatternSearch(e.target.value)}
+                        placeholder="Search pattern e.g. Monotonic Stack, Kadane, Kahn..."
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]"
+                      />
+                      {patternSearch && (
                         <button
-                          key={pattern}
+                          type="button"
+                          onClick={() => setPatternSearch("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors p-0.5"
+                          title="Clear search"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Category Filter Tabs */}
+                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1">
+                    {patternCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setPatternCategory(cat)}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all ${
+                          patternCategory === cat
+                            ? "bg-[var(--primary)] text-white shadow-2xs font-semibold"
+                            : "bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text)]"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Selected Pattern Showcase Banner */}
+                  {selectedPattern && (
+                    <div className="rounded-xl border border-[var(--primary)]/40 bg-[var(--primary)]/10 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in duration-150">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase font-bold text-[var(--primary)] tracking-wider">
+                            Active Pattern:
+                          </span>
+                          <span className="text-xs font-bold text-[var(--text)]">
+                            {selectedPattern}
+                          </span>
+                        </div>
+                        {DSA_PATTERNS_CATALOG.find((p) => p.name === selectedPattern)?.description && (
+                          <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                            {DSA_PATTERNS_CATALOG.find((p) => p.name === selectedPattern)?.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
                           type="button"
                           onClick={() =>
-                            setSelectedPattern(isSelected ? "" : pattern)
+                            insertNoteTemplate(
+                              `### ${selectedPattern} Invariant\n- **Pattern Definition:** ${
+                                DSA_PATTERNS_CATALOG.find((p) => p.name === selectedPattern)?.description || ""
+                              }\n- **Loop Invariant:** Maintain...\n- **Optimality Proof:** `
+                            )
                           }
-                          className={`rounded-xl border px-2.5 py-1 text-xs font-medium transition-all ${
+                          className="rounded-lg bg-[var(--surface)] border border-[var(--border)] px-2.5 py-1 text-[10px] font-semibold text-[var(--primary)] hover:border-[var(--primary)] transition-colors"
+                        >
+                          + Insert Invariant to Notes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPattern("")}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors"
+                          title="Deselect pattern"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Patterns Selection Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto scrollbar-thin p-1 border border-[var(--border)]/60 rounded-xl bg-[var(--surface)]">
+                    {filteredPatterns.map((p) => {
+                      const isSelected = selectedPattern === p.name;
+                      return (
+                        <div
+                          key={p.name}
+                          onClick={() => setSelectedPattern(isSelected ? "" : p.name)}
+                          className={`rounded-xl border p-2.5 cursor-pointer transition-all flex flex-col justify-between ${
                             isSelected
-                              ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-2xs font-semibold"
-                              : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]"
+                              ? "border-[var(--primary)] bg-[var(--primary)]/10 shadow-2xs ring-1 ring-[var(--primary)]"
+                              : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/50 hover:bg-[var(--surface-muted)]/30"
                           }`}
                         >
-                          {pattern}
-                        </button>
+                          <div className="flex items-start justify-between gap-1.5">
+                            <span className="text-xs font-semibold text-[var(--text)] line-clamp-1">
+                              {p.name}
+                            </span>
+                            <span className="text-[9px] font-mono text-[var(--primary)] uppercase tracking-wider shrink-0 bg-[var(--primary)]/10 px-1 rounded">
+                              {p.category.split(" ")[0]}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-[var(--text-muted)] line-clamp-2 mt-1">
+                            {p.description}
+                          </p>
+                        </div>
                       );
                     })}
                   </div>

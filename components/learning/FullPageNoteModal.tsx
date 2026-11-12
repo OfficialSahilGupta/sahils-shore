@@ -193,6 +193,20 @@ export function FullPageNoteModal({
     return headings;
   }, [notes]);
 
+  // Smooth scroll to heading in document body
+  const handleScrollToHeading = (headingText: string) => {
+    if (typeof document === "undefined") return;
+    const clean = headingText.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"));
+    for (const h of headings) {
+      const hClean = (h.textContent || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+      if (hClean.includes(clean) || clean.includes(hClean)) {
+        h.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+    }
+  };
+
   const handleAttachConceptMap = (newMap: ChapterConceptMap) => {
     setConceptMaps((prev) => {
       if (prev.some((m) => m.url === newMap.url)) return prev;
@@ -561,45 +575,92 @@ export function FullPageNoteModal({
           <div className="flex-1 overflow-hidden flex flex-col">
             {/* 1. READ DOCUMENT MODE */}
             {mode === "read" && (
-              <div className="flex-1 overflow-y-auto scrollbar-thin px-4 sm:px-12 py-8 bg-[var(--background)]">
-                <article className="max-w-4xl mx-auto space-y-6">
-                  {/* Article Title & Metadata Banner */}
-                  <div className="border-b border-[var(--border)] pb-6 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="rounded-md bg-[var(--primary)]/10 px-2.5 py-0.5 text-xs font-bold text-[var(--primary)] border border-[var(--primary)]/20">
-                        {item.category || "Core"}
-                      </span>
-                      <span className="text-xs text-[var(--text-muted)]">
-                        {trackTitle} • Chapter Architecture Notes
-                      </span>
+              <div className="flex-1 flex overflow-hidden">
+                {/* Dedicated Document Outline Sidebar */}
+                {outlineHeadings.length > 0 && (
+                  <aside className="hidden xl:block w-64 border-r border-[var(--border)] bg-[var(--surface-muted)]/20 p-4 overflow-y-auto shrink-0">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)] mb-3">
+                      <List className="h-3.5 w-3.5 text-[var(--primary)]" />
+                      <span>Document Outline</span>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text)]">
-                      {item.topic}
-                    </h1>
-
-                    {/* Table of Contents Pill Outline */}
-                    {outlineHeadings.length > 0 && (
-                      <div className="pt-3">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block mb-1.5">
-                          Document Outline:
-                        </span>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {outlineHeadings.map((h, hIdx) => (
-                            <span
-                              key={hIdx}
-                              className={`rounded-lg px-2 py-0.5 text-[10px] font-medium border ${
-                                h.level === 1
-                                  ? "bg-[var(--surface-muted)] text-[var(--text)] border-[var(--border)] font-semibold"
-                                  : "bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)]/60"
-                              }`}
-                            >
-                              {h.text}
-                            </span>
-                          ))}
+                    <nav className="space-y-1">
+                      {outlineHeadings.map((h, i) => (
+                        <div
+                          key={i}
+                          onClick={() => handleScrollToHeading(h.text)}
+                          className={`text-xs text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors truncate cursor-pointer py-1 ${
+                            h.level === 1
+                              ? "font-bold text-[var(--text)]"
+                              : h.level === 2
+                                ? "pl-2.5 font-medium"
+                                : "pl-5 text-[11px]"
+                          }`}
+                          title={`Jump to: ${h.text}`}
+                        >
+                          {h.text}
                         </div>
+                      ))}
+                    </nav>
+
+                    {/* Chapter Metadata Card */}
+                    <div className="mt-6 pt-4 border-t border-[var(--border)] space-y-2 text-xs">
+                      <div className="font-semibold text-[var(--text)] flex items-center gap-1.5">
+                        <FolderTree className="h-3.5 w-3.5 text-[var(--primary)]" />
+                        <span>Chapter Specs</span>
                       </div>
-                    )}
-                  </div>
+                      <div className="text-[11px] text-[var(--text-muted)] space-y-1 font-mono">
+                        <div>Track: {trackTitle}</div>
+                        <div>Category: {item.category || "Core"}</div>
+                        <div>Sub-Sections: {subSections.length}</div>
+                        <div>Diagrams: {conceptMaps.length}</div>
+                        <div>Length: {wordCount} words ({readTimeMinutes}m)</div>
+                      </div>
+                    </div>
+                  </aside>
+                )}
+
+                {/* Centered Document Body */}
+                <main className="flex-1 overflow-y-auto scrollbar-thin px-4 sm:px-12 py-8 bg-[var(--background)]">
+                  <article className="max-w-4xl mx-auto space-y-6">
+                    {/* Article Title & Metadata Banner */}
+                    <div className="border-b border-[var(--border)] pb-6 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="rounded-md bg-[var(--primary)]/10 px-2.5 py-0.5 text-xs font-bold text-[var(--primary)] border border-[var(--primary)]/20">
+                          {item.category || "Core"}
+                        </span>
+                        <span className="text-xs text-[var(--text-muted)]">
+                          {trackTitle} • Chapter Architecture Notes
+                        </span>
+                      </div>
+                      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text)]">
+                        {item.topic}
+                      </h1>
+
+                      {/* Table of Contents Pill Outline */}
+                      {outlineHeadings.length > 0 && (
+                        <div className="pt-3">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block mb-1.5">
+                            Document Outline:
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {outlineHeadings.map((h, hIdx) => (
+                              <button
+                                key={hIdx}
+                                type="button"
+                                onClick={() => handleScrollToHeading(h.text)}
+                                className={`rounded-lg px-2.5 py-1 text-[11px] font-medium border transition-colors cursor-pointer hover:border-[var(--primary)] ${
+                                  h.level === 1
+                                    ? "bg-[var(--surface-muted)] text-[var(--text)] border-[var(--border)] font-semibold"
+                                    : "bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)]/60"
+                                }`}
+                              >
+                                {h.text}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                   {/* Concept Maps & Architecture Blueprints Gallery (if any) */}
                   {conceptMaps.length > 0 && (
@@ -721,10 +782,11 @@ export function FullPageNoteModal({
                     </div>
                   </div>
                 </article>
-              </div>
-            )}
+              </main>
+            </div>
+          )}
 
-            {/* 2. SPLIT STUDIO MODE */}
+          {/* 2. SPLIT STUDIO MODE */}
             {mode === "split" && (
               <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] bg-[var(--background)]">
                 {/* Left Column: Markdown Editor */}

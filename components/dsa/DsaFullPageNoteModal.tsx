@@ -446,27 +446,25 @@ export function DsaFullPageNoteModal({
           
           {/* Top Document Studio Navigation Bar */}
           <header className="h-14 sm:h-16 px-4 sm:px-6 border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur flex items-center justify-between gap-3 shrink-0">
-            {/* Left: Back Arrow, Problem Info, Difficulty & Topic */}
-            <div className="flex items-center gap-2.5 min-w-0">
+            {/* Left: Back Arrow, Title, Difficulty & Status */}
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 max-w-[50%] lg:max-w-[45%]">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)] transition-colors shrink-0"
+                className="rounded-xl p-1.5 sm:p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)] transition-colors shrink-0"
                 title="Back to DSA Problem List (Esc)"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
 
               <div className="min-w-0 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
+                <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
                   <Code2 className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] truncate">
-                    <span>DSA Tracker</span>
-                    <span>/</span>
-                    <span className="font-medium text-[var(--primary)]">{topic}</span>
-                    <span>/</span>
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[var(--text-muted)] truncate">
+                    <span className="font-semibold text-[var(--primary)]">{topic}</span>
+                    <span>•</span>
                     <span>{platform}</span>
                   </div>
 
@@ -480,10 +478,10 @@ export function DsaFullPageNoteModal({
                       onKeyDown={(e) => {
                         if (e.key === "Enter") setIsEditingTitle(false);
                       }}
-                      className="text-xs sm:text-sm font-bold text-[var(--text)] bg-transparent border-b border-[var(--primary)] focus:outline-none"
+                      className="text-xs sm:text-sm font-bold text-[var(--text)] bg-transparent border-b border-[var(--primary)] focus:outline-none w-full"
                     />
                   ) : (
-                    <div className="flex items-center gap-1.5 group/title">
+                    <div className="flex items-center gap-1.5 group/title min-w-0">
                       <h2
                         onClick={() => setIsEditingTitle(true)}
                         className="text-xs sm:text-sm font-bold text-[var(--text)] truncate cursor-pointer hover:text-[var(--primary)] transition-colors"
@@ -493,89 +491,51 @@ export function DsaFullPageNoteModal({
                       </h2>
                       <Edit3
                         onClick={() => setIsEditingTitle(true)}
-                        className="h-3 w-3 text-[var(--text-muted)] opacity-0 group-hover/title:opacity-100 transition-opacity cursor-pointer"
+                        className="h-3 w-3 text-[var(--text-muted)] opacity-0 group-hover/title:opacity-100 transition-opacity cursor-pointer shrink-0"
                       />
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Difficulty & Status Badges */}
-              <div className="hidden md:flex items-center gap-1.5 shrink-0">
-                <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${diffClass}`}>
-                  {difficulty}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const statuses: DsaStatus[] = ["Solved", "Needs revision", "Stuck", "Revisit", "Todo"];
-                    const currIdx = statuses.indexOf(status);
-                    const nextStatus = statuses[(currIdx + 1) % statuses.length];
-                    setStatus(nextStatus);
-                  }}
-                  className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0 ${
-                    status === "Solved"
-                      ? "bg-[var(--success)]/15 text-[var(--success)] border-[var(--success)]/30"
-                      : status === "Needs revision"
-                        ? "bg-[var(--warning)]/15 text-[var(--warning)] border-[var(--warning)]/30"
-                        : status === "Stuck"
-                          ? "bg-[var(--danger)]/15 text-[var(--danger)] border-[var(--danger)]/30"
-                          : "bg-[var(--surface-muted)] text-[var(--text-muted)] border-[var(--border)]"
-                  }`}
-                  title="Click to cycle status"
-                >
-                  {status === "Solved" ? (
-                    <CheckCircle2 className="h-3 w-3" />
-                  ) : status === "Needs revision" ? (
-                    <Clock className="h-3 w-3" />
-                  ) : (
-                    <Circle className="h-3 w-3" />
-                  )}
-                  <span>{status}</span>
-                </button>
-              </div>
-
-              {/* External Link */}
-              {link && (
-                <a
-                  href={link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hidden lg:flex items-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors shrink-0"
-                  title="Open Problem Link"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
-            </div>
-
-            {/* Center: Reading Stats & Save Indicator */}
-            <div className="hidden xl:flex items-center gap-2 text-xs text-[var(--text-muted)] shrink-0">
-              <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-0.5 font-mono text-[11px]">
-                {readTimeMinutes} min read • {wordCount} words
-                {conceptMaps.length > 0 && ` • ${conceptMaps.length} diagrams`}
+              {/* Difficulty Badge */}
+              <span className={`hidden md:inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold shrink-0 ${diffClass}`}>
+                {difficulty}
               </span>
-              {timeComplexity && (
-                <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 font-mono text-[11px] text-[var(--primary)]">
-                  Time: {timeComplexity}
-                </span>
-              )}
-              {spaceComplexity && (
-                <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 font-mono text-[11px] text-[var(--primary)]">
-                  Space: {spaceComplexity}
-                </span>
-              )}
-              {saveSuccess && (
-                <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--success)] animate-in fade-in">
-                  <Check className="h-3 w-3" />
-                  <span>Saved</span>
-                </span>
-              )}
+
+              {/* Status Cycle Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const statuses: DsaStatus[] = ["Solved", "Needs revision", "Stuck", "Revisit", "Todo"];
+                  const currIdx = statuses.indexOf(status);
+                  const nextStatus = statuses[(currIdx + 1) % statuses.length];
+                  setStatus(nextStatus);
+                }}
+                className={`hidden lg:flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0 ${
+                  status === "Solved"
+                    ? "bg-[var(--success)]/15 text-[var(--success)] border-[var(--success)]/30"
+                    : status === "Needs revision"
+                      ? "bg-[var(--warning)]/15 text-[var(--warning)] border-[var(--warning)]/30"
+                      : status === "Stuck"
+                        ? "bg-[var(--danger)]/15 text-[var(--danger)] border-[var(--danger)]/30"
+                        : "bg-[var(--surface-muted)] text-[var(--text-muted)] border-[var(--border)]"
+                }`}
+                title="Click to cycle status"
+              >
+                {status === "Solved" ? (
+                  <CheckCircle2 className="h-3 w-3" />
+                ) : status === "Needs revision" ? (
+                  <Clock className="h-3 w-3" />
+                ) : (
+                  <Circle className="h-3 w-3" />
+                )}
+                <span>{status}</span>
+              </button>
             </div>
 
-            {/* Right: Mode Switcher & Save Button */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Right: Diagram Button, Mode Switcher, Save & Close */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* Star Favorite Button */}
               <button
                 type="button"
@@ -603,19 +563,19 @@ export function DsaFullPageNoteModal({
               <button
                 type="button"
                 onClick={() => setIsAttachMapOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0"
-                title="Attach Diagram or Concept Map (Upload / Clipboard / Presets)"
+                className="hidden sm:flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0"
+                title="Attach Diagram or Concept Map"
               >
                 <ImagePlus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Add Diagram</span>
+                <span>+ Diagram</span>
               </button>
 
-              {/* Segmented Mode Selector: Read | Split | Edit | Visuals | Code */}
-              <div className="flex items-center gap-1 rounded-xl bg-[var(--surface-muted)]/60 p-0.5 border border-[var(--border)]">
+              {/* Segmented Mode Selector: Notes | Split | Write | Visuals | Code */}
+              <div className="flex items-center gap-0.5 sm:gap-1 rounded-xl bg-[var(--surface-muted)]/60 p-0.5 border border-[var(--border)] shrink-0">
                 <button
                   type="button"
                   onClick={() => setMode("read")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all ${
                     mode === "read"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -623,12 +583,12 @@ export function DsaFullPageNoteModal({
                   title="Read Document View"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Notes</span>
+                  <span className="hidden md:inline">Notes</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("split")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all ${
                     mode === "split"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -636,12 +596,12 @@ export function DsaFullPageNoteModal({
                   title="Side-by-Side Split Studio"
                 >
                   <Columns className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Split</span>
+                  <span className="hidden md:inline">Split</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("edit")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all ${
                     mode === "edit"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -649,12 +609,12 @@ export function DsaFullPageNoteModal({
                   title="Full Markdown Editor"
                 >
                   <Edit3 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Write</span>
+                  <span className="hidden md:inline">Write</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("visuals")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all relative ${
+                  className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all relative ${
                     mode === "visuals"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -662,7 +622,7 @@ export function DsaFullPageNoteModal({
                   title="Visual Diagrams & Concept Maps Gallery"
                 >
                   <ImageIcon className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Visuals</span>
+                  <span className="hidden md:inline">Visuals</span>
                   {conceptMaps.length > 0 && (
                     <span className="h-4 w-4 rounded-full bg-[var(--primary)] text-white text-[9px] font-bold flex items-center justify-center">
                       {conceptMaps.length}
@@ -672,7 +632,7 @@ export function DsaFullPageNoteModal({
                 <button
                   type="button"
                   onClick={() => setMode("code")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all ${
                     mode === "code"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -680,7 +640,7 @@ export function DsaFullPageNoteModal({
                   title="Solution Code Studio"
                 >
                   <Code2 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Code</span>
+                  <span className="hidden md:inline">Code</span>
                 </button>
               </div>
 
@@ -689,7 +649,7 @@ export function DsaFullPageNoteModal({
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
+                className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 shrink-0"
                 title="Save Notes & Code (Cmd/Ctrl + S)"
               >
                 <Save className="h-3.5 w-3.5" />
@@ -708,105 +668,88 @@ export function DsaFullPageNoteModal({
             </div>
           </header>
 
-          {/* Sub-Header Metadata Bar: Complexities, Topic, Platform, & Actions */}
-          <div className="px-4 sm:px-6 py-2 border-b border-[var(--border)] bg-[var(--surface-muted)]/30 flex items-center justify-between gap-3 text-xs flex-wrap shrink-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Platform Selector */}
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] font-medium text-[var(--text-muted)]">Platform:</span>
-                <Select
-                  value={platform}
-                  onChange={(e) => setPlatform(e.target.value)}
-                  size="sm"
-                  containerClassName="w-auto min-w-[100px]"
-                >
-                  {DSA_PLATFORMS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+          {/* Sub-Header Metadata Ribbon: Complexities, Stats, Links & Fast Actions */}
+          <div className="px-4 sm:px-6 py-2 border-b border-[var(--border)] bg-[var(--surface-muted)]/20 flex items-center justify-between gap-3 text-xs overflow-x-auto scrollbar-none shrink-0">
+            {/* Left: Complexities & Metrics */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-0.5 font-mono text-[11px] text-[var(--text-muted)]">
+                {readTimeMinutes} min read • {wordCount} words
+                {conceptMaps.length > 0 && ` • ${conceptMaps.length} diagrams`}
+              </span>
 
-              {/* Topic Selector */}
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] font-medium text-[var(--text-muted)]">Topic:</span>
-                <Select
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  size="sm"
-                  containerClassName="w-auto min-w-[110px]"
-                >
-                  {DSA_TOPICS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              {timeComplexity && (
+                <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--primary)]">
+                  Time: {timeComplexity}
+                </span>
+              )}
 
-              {/* Difficulty Selector */}
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] font-medium text-[var(--text-muted)]">Diff:</span>
-                <Select
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value as DsaDifficulty)}
-                  size="sm"
-                  containerClassName="w-auto min-w-[85px]"
-                >
-                  {DSA_DIFFICULTIES.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              {spaceComplexity && (
+                <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--primary)]">
+                  Space: {spaceComplexity}
+                </span>
+              )}
 
-              {/* Time Complexity Input */}
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] font-medium text-[var(--text-muted)]">Time:</span>
-                <input
-                  type="text"
-                  value={timeComplexity}
-                  onChange={(e) => setTimeComplexity(e.target.value)}
-                  placeholder="e.g. O(N)"
-                  className="w-20 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs font-mono text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
-                />
-              </div>
-
-              {/* Space Complexity Input */}
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] font-medium text-[var(--text-muted)]">Space:</span>
-                <input
-                  type="text"
-                  value={spaceComplexity}
-                  onChange={(e) => setSpaceComplexity(e.target.value)}
-                  placeholder="e.g. O(1)"
-                  className="w-20 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs font-mono text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
-                />
-              </div>
+              {saveSuccess && (
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--success)] animate-in fade-in">
+                  <Check className="h-3 w-3" />
+                  <span>Saved</span>
+                </span>
+              )}
             </div>
 
-            {/* Right: Export & Copy Actions */}
-            <div className="flex items-center gap-2 ml-auto">
+            {/* Right: Quick Ratings, External Link, Copy & Download */}
+            <div className="flex items-center gap-2 shrink-0">
+              {onRate && problem && (
+                <div className="hidden sm:flex items-center gap-1.5 border-r border-[var(--border)] pr-2">
+                  <span className="text-[10px] text-[var(--text-muted)] font-medium">Review:</span>
+                  <button
+                    type="button"
+                    onClick={() => onRate(problem, "Hard")}
+                    className="rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--danger)] hover:bg-[var(--danger)]/20 transition-colors"
+                  >
+                    Hard (1d)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRate(problem, "Easy")}
+                    className="rounded-lg border border-[var(--success)]/30 bg-[var(--success)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--success)] hover:bg-[var(--success)]/20 transition-colors"
+                  >
+                    Easy (+3d)
+                  </button>
+                </div>
+              )}
+
+              {link && (
+                <a
+                  href={link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface)] transition-colors"
+                  title="Open Problem in LeetCode / External"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  <span className="hidden md:inline">Open Problem</span>
+                </a>
+              )}
+
               <button
                 type="button"
                 onClick={handleCopyMarkdown}
-                className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)] transition-colors"
                 title="Copy Full Problem Markdown"
               >
                 {copied ? <Check className="h-3 w-3 text-[var(--success)]" /> : <Copy className="h-3 w-3" />}
-                <span>{copied ? "Copied" : "Copy Markdown"}</span>
+                <span>{copied ? "Copied" : "Copy MD"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleDownload}
-                className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
-                title="Download formatted .md file"
+                className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)] transition-colors"
+                title="Download .md file"
               >
                 <Download className="h-3 w-3" />
-                <span>Download .md</span>
+                <span className="hidden sm:inline">.md</span>
               </button>
             </div>
           </div>

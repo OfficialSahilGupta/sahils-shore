@@ -13,6 +13,10 @@ import {
   Plus,
   RefreshCw,
   HelpCircle,
+  CheckCircle2,
+  Layers,
+  Flame,
+  Trophy,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { DsaProblem } from "@/types";
@@ -657,91 +661,130 @@ export function DsaContainer() {
         </div>
       )}
 
-      {/* Main Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border)] pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)] flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--primary)] text-white shadow-sm">
-              <Code2 className="h-5 w-5" />
-            </span>
-            DSA Tracker & Algorithm Notebook
-          </h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1">
-            Spaced repetition revision queue, Blind 150 roadmap, adaptive mastery rings, and CodeMirror snippets
-          </p>
-        </div>
+      {/* Modern Eye-Pleasing Masthead Banner */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--surface)] via-[var(--surface-muted)]/20 to-[var(--surface)] p-5 sm:p-6 shadow-sm">
+        {/* Subtle decorative glow */}
+        <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[var(--primary)]/5 blur-3xl" />
+        <div className="pointer-events-none absolute -left-12 -bottom-12 h-44 w-44 rounded-full bg-[var(--accent-warm)]/5 blur-3xl" />
 
-        {/* Action Controls & Navigation Tabs */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Tabs */}
-          <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setActiveTab("my-problems")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                activeTab === "my-problems"
-                  ? "bg-[var(--primary)] text-white shadow-xs"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
-              }`}
-            >
-              <Code2 className="h-3.5 w-3.5" />
-              <span>My Solutions</span>
-              <span
-                suppressHydrationWarning
-                className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
-                  activeTab === "my-problems"
-                    ? "bg-white/20 text-white"
-                    : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
-                }`}
-              >
-                {isMounted ? problems.length : 0}
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--primary)] text-white shadow-sm ring-2 ring-[var(--primary)]/20">
+                <Code2 className="h-5 w-5" />
               </span>
-            </button>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text)]">
+                DSA Tracker & Algorithm Notebook
+              </h1>
+              <span className="rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[var(--primary)]">
+                Linear & Notion Studio
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-2xl leading-relaxed">
+              Master algorithmic patterns, track 40+ paradigms with visual concept maps, and stay interview-ready with SM-2 spaced repetition.
+            </p>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("blind-150")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                activeTab === "blind-150"
-                  ? "bg-[var(--primary)] text-white shadow-xs"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
-              }`}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Blind 150</span>
-              <span
-                className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
-                  activeTab === "blind-150"
-                    ? "bg-white/20 text-white"
-                    : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
-                }`}
-              >
-                150
-              </span>
-            </button>
+            {/* Quick mini-stat badges in header */}
+            <div className="flex items-center gap-3 pt-1 flex-wrap text-xs text-[var(--text-muted)]">
+              <div className="flex items-center gap-1.5 font-medium">
+                <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)]" />
+                <span>
+                  <strong className="text-[var(--text)]">{totalSolved}</strong> solved
+                </span>
+              </div>
+              <span className="h-3 w-px bg-[var(--border)]" />
+              <div className="flex items-center gap-1.5 font-medium">
+                <Layers className="h-3.5 w-3.5 text-[var(--primary)]" />
+                <span>
+                  <strong className="text-[var(--text)]">42</strong> patterns cataloged
+                </span>
+              </div>
+              {streakInfo.currentStreak > 0 && (
+                <>
+                  <span className="h-3 w-px bg-[var(--border)]" />
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Flame className="h-3.5 w-3.5 text-[var(--accent-warm)]" />
+                    <span>
+                      <strong className="text-[var(--text)]">{streakInfo.currentStreak}</strong> day streak
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={fetchProblems}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
-            />
-            <span>Refresh</span>
-          </button>
+          {/* Action Controls & Navigation Tabs */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Tabs */}
+            <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab("my-problems")}
+                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+                  activeTab === "my-problems"
+                    ? "bg-[var(--primary)] text-white shadow-xs"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                }`}
+              >
+                <Code2 className="h-3.5 w-3.5" />
+                <span>My Solutions</span>
+                <span
+                  suppressHydrationWarning
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-mono ${
+                    activeTab === "my-problems"
+                      ? "bg-white/20 text-white"
+                      : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                  }`}
+                >
+                  {isMounted ? problems.length : 0}
+                </span>
+              </button>
 
-          <button
-            type="button"
-            onClick={handleOpenAddModal}
-            className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            <span>DSA Problem & Engineering Notes</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("blind-150")}
+                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+                  activeTab === "blind-150"
+                    ? "bg-[var(--primary)] text-white shadow-xs"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Blind 150</span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-mono ${
+                    activeTab === "blind-150"
+                      ? "bg-white/20 text-white"
+                      : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                  }`}
+                >
+                  150
+                </span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={fetchProblems}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)] transition-colors shadow-2xs"
+              title="Refresh"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
+              />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenAddModal}
+              className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--primary)]/90 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:shadow-md hover:opacity-95 transition-all"
+            >
+              <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+              <span>DSA Problem & Engineering Notes</span>
+            </button>
+          </div>
         </div>
       </div>
 

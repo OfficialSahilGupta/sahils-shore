@@ -23,6 +23,7 @@ import {
   Check,
   FileText,
   Image as ImageIcon,
+  GitBranch,
 } from "lucide-react";
 import type { DsaProblem } from "@/types";
 import {
@@ -37,6 +38,23 @@ import { parseDsaConceptMaps } from "@/lib/dsa/concept-map";
 import { formatFriendlyISTDate } from "@/lib/date-utils";
 import { CodeEditor } from "./CodeEditor";
 import { Select } from "@/components/ui/select";
+
+function getPlatformBadgeStyle(platform: string | null | undefined) {
+  const p = (platform || "").toLowerCase();
+  if (p.includes("leetcode")) {
+    return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25";
+  }
+  if (p.includes("codeforces")) {
+    return "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25";
+  }
+  if (p.includes("hackerrank")) {
+    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25";
+  }
+  if (p.includes("geeks")) {
+    return "bg-emerald-600/10 text-emerald-800 dark:text-emerald-300 border-emerald-600/25";
+  }
+  return "bg-[var(--surface-muted)]/60 text-[var(--text-muted)] border-[var(--border)]";
+}
 
 interface DsaProblemListProps {
   problems: DsaProblem[];
@@ -350,17 +368,25 @@ export function DsaProblemList({
                     ? "bg-[var(--danger)]/15 text-[var(--danger)] border-[var(--danger)]/30"
                     : "bg-[var(--surface-muted)] text-[var(--text-muted)] border-[var(--border)]";
 
+            const patternName =
+              problem.revision_history &&
+              typeof problem.revision_history === "object" &&
+              !Array.isArray(problem.revision_history) &&
+              (problem.revision_history as Record<string, any>).pattern
+                ? (problem.revision_history as Record<string, any>).pattern
+                : null;
+
             return (
               <div
                 key={problem.id}
-                className={`p-3.5 sm:p-4 space-y-2.5 w-full group transition-all rounded-xl border border-l-4 ${
+                className={`p-3.5 sm:p-4 space-y-2.5 w-full group transition-all duration-200 rounded-2xl border border-l-4 hover:-translate-y-0.5 hover:shadow-md ${
                   statusNormalized === "solved" || statusNormalized === "mastered"
-                    ? "border-l-[var(--success)] border-t-[var(--success)]/25 border-r-[var(--success)]/25 border-b-[var(--success)]/25 bg-[var(--success)]/[0.03] hover:bg-[var(--success)]/[0.06] shadow-2xs"
+                    ? "border-l-[var(--success)] border-t-[var(--success)]/25 border-r-[var(--success)]/25 border-b-[var(--success)]/25 bg-[var(--surface)] hover:bg-[var(--success)]/[0.04] shadow-2xs"
                     : statusNormalized === "needs revision" || statusNormalized === "revisit"
-                      ? "border-l-[var(--warning)] border-t-[var(--warning)]/25 border-r-[var(--warning)]/25 border-b-[var(--warning)]/25 bg-[var(--warning)]/[0.03] hover:bg-[var(--warning)]/[0.06] shadow-2xs"
+                      ? "border-l-[var(--warning)] border-t-[var(--warning)]/25 border-r-[var(--warning)]/25 border-b-[var(--warning)]/25 bg-[var(--surface)] hover:bg-[var(--warning)]/[0.04] shadow-2xs"
                       : statusNormalized === "stuck"
-                        ? "border-l-[var(--danger)] border-t-[var(--danger)]/25 border-r-[var(--danger)]/25 border-b-[var(--danger)]/25 bg-[var(--danger)]/[0.03] hover:bg-[var(--danger)]/[0.06] shadow-2xs"
-                        : "border-[var(--border)] border-l-[var(--border)]/70 bg-[var(--surface)] hover:bg-[var(--surface-muted)]/20 hover:border-[var(--border-hover)]"
+                        ? "border-l-[var(--danger)] border-t-[var(--danger)]/25 border-r-[var(--danger)]/25 border-b-[var(--danger)]/25 bg-[var(--surface)] hover:bg-[var(--danger)]/[0.04] shadow-2xs"
+                        : "border-[var(--border)] border-l-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)]/20 hover:border-[var(--primary)]/40 shadow-2xs"
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -455,12 +481,22 @@ export function DsaProblemList({
 
                     {/* Metadata chips */}
                     <div className="flex items-center gap-2 flex-wrap text-xs text-[var(--text-muted)]">
-                      <span className="rounded bg-[var(--surface-muted)]/50 px-2 py-0.5 text-[10px] font-medium">
+                      <span
+                        className={`rounded border px-2 py-0.5 text-[10px] font-medium ${getPlatformBadgeStyle(
+                          problem.platform
+                        )}`}
+                      >
                         {problem.platform}
                       </span>
-                      <span className="rounded bg-[var(--surface-muted)]/50 px-2 py-0.5 text-[10px] font-medium">
+                      <span className="rounded bg-[var(--surface-muted)]/60 px-2 py-0.5 text-[10px] font-medium border border-[var(--border)]">
                         {canonicalDsaTopic(problem.topic)}
                       </span>
+                      {patternName && (
+                        <span className="flex items-center gap-1 rounded-md border border-[var(--primary)]/25 bg-[var(--primary)]/5 px-2 py-0.5 text-[10px] font-medium text-[var(--primary)]">
+                          <GitBranch className="h-2.5 w-2.5" />
+                          <span>{patternName}</span>
+                        </span>
+                      )}
                       {problem.time_spent_minutes && problem.time_spent_minutes > 0 ? (
                         <span className="flex items-center gap-1 text-[10px] font-medium">
                           <Clock className="h-3 w-3" />
@@ -492,7 +528,7 @@ export function DsaProblemList({
                       <button
                         type="button"
                         onClick={() => onOpenStudyNotes(problem)}
-                        className="flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0 shadow-2xs"
+                        className="flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-gradient-to-r from-[var(--primary)]/15 to-[var(--primary)]/5 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[var(--primary)]/20 hover:shadow-xs transition-all shrink-0 shadow-2xs"
                         title="Open beautiful full-page Markdown study notes & diagrams"
                       >
                         <FileText className="h-3.5 w-3.5" />
