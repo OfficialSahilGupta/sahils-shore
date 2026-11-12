@@ -13,6 +13,10 @@ import {
   calculateTopicProgress,
   calculateDifficultySplit,
   calculateDsaStreak,
+  parseDsaConceptMaps,
+  packDsaNotesAndMaps,
+  generateDsaMarkdownDocument,
+  DSA_CONCEPT_MAP_PRESETS,
 } from "../lib/dsa/index.ts";
 import {
   calculateRoadmapProgress,
@@ -1025,6 +1029,119 @@ describe("14. Sub-Topic Differentiation & Chapter Notes Handling", () => {
     assert.equal(getTopicChapterNotes(null), "");
   });
 });
+
+describe("15. DSA Concept Maps, Visual Diagrams & Markdown Document Studio", () => {
+  test("parseDsaConceptMaps extracts embedded markdown images and metadata correctly", () => {
+    const problem = {
+      id: "prob-1",
+      title: "Trapping Rain Water",
+      approach_notes: "Two pointers approach.\n\n![Convergence Diagram](data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=)\n\nInvariant: leftMax and rightMax.",
+      revision_history: {
+        concept_maps: [
+          {
+            id: "map-extra",
+            title: "Memory Blueprint",
+            url: "https://example.com/memory.png",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+    } as unknown as DsaProblem;
+
+    const maps = parseDsaConceptMaps(problem);
+    assert.equal(maps.length, 2);
+    assert.ok(maps.some((m) => m.title === "Convergence Diagram"));
+    assert.ok(maps.some((m) => m.title === "Memory Blueprint"));
+  });
+
+  test("parseDsaConceptMaps deduplicates images between approach_notes and metadata", () => {
+    const duplicateUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";
+    const problem = {
+      id: "prob-dup",
+      title: "Binary Search",
+      approach_notes: `Invariant details.\n\n![Binary Search Tree](${duplicateUrl})`,
+      revision_history: {
+        concept_maps: [
+          {
+            id: "map-dup",
+            title: "Binary Search Tree",
+            url: duplicateUrl,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+    } as unknown as DsaProblem;
+
+    const maps = parseDsaConceptMaps(problem);
+    assert.equal(maps.length, 1);
+    assert.equal(maps[0].title, "Binary Search Tree");
+  });
+
+  test("packDsaNotesAndMaps packs clean markdown and metadata without duplicate image blocks", () => {
+    const rawNotes = "Core approach.\n\n![Old Diagram](data:image/svg+xml;base64,PHN2Zz4=)";
+    const newMaps = [
+      {
+        id: "map-1",
+        title: "Two Pointers Pointer Movement",
+        url: "data:image/svg+xml;base64,PHN2Zz50d29wb2ludGVyczwvc3ZnPg==",
+        createdAt: "2026-11-12T10:00:00.000Z",
+      },
+    ];
+
+    const { approach_notes, revision_history } = packDsaNotesAndMaps(rawNotes, newMaps);
+    assert.ok(approach_notes.includes("Core approach."));
+    assert.equal((revision_history as any).concept_maps.length, 1);
+    assert.equal((revision_history as any).concept_maps[0].title, "Two Pointers Pointer Movement");
+  });
+
+  test("generateDsaMarkdownDocument formats comprehensive engineering documentation with complexities and code", () => {
+    const problem = {
+      id: "prob-trap",
+      title: "Trapping Rain Water",
+      difficulty: "Hard",
+      topic: "Two Pointers",
+      platform: "LeetCode",
+      link: "https://leetcode.com/problems/trapping-rain-water/",
+      status: "Solved",
+      time_complexity: "O(N)",
+      space_complexity: "O(1)",
+      time_spent_minutes: 35,
+      language: "java",
+      approach_notes: "Two pointer algorithm.",
+      code_snippet: "class Solution { public int trap(int[] height) { return 0; } }",
+    } as unknown as DsaProblem;
+
+    const md = generateDsaMarkdownDocument(problem);
+    assert.ok(md.includes("# Trapping Rain Water"));
+    assert.ok(md.includes("**Difficulty:** Hard"));
+    assert.ok(md.includes("**Topic:** Two Pointers"));
+    assert.ok(md.includes("**Time Complexity:** O(N)"));
+    assert.ok(md.includes("**Space Complexity:** O(1)"));
+    assert.ok(md.includes("## Approach & Intuition"));
+    assert.ok(md.includes("## Solution Implementation"));
+    assert.ok(md.includes("```java"));
+    assert.ok(md.includes("class Solution"));
+  });
+
+  test("DSA_CONCEPT_MAP_PRESETS contains 4 curated SVG diagrams with WCAG-compliant styling", () => {
+    assert.equal(DSA_CONCEPT_MAP_PRESETS.length, 4);
+    const ids = DSA_CONCEPT_MAP_PRESETS.map((p) => p.id);
+    assert.ok(ids.includes("dsa-two-pointers"));
+    assert.ok(ids.includes("dsa-sliding-window"));
+    assert.ok(ids.includes("dsa-binary-search"));
+    assert.ok(ids.includes("dsa-monotonic-stack"));
+
+    for (const preset of DSA_CONCEPT_MAP_PRESETS) {
+      assert.ok(preset.title.length > 3);
+      assert.ok(preset.category.length > 2);
+      assert.ok(preset.svgDataUrl.startsWith("data:image/svg+xml;utf8,"));
+      const decodedSvg = decodeURIComponent(preset.svgDataUrl);
+      assert.ok(decodedSvg.includes("<svg"));
+      assert.ok(decodedSvg.includes("</svg>"));
+    }
+  });
+});
+
 
 
 

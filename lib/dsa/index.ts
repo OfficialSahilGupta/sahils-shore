@@ -33,6 +33,7 @@ import { logActivityTime, getActivities } from "../tracker/index.ts";
 
 export * from "./constants.ts";
 export * from "./blind150.ts";
+export * from "./concept-map.ts";
 
 export interface CreateDsaProblemInput {
   title: string;

@@ -39,6 +39,7 @@ import { WeakTopicAlert } from "./WeakTopicAlert";
 import { TopicProgressRings } from "./TopicProgressRings";
 import { DsaProblemList } from "./DsaProblemList";
 import { DsaProblemModal } from "./DsaProblemModal";
+import { DsaFullPageNoteModal } from "./DsaFullPageNoteModal";
 import { Blind150Tracker } from "./Blind150Tracker";
 
 const DSA_STORAGE_KEY = "shore_dsa_problems_cache";
@@ -79,6 +80,7 @@ export function DsaContainer() {
   const [targetBenchmark, setTargetBenchmark] = useState<number | "adaptive">("adaptive");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProblem, setEditingProblem] = useState<DsaProblem | null>(null);
+  const [selectedFullPageProblem, setSelectedFullPageProblem] = useState<DsaProblem | null>(null);
   const [modalPrefill, setModalPrefill] = useState<Partial<CreateDsaProblemInput> | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -413,6 +415,59 @@ export function DsaContainer() {
     }
   };
 
+  // 6b. Save from Full Page Markdown Studio (approaches, code, diagrams, complexities)
+  const handleSaveProblemFromFullPage = async (
+    problemId: string,
+    updates: Partial<DsaProblem>
+  ) => {
+    // 1. Optimistic update
+    setProblems((prev) => {
+      const next = prev.map((p) =>
+        p.id === problemId
+          ? ({
+              ...p,
+              ...updates,
+              updated_at: new Date().toISOString(),
+            } as DsaProblem)
+          : p
+      );
+      saveCachedProblems(next);
+      return next;
+    });
+
+    setSelectedFullPageProblem((prev) =>
+      prev && prev.id === problemId
+        ? ({ ...prev, ...updates, updated_at: new Date().toISOString() } as DsaProblem)
+        : prev
+    );
+
+    showToast("Study notes & diagrams saved!");
+
+    // 2. Persist to Supabase
+    if (userId) {
+      try {
+        const updated = await updateDsaProblem(
+          supabase,
+          userId,
+          problemId,
+          updates
+        );
+        if (updated) {
+          setProblems((prev) => {
+            const next = prev.map((p) => (p.id === problemId ? updated : p));
+            saveCachedProblems(next);
+            return next;
+          });
+          setSelectedFullPageProblem((prev) =>
+            prev && prev.id === problemId ? updated : prev
+          );
+        }
+      } catch (e) {
+        console.warn("[DsaContainer] Background notes sync failed, saved locally:", e);
+      }
+    }
+  };
+
   // 7. Toggle Favorite
   const handleToggleFavorite = async (problemId: string) => {
     let nextFav = false;
@@ -427,6 +482,10 @@ export function DsaContainer() {
       saveCachedProblems(next);
       return next;
     });
+
+    setSelectedFullPageProblem((prev) =>
+      prev && prev.id === problemId ? { ...prev, is_favorite: nextFav } : prev
+    );
 
     showToast(nextFav ? "Starred problem!" : "Removed from favorites.");
 
@@ -480,6 +539,20 @@ export function DsaContainer() {
       return next;
     });
 
+    setSelectedFullPageProblem((prev) =>
+      prev && prev.id === problem.id
+        ? {
+            ...prev,
+            rating,
+            status: rating === "Hard" ? "Needs revision" : prev.status,
+            revision_interval_days: nextIntervalDays,
+            next_revision_at: nextRevisionDateUTC,
+            revision_count: (prev.revision_count || 0) + 1,
+            last_revised_at: new Date().toISOString(),
+          }
+        : prev
+    );
+
     showToast(
       rating === "Easy"
         ? `Nice! Next revision in ${nextIntervalDays} days.`
@@ -495,6 +568,9 @@ export function DsaContainer() {
             saveCachedProblems(next);
             return next;
           });
+          setSelectedFullPageProblem((prev) =>
+            prev && prev.id === problem.id ? updated : prev
+          );
         }
       } catch (e) {
         console.warn("[DsaContainer] Background revision sync warning:", e);
@@ -683,6 +759,7 @@ export function DsaContainer() {
             problems={revisionDueProblems}
             onRate={handleRateRevision}
             onEdit={handleOpenEditModal}
+            onOpenStudyNotes={(p) => setSelectedFullPageProblem(p)}
           />
 
           {/* 3. Weak Topic Detection Alert */}
@@ -711,6 +788,7 @@ export function DsaContainer() {
             onToggleFavorite={handleToggleFavorite}
             onCleanStubs={emptyImportedStubsCount > 0 ? handleCleanStubs : undefined}
             stubsCount={emptyImportedStubsCount}
+            onOpenStudyNotes={(p) => setSelectedFullPageProblem(p)}
           />
         </div>
       )}
@@ -723,6 +801,7 @@ export function DsaContainer() {
             onOpenSolveModal={handleOpenSolveModalWithPrefill}
             onOpenEditProblem={handleOpenEditModal}
             onQuickToggleSolved={handleQuickToggleSolved}
+            onOpenStudyNotes={(p) => setSelectedFullPageProblem(p)}
           />
         </div>
       )}
@@ -737,6 +816,20 @@ export function DsaContainer() {
         onSave={handleSaveProblem}
         initialProblem={editingProblem}
         prefill={modalPrefill}
+      />
+
+      {/* Full-Page Markdown Document Studio & Visual Diagrams Gallery */}
+      <DsaFullPageNoteModal
+        isOpen={Boolean(selectedFullPageProblem)}
+        problem={
+          selectedFullPageProblem
+            ? problems.find((p) => p.id === selectedFullPageProblem.id) || selectedFullPageProblem
+            : null
+        }
+        onClose={() => setSelectedFullPageProblem(null)}
+        onSave={handleSaveProblemFromFullPage}
+        onRate={handleRateRevision}
+        onToggleFavorite={handleToggleFavorite}
       />
     </div>
   );

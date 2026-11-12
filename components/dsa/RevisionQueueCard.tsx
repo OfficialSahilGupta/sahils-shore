@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  FileText,
 } from "lucide-react";
 import type { DsaProblem } from "@/types";
 import { CodeEditor } from "./CodeEditor";
@@ -23,12 +24,14 @@ interface RevisionQueueCardProps {
   problems: DsaProblem[];
   onRate: (problem: DsaProblem, rating: "Easy" | "Hard") => Promise<void>;
   onEdit: (problem: DsaProblem) => void;
+  onOpenStudyNotes?: (problem: DsaProblem) => void;
 }
 
 export function RevisionQueueCard({
   problems,
   onRate,
   onEdit,
+  onOpenStudyNotes,
 }: RevisionQueueCardProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [ratingId, setRatingId] = useState<string | null>(null);
@@ -110,9 +113,16 @@ export function RevisionQueueCard({
                   />
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-[var(--text)] hover:text-[var(--primary)] transition-colors">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenStudyNotes ? onOpenStudyNotes(problem) : onEdit(problem)
+                        }
+                        className="text-sm font-semibold text-left text-[var(--text)] hover:text-[var(--primary)] hover:underline transition-colors"
+                        title="Click to open study notes & diagrams"
+                      >
                         {problem.title}
-                      </span>
+                      </button>
                       <span className="rounded-md bg-[var(--surface-muted)]/60 px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-muted)]">
                         {problem.platform}
                       </span>
@@ -135,6 +145,18 @@ export function RevisionQueueCard({
 
                 {/* Rating Actions & Toggle */}
                 <div className="flex items-center gap-2 self-end sm:self-center">
+                  {onOpenStudyNotes && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenStudyNotes(problem)}
+                      className="flex items-center gap-1 rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2 py-1 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
+                      title="Open full-page Study Notes & Code"
+                    >
+                      <FileText className="h-3 w-3" />
+                      <span>Study Notes</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => toggleExpand(problem.id)}

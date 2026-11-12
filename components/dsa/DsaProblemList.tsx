@@ -21,6 +21,8 @@ import {
   Star,
   Copy,
   Check,
+  FileText,
+  Image as ImageIcon,
 } from "lucide-react";
 import type { DsaProblem } from "@/types";
 import {
@@ -31,6 +33,7 @@ import {
   canonicalDsaTopic,
   isSameDsaTopic,
 } from "@/lib/dsa/constants";
+import { parseDsaConceptMaps } from "@/lib/dsa/concept-map";
 import { formatFriendlyISTDate } from "@/lib/date-utils";
 import { CodeEditor } from "./CodeEditor";
 import { Select } from "@/components/ui/select";
@@ -44,6 +47,7 @@ interface DsaProblemListProps {
   onToggleFavorite?: (problemId: string) => Promise<void>;
   onCleanStubs?: () => Promise<void>;
   stubsCount?: number;
+  onOpenStudyNotes?: (problem: DsaProblem) => void;
 }
 
 export function DsaProblemList({
@@ -55,6 +59,7 @@ export function DsaProblemList({
   onToggleFavorite,
   onCleanStubs,
   stubsCount = 0,
+  onOpenStudyNotes,
 }: DsaProblemListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
@@ -321,9 +326,13 @@ export function DsaProblemList({
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-[var(--border)]">
+        <div className="space-y-3 w-full">
           {filteredProblems.map((problem) => {
             const isCodeExpanded = expandedCodeId === problem.id;
+            const conceptMapsCount = parseDsaConceptMaps(problem).length;
+            const hasNotes = Boolean(problem.approach_notes && problem.approach_notes.trim().length > 0);
+            const hasCode = Boolean(problem.code_snippet && problem.code_snippet.trim().length > 0);
+
             const diffClass =
               problem.difficulty === "Easy"
                 ? "bg-[var(--success)]/15 text-[var(--success)] border-[var(--success)]/30"
@@ -335,14 +344,25 @@ export function DsaProblemList({
             const statusClass =
               statusNormalized === "solved" || statusNormalized === "mastered"
                 ? "bg-[var(--success)]/15 text-[var(--success)] border-[var(--success)]/30"
-                : statusNormalized === "needs revision"
+                : statusNormalized === "needs revision" || statusNormalized === "revisit"
                   ? "bg-[var(--warning)]/15 text-[var(--warning)] border-[var(--warning)]/30"
                   : statusNormalized === "stuck"
                     ? "bg-[var(--danger)]/15 text-[var(--danger)] border-[var(--danger)]/30"
                     : "bg-[var(--surface-muted)] text-[var(--text-muted)] border-[var(--border)]";
 
             return (
-              <div key={problem.id} className="py-3.5 first:pt-0 last:pb-0 space-y-2.5">
+              <div
+                key={problem.id}
+                className={`p-3.5 sm:p-4 space-y-2.5 w-full group transition-all rounded-xl border border-l-4 ${
+                  statusNormalized === "solved" || statusNormalized === "mastered"
+                    ? "border-l-[var(--success)] border-t-[var(--success)]/25 border-r-[var(--success)]/25 border-b-[var(--success)]/25 bg-[var(--success)]/[0.03] hover:bg-[var(--success)]/[0.06] shadow-2xs"
+                    : statusNormalized === "needs revision" || statusNormalized === "revisit"
+                      ? "border-l-[var(--warning)] border-t-[var(--warning)]/25 border-r-[var(--warning)]/25 border-b-[var(--warning)]/25 bg-[var(--warning)]/[0.03] hover:bg-[var(--warning)]/[0.06] shadow-2xs"
+                      : statusNormalized === "stuck"
+                        ? "border-l-[var(--danger)] border-t-[var(--danger)]/25 border-r-[var(--danger)]/25 border-b-[var(--danger)]/25 bg-[var(--danger)]/[0.03] hover:bg-[var(--danger)]/[0.06] shadow-2xs"
+                        : "border-[var(--border)] border-l-[var(--border)]/70 bg-[var(--surface)] hover:bg-[var(--surface-muted)]/20 hover:border-[var(--border-hover)]"
+                }`}
+              >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -376,19 +396,59 @@ export function DsaProblemList({
                         {problem.status}
                       </span>
 
-                      {problem.link ? (
+                      {/* Problem Title Button - click opens Full Page Study Notes */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenStudyNotes ? onOpenStudyNotes(problem) : onEdit(problem)
+                        }
+                        className="text-sm font-semibold text-left text-[var(--text)] hover:text-[var(--primary)] hover:underline transition-colors truncate"
+                        title="Click to open full-page Markdown study notes & diagrams"
+                      >
+                        {problem.title}
+                      </button>
+
+                      {problem.link && (
                         <a
                           href={problem.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-semibold text-[var(--text)] hover:text-[var(--primary)] flex items-center gap-1 transition-colors group truncate"
+                          className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors shrink-0"
+                          title="Open problem link in new tab"
                         >
-                          <span className="truncate">{problem.title}</span>
-                          <ExternalLink className="h-3 w-3 text-[var(--text-muted)] group-hover:text-[var(--primary)] shrink-0" />
+                          <ExternalLink className="h-3 w-3" />
                         </a>
-                      ) : (
-                        <span className="text-sm font-semibold text-[var(--text)] truncate">
-                          {problem.title}
+                      )}
+
+                      {/* Badges for notes, diagrams, code */}
+                      {hasNotes && onOpenStudyNotes && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenStudyNotes(problem)}
+                          className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[10px] font-medium text-[var(--primary)] shrink-0 hover:bg-[var(--primary)]/20 transition-colors cursor-pointer"
+                          title="Click to open study notes"
+                        >
+                          <FileText className="h-2.5 w-2.5" />
+                          <span>Notes</span>
+                        </button>
+                      )}
+
+                      {conceptMapsCount > 0 && onOpenStudyNotes && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenStudyNotes(problem)}
+                          className="flex items-center gap-1 rounded bg-[var(--primary)]/15 px-1.5 py-0.2 text-[10px] font-semibold text-[var(--primary)] shrink-0 hover:bg-[var(--primary)]/25 transition-colors border border-[var(--primary)]/20 cursor-pointer"
+                          title={`Contains ${conceptMapsCount} visual diagram${conceptMapsCount > 1 ? "s" : ""}`}
+                        >
+                          <ImageIcon className="h-2.5 w-2.5" />
+                          <span>{conceptMapsCount} {conceptMapsCount === 1 ? "diagram" : "diagrams"}</span>
+                        </button>
+                      )}
+
+                      {hasCode && (
+                        <span className="flex items-center gap-1 rounded bg-[var(--primary)]/10 px-1.5 py-0.2 text-[10px] font-medium text-[var(--primary)] shrink-0">
+                          <Code2 className="h-2.5 w-2.5" />
+                          <span>Code</span>
                         </span>
                       )}
                     </div>
@@ -427,7 +487,19 @@ export function DsaProblemList({
                   </div>
 
                   {/* Right side actions */}
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                    {onOpenStudyNotes && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenStudyNotes(problem)}
+                        className="flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0 shadow-2xs"
+                        title="Open beautiful full-page Markdown study notes & diagrams"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>Study Notes</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() =>
@@ -438,10 +510,10 @@ export function DsaProblemList({
                           ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
                           : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/40 hover:text-[var(--text)]"
                       }`}
-                      title="Toggle Engineering Notebook View"
+                      title="Quick Preview Notebook View"
                     >
                       <BookOpen className="h-3.5 w-3.5" />
-                      <span>{isCodeExpanded ? "Close" : "Notes & Code"}</span>
+                      <span className="hidden md:inline">{isCodeExpanded ? "Close" : "Preview"}</span>
                       {isCodeExpanded ? (
                         <ChevronUp className="h-3 w-3" />
                       ) : (
@@ -452,17 +524,18 @@ export function DsaProblemList({
                     <button
                       type="button"
                       onClick={() => onEdit(problem)}
-                      className="rounded-xl border border-[var(--border)] p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/50 hover:text-[var(--text)] transition-colors"
-                      title="Edit Problem & Workspace"
+                      className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] hover:text-[var(--primary)] transition-all shrink-0"
+                      title="Quick Edit Fields"
                     >
-                      <Edit2 className="h-3.5 w-3.5" />
+                      <Edit2 className="h-3.5 w-3.5 text-[var(--text-muted)] group-hover:text-[var(--primary)]" />
+                      <span>Edit</span>
                     </button>
 
                     <button
                       type="button"
                       disabled={deletingId === problem.id}
                       onClick={() => handleDelete(problem.id, problem.title)}
-                      className="rounded-xl border border-[var(--border)] p-1.5 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] hover:border-[var(--danger)]/30 disabled:opacity-50 transition-colors"
+                      className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] hover:border-[var(--danger)]/30 disabled:opacity-50 transition-colors"
                       title="Delete Problem"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -472,8 +545,14 @@ export function DsaProblemList({
 
                 {/* Collapsed Approach Preview */}
                 {problem.approach_notes && !isCodeExpanded && (
-                  <p className="text-xs text-[var(--text-muted)] line-clamp-2 pl-6 italic">
-                    {problem.approach_notes}
+                  <p
+                    onClick={() =>
+                      onOpenStudyNotes ? onOpenStudyNotes(problem) : onEdit(problem)
+                    }
+                    className="text-xs text-[var(--text-muted)] line-clamp-2 pl-6 italic cursor-pointer hover:text-[var(--primary)] transition-colors"
+                    title="Click to open full-page study notes"
+                  >
+                    {problem.approach_notes.replace(/[#*`_~>-]/g, "").trim()}
                   </p>
                 )}
 

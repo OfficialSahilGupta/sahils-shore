@@ -18,6 +18,7 @@ import {
   Code2,
   ChevronRight,
   Filter,
+  FileText,
 } from "lucide-react";
 import type { DsaProblem } from "@/types";
 import {
@@ -42,6 +43,7 @@ interface Blind150TrackerProps {
   onOpenSolveModal: (prefill: Partial<CreateDsaProblemInput>) => void;
   onOpenEditProblem: (problem: DsaProblem) => void;
   onQuickToggleSolved: (blind: Blind150Problem, currentProblem?: DsaProblem) => Promise<void>;
+  onOpenStudyNotes?: (problem: DsaProblem) => void;
 }
 
 export function Blind150Tracker({
@@ -49,6 +51,7 @@ export function Blind150Tracker({
   onOpenSolveModal,
   onOpenEditProblem,
   onQuickToggleSolved,
+  onOpenStudyNotes,
 }: Blind150TrackerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [topicFilter, setTopicFilter] = useState<string>("all");
@@ -396,14 +399,28 @@ export function Blind150Tracker({
                 )}
 
                 {userMatch ? (
-                  <button
-                    type="button"
-                    onClick={() => onOpenEditProblem(userMatch)}
-                    className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 px-3 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
-                  >
-                    <Code2 className="h-3.5 w-3.5 text-[var(--primary)]" />
-                    <span>View / Edit Notes</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {onOpenStudyNotes && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenStudyNotes(userMatch)}
+                        className="flex items-center gap-1 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors shadow-2xs"
+                        title="Open full-page Markdown Study Notes & Diagrams"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>Notes</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onOpenEditProblem(userMatch)}
+                      className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/30 px-2.5 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                      title="Quick Edit Details"
+                    >
+                      <Code2 className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                      <span>Edit</span>
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
