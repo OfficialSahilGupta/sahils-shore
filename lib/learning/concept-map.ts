@@ -14,6 +14,9 @@ export interface ChapterConceptMap {
   caption?: string;
   createdAt: string;
   subSectionId?: string;
+  driveFileId?: string;
+  driveWebViewLink?: string;
+  folderPath?: string;
 }
 
 export type ConceptMapImage = ChapterConceptMap;

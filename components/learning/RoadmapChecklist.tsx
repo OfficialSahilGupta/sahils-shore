@@ -30,8 +30,16 @@ import {
   FileText,
   Maximize2,
   Image as ImageIcon,
+  Info,
+  Layers,
+  ArrowRight,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  X,
 } from "lucide-react";
 import type { LearningItem, Json } from "@/types";
+import { ModalPortal } from "@/components/ui/modal-portal";
 import {
   type TrackMasteryBreakdown,
   parseTopicSubSections,
@@ -40,6 +48,7 @@ import {
   getTopicChapterNotes,
   parseTopicConceptMaps,
   type TopicSubSection,
+  type ChapterConceptMap,
 } from "@/lib/learning";
 import { MarkdownView } from "@/components/common/MarkdownView";
 import { TopicStudyModal } from "./TopicStudyModal";
@@ -94,6 +103,8 @@ export function RoadmapChecklist({
   const [fullPageNoteItem, setFullPageNoteItem] = useState<LearningItem | null>(null);
   const [editingTopicItem, setEditingTopicItem] = useState<LearningItem | null>(null);
   const [isAddTopicOpen, setIsAddTopicOpen] = useState(false);
+  const [lightboxMap, setLightboxMap] = useState<ChapterConceptMap | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
 
   // Expanded topic IDs for the inline sub-topic tree
   const [expandedTopicIds, setExpandedTopicIds] = useState<Set<string>>(new Set());
@@ -430,6 +441,25 @@ export function RoadmapChecklist({
         </button>
       </div>
 
+      {/* Active Filter Notice Banner */}
+      {filter !== "all" && (
+        <div className="flex items-center justify-between rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3.5 py-2 text-xs text-[var(--primary)] animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 shrink-0" />
+            <span>
+              Showing {filteredItems.length} {filter === "in_progress" ? "In Progress" : filter} {filteredItems.length === 1 ? "topic" : "topics"} ({items.length - filteredItems.length} other {items.length - filteredItems.length === 1 ? "topic" : "topics"} hidden).
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className="font-bold underline hover:opacity-80 shrink-0"
+          >
+            Show All ({items.length})
+          </button>
+        </div>
+      )}
+
       {/* Roadmap Items List with Expandable Sub-Topic Drawers */}
       {filteredItems.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center">
@@ -468,7 +498,8 @@ export function RoadmapChecklist({
               (acc, s) => acc + (s.resources?.length || 0),
               0
             );
-            const conceptMapsCount = parseTopicConceptMaps(item).length;
+            const topicConceptMaps = parseTopicConceptMaps(item);
+            const conceptMapsCount = topicConceptMaps.length;
 
             const itemCategory =
               item.category ||
@@ -773,6 +804,73 @@ export function RoadmapChecklist({
                     )}
                   </div>
                 </div>
+
+                {/* Visual Concept Maps Preview Strip */}
+                {topicConceptMaps.length > 0 && (
+                  <div className="pt-2 pb-1 border-t border-[var(--border)]/40 mt-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--text)]">
+                        <Layers className="h-3.5 w-3.5 text-[var(--primary)]" />
+                        <span>Visual Diagrams & Concept Maps ({topicConceptMaps.length})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFullPageNotes(item)}
+                        className="text-[11px] font-semibold text-[var(--primary)] hover:underline flex items-center gap-1"
+                      >
+                        <span>Open Studio</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-thin">
+                      {topicConceptMaps.slice(0, 5).map((cm, cIdx) => (
+                        <div
+                          key={cm.id || cIdx}
+                          onClick={() => {
+                            setLightboxMap(cm);
+                            setLightboxZoom(1);
+                          }}
+                          className="group/thumb relative h-20 w-32 shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/40 overflow-hidden cursor-pointer hover:border-[var(--primary)] hover:shadow-xs transition-all flex flex-col justify-between p-1.5"
+                          title={`Click to view "${cm.title || cm.caption}" in high definition`}
+                        >
+                          <div className="h-11 w-full overflow-hidden rounded-md bg-[var(--background)] flex items-center justify-center p-0.5 relative">
+                            {cm.url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={cm.url}
+                                alt={cm.title || "Diagram"}
+                                className="max-h-full max-w-full object-contain group-hover/thumb:scale-105 transition-transform"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <ImageIcon className="h-5 w-5 text-[var(--primary)]/60" />
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/25 flex items-center justify-center transition-all opacity-0 group-hover/thumb:opacity-100">
+                              <Maximize2 className="h-3.5 w-3.5 text-white drop-shadow" />
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-medium text-[var(--text-muted)] group-hover/thumb:text-[var(--text)] truncate">
+                            {cm.title || cm.caption || `Diagram #${cIdx + 1}`}
+                          </span>
+                        </div>
+                      ))}
+
+                      {topicConceptMaps.length > 5 && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFullPageNotes(item)}
+                          className="h-20 w-24 shrink-0 rounded-xl border border-dashed border-[var(--border)] hover:border-[var(--primary)] bg-[var(--surface-muted)]/20 flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--surface-muted)]/50 transition-all"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>+{topicConceptMaps.length - 5} More</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Inline Sub-Topics Tree & Quick Adder Drawer */}
                 {isExpanded && (
@@ -1165,6 +1263,105 @@ export function RoadmapChecklist({
               : `This will permanently delete sub-topic "${safeDeleteTarget.title}" and its notes, code implementations, and reference links.`
           }
         />
+      )}
+
+      {/* Lightbox Modal for High-Definition Viewing of Concept Maps */}
+      {lightboxMap && (
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-[120] flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => {
+              setLightboxMap(null);
+              setLightboxZoom(1);
+            }}
+          >
+            <header
+              className="flex items-center justify-between border-b border-white/10 px-6 py-4 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white">
+                  <ImageIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    {lightboxMap.title || lightboxMap.caption}
+                  </h3>
+                  <p className="text-xs text-white/60">
+                    High-Definition Architecture Diagram
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLightboxZoom((z) => Math.max(0.5, z - 0.25))}
+                  className="rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+                <span className="text-xs font-mono text-white/60 min-w-[40px] text-center">
+                  {Math.round(lightboxZoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLightboxZoom((z) => Math.min(3, z + 0.25))}
+                  className="rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLightboxZoom(1)}
+                  className="rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                  title="Reset Zoom"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+
+                {lightboxMap.driveWebViewLink && (
+                  <a
+                    href={lightboxMap.driveWebViewLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25 transition-colors"
+                  >
+                    <span>Open in Drive</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLightboxMap(null);
+                    setLightboxZoom(1);
+                  }}
+                  className="rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors ml-2"
+                  title="Close (Esc)"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </header>
+
+            <div
+              className="flex-1 overflow-auto flex items-center justify-center p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightboxMap.url}
+                alt={lightboxMap.title || "Concept Map"}
+                style={{ transform: `scale(${lightboxZoom})` }}
+                className="max-h-[82vh] max-w-[90vw] object-contain transition-transform duration-150 rounded-lg shadow-2xl select-none"
+              />
+            </div>
+          </div>
+        </ModalPortal>
       )}
     </div>
   );

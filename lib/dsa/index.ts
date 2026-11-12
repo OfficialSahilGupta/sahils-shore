@@ -402,6 +402,57 @@ export function calculateDsaStreak(
 }
 
 // ----------------------------------------------------------------------------
+// Metadata Preservation Engine (Embeds rich metadata into approach_notes)
+// ----------------------------------------------------------------------------
+
+export function embedDsaMetadata(
+  notes: string,
+  meta: {
+    time_complexity?: string | null;
+    space_complexity?: string | null;
+    is_favorite?: boolean;
+    pattern?: string | null;
+    concept_maps?: any[];
+    revision_history?: any;
+  }
+): string {
+  const cleanNotes = (notes || "").replace(/\n*<!-- SHORE_DSA_META:[\s\S]*?-->\n*/g, "").trim();
+  const metaObj: Record<string, any> = {};
+  if (meta.time_complexity) metaObj.time_complexity = meta.time_complexity;
+  if (meta.space_complexity) metaObj.space_complexity = meta.space_complexity;
+  if (meta.is_favorite !== undefined) metaObj.is_favorite = meta.is_favorite;
+  if (meta.pattern) metaObj.pattern = meta.pattern;
+  if (meta.concept_maps && meta.concept_maps.length > 0) metaObj.concept_maps = meta.concept_maps;
+  if (meta.revision_history) metaObj.revision_history = meta.revision_history;
+
+  if (Object.keys(metaObj).length === 0) return cleanNotes;
+  return `${cleanNotes}\n\n<!-- SHORE_DSA_META:${JSON.stringify(metaObj)}-->`;
+}
+
+export function extractDsaMetadata(approach_notes: string | null | undefined): {
+  cleanNotes: string;
+  metadata: {
+    time_complexity?: string | null;
+    space_complexity?: string | null;
+    is_favorite?: boolean;
+    pattern?: string | null;
+    concept_maps?: any[];
+    revision_history?: any;
+  };
+} {
+  if (!approach_notes) return { cleanNotes: "", metadata: {} };
+  const match = approach_notes.match(/<!-- SHORE_DSA_META:([\s\S]*?)-->/);
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      const cleanNotes = approach_notes.replace(match[0], "").trim();
+      return { cleanNotes, metadata: parsed };
+    } catch (e) {}
+  }
+  return { cleanNotes: approach_notes, metadata: {} };
+}
+
+// ----------------------------------------------------------------------------
 // Supabase Data Access Functions
 // ----------------------------------------------------------------------------
 
@@ -420,16 +471,28 @@ export async function getDsaProblems(
     return [];
   }
 
-  return ((data || []) as DsaProblem[]).map((p) => ({
-    ...p,
-    status:
-      p.status === "todo"
-        ? "Todo"
-        : p.status === "solved"
-          ? "Solved"
-          : (p.status as DsaStatus),
-    topic: canonicalDsaTopic(p.topic),
-  }));
+  return ((data || []) as any[]).map((p) => {
+    const { cleanNotes, metadata } = extractDsaMetadata(p.approach_notes);
+    const existingMaps = metadata.concept_maps || (p.revision_history as any)?.concept_maps || [];
+    const pattern = metadata.pattern || (p.revision_history as any)?.pattern || null;
+    const history = p.revision_history || metadata.revision_history || { concept_maps: existingMaps, pattern };
+
+    return {
+      ...p,
+      approach_notes: cleanNotes,
+      status:
+        p.status === "todo"
+          ? "Todo"
+          : p.status === "solved"
+            ? "Solved"
+            : (p.status as DsaStatus),
+      topic: canonicalDsaTopic(p.topic),
+      time_complexity: p.time_complexity || metadata.time_complexity || null,
+      space_complexity: p.space_complexity || metadata.space_complexity || null,
+      is_favorite: p.is_favorite !== undefined ? Boolean(p.is_favorite) : Boolean(metadata.is_favorite),
+      revision_history: history,
+    } as DsaProblem;
+  });
 }
 
 export async function createDsaProblem(
@@ -438,105 +501,69 @@ export async function createDsaProblem(
   input: CreateDsaProblemInput
 ): Promise<DsaProblem | null> {
   const now = new Date();
-  // Initial spaced repetition scheduled 1 day out
   const initialRevisionDate = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const normalizedTopic = canonicalDsaTopic(input.topic);
-  const dbStatus = input.status === "Todo" ? "todo" : input.status;
+  const dbStatus = input.status === "Todo" ? "todo" : input.status === "Solved" ? "solved" : input.status;
+
+  const existingMaps = (input.revision_history as any)?.concept_maps || [];
+  const pattern = (input.revision_history as any)?.pattern || null;
+  const embeddedNotes = embedDsaMetadata(input.approach_notes || "", {
+    time_complexity: input.time_complexity,
+    space_complexity: input.space_complexity,
+    is_favorite: input.is_favorite,
+    pattern,
+    concept_maps: existingMaps,
+    revision_history: input.revision_history,
+  });
+
+  const basePayload = {
+    user_id: userId,
+    title: input.title,
+    link: input.link || null,
+    platform: input.platform || "LeetCode",
+    topic: normalizedTopic,
+    difficulty: input.difficulty,
+    status: dbStatus as any,
+    time_spent_minutes: input.time_spent_minutes || 0,
+    approach_notes: embeddedNotes,
+    code_snippet: input.code_snippet || null,
+    language: input.language || "java",
+    next_revision_at: input.next_revision_at || initialRevisionDate,
+    revision_count: 0,
+  };
 
   let problem: DsaProblem | null = null;
 
   try {
-    // 1. Attempt primary insert with full modern columns
     const { data, error } = await supabase
       .from("dsa_problems")
-      .insert({
-        user_id: userId,
-        title: input.title,
-        link: input.link || null,
-        platform: input.platform || "LeetCode",
-        topic: normalizedTopic,
-        difficulty: input.difficulty,
-        status: dbStatus as any,
-        time_spent_minutes: input.time_spent_minutes || 0,
-        approach_notes: input.approach_notes || null,
-        code_snippet: input.code_snippet || null,
-        language: input.language || "java",
-        time_complexity: input.time_complexity || null,
-        space_complexity: input.space_complexity || null,
-        revision_interval_days: input.revision_interval_days || 1,
-        next_revision_at: input.next_revision_at || initialRevisionDate,
-        revision_count: 0,
-        revision_history: (input.revision_history as any) || [],
-        is_favorite: Boolean(input.is_favorite),
-      })
+      .insert(basePayload as any)
       .select()
       .single();
 
-    if (error) {
-      console.warn("[createDsaProblem] Primary insert encountered issue:", error.message);
-      // 2. Attempt compatible fallback if status constraint or columns differed
-      const fallbackStatus = input.status === "Solved" ? "solved" : "todo";
-      const fallbackPayload: Record<string, unknown> = {
-        user_id: userId,
-        title: input.title,
-        link: input.link || null,
-        platform: input.platform || "LeetCode",
-        topic: normalizedTopic,
-        difficulty: input.difficulty,
-        status: fallbackStatus,
-        time_spent_minutes: input.time_spent_minutes || 0,
-        approach_notes: input.approach_notes || null,
-        code_snippet: input.code_snippet || null,
-        language: input.language || "java",
-        next_revision_at: initialRevisionDate,
-        revision_count: 0,
-        is_favorite: Boolean(input.is_favorite),
-      };
-
-      let fallbackRes = await supabase
-        .from("dsa_problems")
-        .insert(fallbackPayload as any)
-        .select()
-        .single();
-
-      if (fallbackRes.error && fallbackRes.error.message.includes("is_favorite")) {
-        delete fallbackPayload.is_favorite;
-        fallbackRes = await supabase
-          .from("dsa_problems")
-          .insert(fallbackPayload as any)
-          .select()
-          .single();
-      }
-
-      if (fallbackRes.data) {
-        problem = {
-          ...(fallbackRes.data as unknown as DsaProblem),
-          status: input.status,
-          topic: normalizedTopic,
-          time_complexity: input.time_complexity || null,
-          space_complexity: input.space_complexity || null,
-          revision_interval_days: 1,
-          is_favorite: Boolean(input.is_favorite),
-        };
-      }
-    } else if (data) {
+    if (!error && data) {
       problem = {
-        ...(data as DsaProblem),
+        ...(data as unknown as DsaProblem),
+        approach_notes: input.approach_notes || "",
         status: input.status,
         topic: normalizedTopic,
+        time_complexity: input.time_complexity || null,
+        space_complexity: input.space_complexity || null,
         is_favorite: Boolean(input.is_favorite),
+        revision_history: input.revision_history || { concept_maps: existingMaps, pattern },
       };
+    } else if (error) {
+      console.warn("[createDsaProblem] Supabase insert warning:", error.message);
     }
   } catch (err) {
-    console.warn("[createDsaProblem] Exception during Supabase insert:", err);
+    console.warn("[createDsaProblem] Supabase exception:", err);
   }
 
-  // 3. Guaranteed fallback: if Supabase fails (e.g. offline, auth or network issue),
-  // create a valid local problem object so user work is NEVER lost.
+  // Fallback memory representation if network/DB error
   if (!problem) {
     problem = {
-      id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-      user_id: userId || "local-user",
+      id: `dsa-${Date.now()}`,
+      user_id: userId,
       title: input.title,
       link: input.link || null,
       platform: input.platform || "LeetCode",
@@ -553,14 +580,15 @@ export async function createDsaProblem(
       next_revision_at: initialRevisionDate,
       revision_count: 0,
       last_revised_at: null,
-      revision_history: [],
+      revision_history: input.revision_history || { concept_maps: existingMaps, pattern },
       rating: null,
+      is_favorite: Boolean(input.is_favorite),
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
     };
   }
 
-  // 4. If study time was spent, attempt auto-logging to Daily Tracker
+  // If study time was spent, auto-log to Daily Tracker
   if (input.time_spent_minutes && input.time_spent_minutes > 0 && userId) {
     try {
       const activities = await getActivities(supabase, userId);
@@ -584,7 +612,7 @@ export async function createDsaProblem(
     }
   }
 
-  // 5. Write to timeline_events safely
+  // Write to timeline_events
   if (userId) {
     try {
       await writeTimelineEvent(supabase, {
@@ -617,12 +645,39 @@ export async function updateDsaProblem(
   problemId: string,
   updates: Partial<DsaProblem>
 ): Promise<DsaProblem | null> {
-  const payload: Record<string, any> = { ...updates };
-  if (payload.topic) payload.topic = canonicalDsaTopic(payload.topic);
-  if (payload.status === "Todo") payload.status = "todo";
+  const normalizedTopic = updates.topic ? canonicalDsaTopic(updates.topic) : undefined;
+  const dbStatus = updates.status === "Todo" ? "todo" : updates.status === "Solved" ? "solved" : updates.status;
+
+  const existingMaps = (updates.revision_history as any)?.concept_maps || [];
+  const pattern = (updates.revision_history as any)?.pattern || null;
+  const embeddedNotes =
+    updates.approach_notes !== undefined
+      ? embedDsaMetadata(updates.approach_notes || "", {
+          time_complexity: updates.time_complexity,
+          space_complexity: updates.space_complexity,
+          is_favorite: updates.is_favorite,
+          pattern,
+          concept_maps: existingMaps,
+          revision_history: updates.revision_history,
+        })
+      : undefined;
+
+  const payload: Record<string, any> = {};
+  if (updates.title !== undefined) payload.title = updates.title;
+  if (updates.link !== undefined) payload.link = updates.link;
+  if (updates.platform !== undefined) payload.platform = updates.platform;
+  if (normalizedTopic !== undefined) payload.topic = normalizedTopic;
+  if (updates.difficulty !== undefined) payload.difficulty = updates.difficulty;
+  if (dbStatus !== undefined) payload.status = dbStatus;
+  if (updates.time_spent_minutes !== undefined) payload.time_spent_minutes = updates.time_spent_minutes;
+  if (embeddedNotes !== undefined) payload.approach_notes = embeddedNotes;
+  if (updates.code_snippet !== undefined) payload.code_snippet = updates.code_snippet;
+  if (updates.language !== undefined) payload.language = updates.language;
+  if (updates.next_revision_at !== undefined) payload.next_revision_at = updates.next_revision_at;
+  if (updates.revision_count !== undefined) payload.revision_count = updates.revision_count;
 
   try {
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("dsa_problems")
       .update(payload as any)
       .eq("id", problemId)
@@ -630,25 +685,17 @@ export async function updateDsaProblem(
       .select()
       .single();
 
-    if (error && error.message.includes("is_favorite")) {
-      delete payload.is_favorite;
-      const retry = await supabase
-        .from("dsa_problems")
-        .update(payload as any)
-        .eq("id", problemId)
-        .eq("user_id", userId)
-        .select()
-        .single();
-      data = retry.data;
-      error = retry.error;
-    }
-
     if (!error && data) {
+      const { cleanNotes, metadata } = extractDsaMetadata(data.approach_notes);
       return {
-        ...(data as DsaProblem),
-        status: data.status === "todo" ? "Todo" : data.status === "solved" ? "Solved" : data.status,
+        ...(data as unknown as DsaProblem),
+        approach_notes: cleanNotes,
+        status: updates.status || (data.status === "todo" ? "Todo" : data.status === "solved" ? "Solved" : data.status),
         topic: canonicalDsaTopic(data.topic),
-        is_favorite: updates.is_favorite !== undefined ? updates.is_favorite : (data as any).is_favorite,
+        time_complexity: updates.time_complexity || metadata.time_complexity || null,
+        space_complexity: updates.space_complexity || metadata.space_complexity || null,
+        is_favorite: updates.is_favorite !== undefined ? updates.is_favorite : Boolean(metadata.is_favorite),
+        revision_history: updates.revision_history || metadata.revision_history || { concept_maps: existingMaps, pattern },
       } as DsaProblem;
     }
   } catch (err) {

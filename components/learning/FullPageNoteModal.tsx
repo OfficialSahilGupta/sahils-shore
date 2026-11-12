@@ -70,6 +70,7 @@ import {
   prepareConceptMapImage,
   type ConceptMapImage,
 } from "@/lib/learning/concept-map";
+import { uploadConceptMapImage } from "@/lib/drive/concept-map-uploader";
 import { AttachConceptMapModal } from "./AttachConceptMapModal";
 
 interface FullPageNoteModalProps {
@@ -244,13 +245,13 @@ export function FullPageNoteModal({
         try {
           const prepared = await prepareConceptMapImage(file);
           const caption = prepared.caption || `Concept Map: ${item?.topic || "Architecture"}`;
-          handleAttachConceptMap({
-            id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            title: caption,
+          const uploadRes = await uploadConceptMapImage(prepared.dataUrl, {
+            module: "learning",
+            folderName: trackTitle || "Learning",
             caption,
-            url: prepared.dataUrl,
-            createdAt: new Date().toISOString(),
+            fileName: file.name,
           });
+          handleAttachConceptMap(uploadRes.map);
         } catch (err) {
           console.error("Failed to paste image into study notes:", err);
         }
@@ -1334,6 +1335,8 @@ export function FullPageNoteModal({
         isOpen={isAttachMapOpen}
         onClose={() => setIsAttachMapOpen(false)}
         topicTitle={item.topic}
+        module="learning"
+        folderName={trackTitle || "Learning"}
         onAttachConceptMap={handleAttachConceptMap}
         onAttachConceptMaps={handleAttachMultipleConceptMaps}
       />

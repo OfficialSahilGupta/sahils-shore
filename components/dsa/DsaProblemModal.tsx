@@ -79,6 +79,7 @@ import {
   prepareConceptMapImage,
   type ChapterConceptMap,
 } from "@/lib/learning/concept-map";
+import { uploadConceptMapImage } from "@/lib/drive/concept-map-uploader";
 import { CodeEditor } from "./CodeEditor";
 import { Select } from "@/components/ui/select";
 import { ModalPortal } from "@/components/ui/modal-portal";
@@ -377,13 +378,19 @@ export function DsaProblemModal({
     if (!files || files.length === 0) return;
     try {
       const preparedMaps = await prepareMultipleConceptMapImages(Array.from(files));
-      const formatted: ChapterConceptMap[] = preparedMaps.map((item, idx) => ({
-        id: `dsa-map-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
-        title: item.caption || `Diagram: ${title || "Algorithm Pattern"}`,
-        caption: item.caption,
-        url: item.dataUrl,
-        createdAt: new Date().toISOString(),
-      }));
+      const formatted: ChapterConceptMap[] = [];
+
+      for (let idx = 0; idx < preparedMaps.length; idx++) {
+        const item = preparedMaps[idx];
+        const cleanCaption = item.caption || `Diagram: ${title || "Algorithm Pattern"}`;
+        const uploadRes = await uploadConceptMapImage(item.dataUrl, {
+          module: "dsa",
+          folderName: title || "DSA",
+          caption: cleanCaption,
+        });
+        formatted.push(uploadRes.map);
+      }
+
       setConceptMaps((prev) => [...prev, ...formatted]);
       setActiveTab("visuals");
     } catch (err) {
@@ -405,14 +412,14 @@ export function DsaProblemModal({
         if (!file) continue;
         try {
           const prepared = await prepareConceptMapImage(file);
-          const newMap: ChapterConceptMap = {
-            id: `dsa-map-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            title: prepared.caption || `Pasted Diagram: ${title || "Blueprint"}`,
-            caption: prepared.caption,
-            url: prepared.dataUrl,
-            createdAt: new Date().toISOString(),
-          };
-          setConceptMaps((prev) => [...prev, newMap]);
+          const cleanCaption = prepared.caption || `Pasted Diagram: ${title || "Blueprint"}`;
+          const uploadRes = await uploadConceptMapImage(prepared.dataUrl, {
+            module: "dsa",
+            folderName: title || "DSA",
+            caption: cleanCaption,
+            fileName: file.name,
+          });
+          setConceptMaps((prev) => [...prev, uploadRes.map]);
           setActiveTab("visuals");
         } catch (err) {
           console.error("Failed to paste image:", err);
@@ -423,17 +430,28 @@ export function DsaProblemModal({
   };
 
   // Attach curated SVG preset
-  const handleAttachPreset = (preset: (typeof CURATED_DSA_PRESETS)[0]) => {
+  const handleAttachPreset = async (preset: (typeof CURATED_DSA_PRESETS)[0]) => {
     if (conceptMaps.some((m) => m.url === preset.svgDataUrl)) return;
-    const newMap: ChapterConceptMap = {
-      id: `preset-${preset.id}-${Date.now()}`,
-      title: preset.title,
-      caption: preset.description,
-      url: preset.svgDataUrl,
-      createdAt: new Date().toISOString(),
-    };
-    setConceptMaps((prev) => [...prev, newMap]);
-    setActiveTab("visuals");
+    try {
+      const uploadRes = await uploadConceptMapImage(preset.svgDataUrl, {
+        module: "dsa",
+        folderName: title || "DSA",
+        caption: preset.title,
+        fileName: `${preset.id}.svg`,
+      });
+      setConceptMaps((prev) => [...prev, uploadRes.map]);
+      setActiveTab("visuals");
+    } catch {
+      const newMap: ChapterConceptMap = {
+        id: `preset-${preset.id}-${Date.now()}`,
+        title: preset.title,
+        caption: preset.description,
+        url: preset.svgDataUrl,
+        createdAt: new Date().toISOString(),
+      };
+      setConceptMaps((prev) => [...prev, newMap]);
+      setActiveTab("visuals");
+    }
   };
 
   // Embed diagram markdown tag into notes

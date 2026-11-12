@@ -90,6 +90,7 @@ import {
   type ChapterConceptMap,
   type ConceptMapImage,
 } from "@/lib/learning/concept-map";
+import { uploadConceptMapImage } from "@/lib/drive/concept-map-uploader";
 import { AttachConceptMapModal } from "@/components/learning/AttachConceptMapModal";
 import { formatFriendlyISTDate } from "@/lib/date-utils";
 
@@ -250,13 +251,13 @@ export function DsaFullPageNoteModal({
         try {
           const prepared = await prepareConceptMapImage(file);
           const caption = prepared.caption || `Diagram: ${title || "Algorithm Blueprint"}`;
-          handleAttachConceptMap({
-            id: `dsa-map-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            title: caption,
+          const uploadRes = await uploadConceptMapImage(prepared.dataUrl, {
+            module: "dsa",
+            folderName: title || "DSA",
             caption,
-            url: prepared.dataUrl,
-            createdAt: new Date().toISOString(),
+            fileName: file.name,
           });
+          handleAttachConceptMap(uploadRes.map);
         } catch (err) {
           console.error("Failed to paste image into DSA notes:", err);
         }
@@ -1360,16 +1361,17 @@ export function DsaFullPageNoteModal({
             isOpen={isAttachMapOpen}
             onClose={() => setIsAttachMapOpen(false)}
             topicTitle={title}
+            module="dsa"
+            folderName={title || "DSA"}
             onAttachConceptMap={handleAttachConceptMap}
             onAttachConceptMaps={handleAttachMultipleConceptMaps}
-            onInsertImage={(caption, url) => {
-              handleAttachConceptMap({
-                id: `dsa-map-${Date.now()}`,
-                title: caption || "Algorithm Diagram",
+            onInsertImage={async (caption, url) => {
+              const res = await uploadConceptMapImage(url, {
+                module: "dsa",
+                folderName: title || "DSA",
                 caption: caption || "Algorithm Diagram",
-                url,
-                createdAt: new Date().toISOString(),
               });
+              handleAttachConceptMap(res.map);
               setIsAttachMapOpen(false);
             }}
           />

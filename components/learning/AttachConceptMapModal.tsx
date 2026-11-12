@@ -35,6 +35,7 @@ import {
   type ConceptMapPreset,
   type ChapterConceptMap,
 } from "@/lib/learning/concept-map";
+import { uploadConceptMapImage } from "@/lib/drive/concept-map-uploader";
 
 export interface QueuedUploadImage {
   id: string;
@@ -50,6 +51,8 @@ interface AttachConceptMapModalProps {
   isOpen: boolean;
   onClose: () => void;
   topicTitle: string;
+  module?: "learning" | "dsa";
+  folderName?: string;
   onAttachConceptMaps?: (conceptMaps: ChapterConceptMap[]) => void;
   onAttachConceptMap?: (conceptMap: ChapterConceptMap) => void;
   onInsertImage?: (caption: string, url: string) => void;
@@ -59,6 +62,8 @@ export function AttachConceptMapModal({
   isOpen,
   onClose,
   topicTitle,
+  module = "learning",
+  folderName,
   onAttachConceptMaps,
   onAttachConceptMap,
   onInsertImage,
@@ -69,6 +74,8 @@ export function AttachConceptMapModal({
   const [queuedImages, setQueuedImages] = useState<QueuedUploadImage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number } | null>(null);
+  const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
+  const [driveUploadProgress, setDriveUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -136,24 +143,40 @@ export function AttachConceptMapModal({
     setQueuedImages([]);
   };
 
-  // Submit batch uploads
-  const handleInsertBatchUpload = () => {
+  // Submit batch uploads with Google Drive & IndexedDB synchronization
+  const handleInsertBatchUpload = async () => {
     if (queuedImages.length === 0) return;
 
-    const newMaps: ChapterConceptMap[] = queuedImages.map((q, idx) => {
-      const cleanCaption = q.caption.trim() || `Concept Map: ${q.file.name}`;
-      return {
-        id: `cm-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
-        title: cleanCaption,
-        caption: cleanCaption,
-        url: q.previewUrl,
-        createdAt: new Date().toISOString(),
-      };
-    });
+    setIsUploadingToDrive(true);
+    setDriveUploadProgress({ current: 0, total: queuedImages.length });
 
-    if (onAttachConceptMaps) {
+    const newMaps: ChapterConceptMap[] = [];
+
+    try {
+      for (let i = 0; i < queuedImages.length; i++) {
+        const q = queuedImages[i];
+        setDriveUploadProgress({ current: i + 1, total: queuedImages.length });
+        const cleanCaption = q.caption.trim() || `Concept Map: ${q.file.name}`;
+
+        const uploadRes = await uploadConceptMapImage(q.previewUrl, {
+          module,
+          folderName: folderName || topicTitle,
+          caption: cleanCaption,
+          fileName: q.file.name,
+        });
+
+        newMaps.push(uploadRes.map);
+      }
+    } catch (err) {
+      console.error("[AttachConceptMapModal] Batch upload error:", err);
+    } finally {
+      setIsUploadingToDrive(false);
+      setDriveUploadProgress(null);
+    }
+
+    if (onAttachConceptMaps && newMaps.length > 0) {
       onAttachConceptMaps(newMaps);
-    } else if (onAttachConceptMap) {
+    } else if (onAttachConceptMap && newMaps.length > 0) {
       newMaps.forEach((m) => onAttachConceptMap(m));
     }
 
@@ -164,45 +187,76 @@ export function AttachConceptMapModal({
     resetAndClose();
   };
 
-  const handleInsertUrl = () => {
+  const handleInsertUrl = async () => {
     if (!directUrl.trim()) return;
     const cleanCaption = urlCaption.trim() || `Concept Map: ${topicTitle}`;
-    const newMap: ChapterConceptMap = {
-      id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      title: cleanCaption,
-      caption: cleanCaption,
-      url: directUrl.trim(),
-      createdAt: new Date().toISOString(),
-    };
+
+    setIsUploadingToDrive(true);
+    let finalMap: ChapterConceptMap;
+
+    try {
+      const uploadRes = await uploadConceptMapImage(directUrl.trim(), {
+        module,
+        folderName: folderName || topicTitle,
+        caption: cleanCaption,
+      });
+      finalMap = uploadRes.map;
+    } catch {
+      finalMap = {
+        id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        title: cleanCaption,
+        caption: cleanCaption,
+        url: directUrl.trim(),
+        createdAt: new Date().toISOString(),
+      };
+    } finally {
+      setIsUploadingToDrive(false);
+    }
 
     if (onAttachConceptMaps) {
-      onAttachConceptMaps([newMap]);
+      onAttachConceptMaps([finalMap]);
     } else if (onAttachConceptMap) {
-      onAttachConceptMap(newMap);
+      onAttachConceptMap(finalMap);
     }
     if (onInsertImage) {
-      onInsertImage(cleanCaption, directUrl.trim());
+      onInsertImage(cleanCaption, finalMap.url);
     }
     resetAndClose();
   };
 
-  const handleInsertPreset = (preset: ConceptMapPreset) => {
+  const handleInsertPreset = async (preset: ConceptMapPreset) => {
     const cleanCaption = `Concept Map: ${preset.title}`;
-    const newMap: ChapterConceptMap = {
-      id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      title: cleanCaption,
-      caption: cleanCaption,
-      url: preset.svgDataUrl,
-      createdAt: new Date().toISOString(),
-    };
+
+    setIsUploadingToDrive(true);
+    let finalMap: ChapterConceptMap;
+
+    try {
+      const uploadRes = await uploadConceptMapImage(preset.svgDataUrl, {
+        module,
+        folderName: folderName || topicTitle,
+        caption: cleanCaption,
+        fileName: `${preset.id}.svg`,
+      });
+      finalMap = uploadRes.map;
+    } catch {
+      finalMap = {
+        id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        title: cleanCaption,
+        caption: cleanCaption,
+        url: preset.svgDataUrl,
+        createdAt: new Date().toISOString(),
+      };
+    } finally {
+      setIsUploadingToDrive(false);
+    }
 
     if (onAttachConceptMaps) {
-      onAttachConceptMaps([newMap]);
+      onAttachConceptMaps([finalMap]);
     } else if (onAttachConceptMap) {
-      onAttachConceptMap(newMap);
+      onAttachConceptMap(finalMap);
     }
     if (onInsertImage) {
-      onInsertImage(cleanCaption, preset.svgDataUrl);
+      onInsertImage(cleanCaption, finalMap.url);
     }
     resetAndClose();
   };
@@ -213,6 +267,8 @@ export function AttachConceptMapModal({
     setUrlCaption("");
     setIsProcessing(false);
     setProcessingProgress(null);
+    setIsUploadingToDrive(false);
+    setDriveUploadProgress(null);
     onClose();
   };
 
@@ -450,7 +506,7 @@ export function AttachConceptMapModal({
                       Where are these images saved?
                     </p>
                     <p className="text-[11px] leading-relaxed">
-                      All images are securely saved in your Supabase PostgreSQL cloud database under <code className="font-mono text-[10px] text-[var(--primary)]">learning_items.resources.concept_maps</code>. They are completely separated from your Markdown notes text, keeping your notes 100% clean and readable. Protected by Row-Level Security (<code className="font-mono text-[10px]">auth.uid() = user_id</code>) and included in your automated backups.
+                      All images are automatically synchronized to your <span className="font-semibold text-[var(--text)]">Google Drive</span> under <code className="font-mono text-[10px] text-[var(--primary)]">Shore/{module === "dsa" ? "DSA" : "Learning"}/{folderName || topicTitle}/</code>, and backed up in your local IndexedDB vault. They are also securely persisted to your cloud database under <code className="font-mono text-[10px] text-[var(--primary)]">resources.concept_maps</code>.
                     </p>
                   </div>
                 </div>
@@ -570,15 +626,26 @@ export function AttachConceptMapModal({
                 <button
                   type="button"
                   onClick={handleInsertBatchUpload}
-                  disabled={queuedImages.length === 0 || isProcessing}
+                  disabled={queuedImages.length === 0 || isProcessing || isUploadingToDrive}
                   className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
-                  <Check className="h-3.5 w-3.5" />
-                  <span>
-                    {queuedImages.length <= 1
-                      ? "Attach Diagram"
-                      : `Attach All (${queuedImages.length} Diagrams)`}
-                  </span>
+                  {isUploadingToDrive ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>
+                        Syncing {driveUploadProgress?.current ?? 1}/{driveUploadProgress?.total ?? queuedImages.length}...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>
+                        {queuedImages.length <= 1
+                          ? "Attach Diagram"
+                          : `Attach All (${queuedImages.length} Diagrams)`}
+                      </span>
+                    </>
+                  )}
                 </button>
               )}
 
@@ -586,11 +653,20 @@ export function AttachConceptMapModal({
                 <button
                   type="button"
                   onClick={handleInsertUrl}
-                  disabled={!directUrl.trim()}
+                  disabled={!directUrl.trim() || isUploadingToDrive}
                   className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
-                  <Check className="h-3.5 w-3.5" />
-                  <span>Attach from URL</span>
+                  {isUploadingToDrive ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Attach from URL</span>
+                    </>
+                  )}
                 </button>
               )}
             </div>

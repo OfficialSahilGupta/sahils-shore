@@ -1249,33 +1249,38 @@ export async function getRoadmapItems(
   }
 
   try {
-    // 1. Try ordering by order_index, created_at
-    const { data, error } = await supabase
+    // 1. Fetch user settings for deterministic track ordering
+    let savedOrderMap: Record<string, string[]> = {};
+    try {
+      const { data: settingsRow } = await supabase
+        .from("settings")
+        .select("modules_config")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (settingsRow?.modules_config && typeof settingsRow.modules_config === "object") {
+        savedOrderMap = (settingsRow.modules_config as any).learning_order || {};
+      }
+    } catch (e) {
+      console.warn("[getRoadmapItems] Settings fetch warning:", e);
+    }
+
+    const explicitTrackOrder = savedOrderMap[trackId] || [];
+
+    // 2. Fetch learning items from Supabase
+    const { data: rawList, error } = await supabase
       .from("learning_items")
       .select("*")
       .eq("user_id", userId)
       .eq("track_id", trackId)
-      .order("order_index", { ascending: true })
       .order("created_at", { ascending: true });
 
-    let rawList: any[] = [];
-    if (!error && data) {
-      rawList = data;
-    } else {
-      // 2. Fallback ordering by created_at only (base schema)
-      const fallbackRes = await supabase
-        .from("learning_items")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("track_id", trackId)
-        .order("created_at", { ascending: true });
-
-      if (!fallbackRes.error && fallbackRes.data) {
-        rawList = fallbackRes.data;
-      }
+    if (error) {
+      console.warn("[getRoadmapItems] Error fetching items:", error.message);
+      return [];
     }
 
-    if (rawList.length > 0) {
+    if (rawList && rawList.length > 0) {
       const mapped = rawList.map((row, idx) => {
         let res: Record<string, any> = {};
         let cat = "Core";
@@ -1290,6 +1295,7 @@ export async function getRoadmapItems(
         }
 
         const category = row.category || cat;
+        // Priority for order_index: explicitTrackOrder index > res.order_index > idx
         const order_index =
           row.order_index !== undefined && row.order_index !== null
             ? row.order_index
@@ -1304,13 +1310,28 @@ export async function getRoadmapItems(
         } as LearningItem;
       });
 
-      // Sort by order_index ascending, tie-breaking deterministically by created_at ASC
+      // Sort deterministically:
+      // 1. If explicitTrackOrder exists in settings, prioritize its exact order
+      // 2. Otherwise sort by order_index ascending
+      // 3. Fallback to created_at ASC
       mapped.sort((a, b) => {
+        if (explicitTrackOrder.length > 0) {
+          const aPos = explicitTrackOrder.indexOf(a.id);
+          const bPos = explicitTrackOrder.indexOf(b.id);
+          if (aPos !== -1 && bPos !== -1) return aPos - bPos;
+          if (aPos !== -1) return -1;
+          if (bPos !== -1) return 1;
+        }
+
         const diff = (a.order_index ?? 0) - (b.order_index ?? 0);
         if (diff !== 0) return diff;
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       });
-      return mapped;
+
+      return mapped.map((it, finalIdx) => ({
+        ...it,
+        order_index: finalIdx,
+      }));
     }
   } catch (err) {
     console.warn("[getRoadmapItems] Exception:", err);
@@ -1356,6 +1377,35 @@ export async function persistRoadmapOrder(
     return;
   }
 
+  const orderedIds = reorderedItems.map((it) => it.id);
+
+  // 1. Persist master track order into settings.modules_config.learning_order
+  try {
+    const { data: settingsRow } = await supabase
+      .from("settings")
+      .select("modules_config")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const currentConfig = (settingsRow?.modules_config as any) || {};
+    const learningOrder = { ...(currentConfig.learning_order || {}) };
+    learningOrder[trackId] = orderedIds;
+
+    await supabase
+      .from("settings")
+      .update({
+        modules_config: {
+          ...currentConfig,
+          learning_order: learningOrder,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId);
+  } catch (settingsErr) {
+    console.warn("[persistRoadmapOrder] Settings order save warning:", settingsErr);
+  }
+
+  // 2. Also update resources.order_index on individual items
   try {
     const updatePromises = reorderedItems.map(async (item, idx) => {
       let existingRes: Record<string, any> = {};
@@ -1376,29 +1426,14 @@ export async function persistRoadmapOrder(
         category,
       };
 
-      // 1. Try column update if schema supports it
-      const { error: primaryErr } = await supabase
+      await supabase
         .from("learning_items")
         .update({
-          order_index: idx,
-          category,
           resources: updatedRes as unknown as Json,
           updated_at: new Date().toISOString(),
-        } as any)
+        })
         .eq("id", item.id)
         .eq("user_id", userId);
-
-      // 2. If column update failed (e.g. order_index column does not exist in Postgres), update resources JSONB
-      if (primaryErr) {
-        await supabase
-          .from("learning_items")
-          .update({
-            resources: updatedRes as unknown as Json,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", item.id)
-          .eq("user_id", userId);
-      }
     });
 
     await Promise.all(updatePromises);

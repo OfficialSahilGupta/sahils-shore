@@ -111,6 +111,33 @@ export function LearningContainer() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Safe serializer that prevents 9MB base64 images from exceeding browser localStorage quota
+  const safeSerializeRoadmap = (items: LearningItem[]): string => {
+    try {
+      const sanitized = items.map((it) => {
+        if (it.resources && typeof it.resources === "object") {
+          const res = { ...(it.resources as any) };
+          if (Array.isArray(res.concept_maps)) {
+            res.concept_maps = res.concept_maps.map((cm: any) => ({
+              id: cm.id,
+              title: cm.title,
+              caption: cm.caption,
+              url: cm.url?.startsWith("data:") ? "" : cm.url,
+              driveFileId: cm.driveFileId,
+              driveWebViewLink: cm.driveWebViewLink,
+              createdAt: cm.createdAt,
+            }));
+          }
+          return { ...it, resources: res };
+        }
+        return it;
+      });
+      return JSON.stringify(sanitized);
+    } catch {
+      return JSON.stringify(items);
+    }
+  };
+
   // 1. Initialize user and ensure default tracks
   useEffect(() => {
     async function initUserAndTracks() {
@@ -341,9 +368,9 @@ export function LearningContainer() {
             }
           }
 
-          // Cache the authoritative sequence to localStorage
-          localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(finalRoadmap));
-          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(finalRoadmap));
+          // Cache the authoritative sequence to localStorage safely
+          localStorage.setItem(`shore_roadmap_${activeTrackId}`, safeSerializeRoadmap(finalRoadmap));
+          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, safeSerializeRoadmap(finalRoadmap));
         } catch (e) {
           console.warn("[LearningContainer] Cloud sync warning:", e);
         }
@@ -575,8 +602,8 @@ export function LearningContainer() {
       );
       if (typeof window !== "undefined" && activeTrackId) {
         try {
-          localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
-          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
+          localStorage.setItem(`shore_roadmap_${activeTrackId}`, safeSerializeRoadmap(next));
+          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, safeSerializeRoadmap(next));
         } catch (e) {}
       }
       return next;
@@ -615,8 +642,8 @@ export function LearningContainer() {
 
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(reordered));
-        localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(reordered));
+        localStorage.setItem(`shore_roadmap_${activeTrackId}`, safeSerializeRoadmap(reordered));
+        localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, safeSerializeRoadmap(reordered));
       } catch (e) {}
     }
 
@@ -653,8 +680,8 @@ export function LearningContainer() {
 
         if (typeof window !== "undefined" && activeTrackId) {
           try {
-            localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(updatedList));
-            localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(updatedList));
+            localStorage.setItem(`shore_roadmap_${activeTrackId}`, safeSerializeRoadmap(updatedList));
+            localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, safeSerializeRoadmap(updatedList));
           } catch (e) {}
         }
 
@@ -679,8 +706,8 @@ export function LearningContainer() {
       const next = prev.map((item) => (item.id === itemId ? { ...item, ...fieldUpdates } : item));
       if (typeof window !== "undefined" && activeTrackId) {
         try {
-          localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
-          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
+          localStorage.setItem(`shore_roadmap_${activeTrackId}`, safeSerializeRoadmap(next));
+          localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, safeSerializeRoadmap(next));
         } catch (e) {}
       }
       return next;
@@ -795,8 +822,8 @@ export function LearningContainer() {
           setRoadmapItems(fullList);
           if (typeof window !== "undefined") {
             try {
-              localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(fullList));
-              localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(fullList));
+              localStorage.setItem(`shore_roadmap_${activeTrackId}`, safeSerializeRoadmap(fullList));
+              localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, safeSerializeRoadmap(fullList));
             } catch (e) {}
           }
 
@@ -816,8 +843,8 @@ export function LearningContainer() {
     setRoadmapItems(next);
     if (typeof window !== "undefined" && activeTrackId) {
       try {
-        localStorage.setItem(`shore_roadmap_${activeTrackId}`, JSON.stringify(next));
-        localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, JSON.stringify(next));
+        localStorage.setItem(`shore_roadmap_${activeTrackId}`, safeSerializeRoadmap(next));
+        localStorage.setItem(`shore_preview_roadmap_${activeTrackId}`, safeSerializeRoadmap(next));
       } catch (e) {}
     }
     showToast("Topic removed from roadmap.");

@@ -52,6 +52,7 @@ import {
   prepareConceptMapImage,
   type ConceptMapImage,
 } from "@/lib/learning/concept-map";
+import { uploadConceptMapImage } from "@/lib/drive/concept-map-uploader";
 import { AttachConceptMapModal } from "./AttachConceptMapModal";
 import { MarkdownView } from "@/components/common/MarkdownView";
 import { CodeEditor } from "../dsa/CodeEditor";
@@ -262,12 +263,14 @@ export function TopicStudyModal({
         try {
           const prepared = await prepareConceptMapImage(file);
           const caption = prepared.caption || `Concept Map: ${activeSubSection.title || topicTitle}`;
-          handleAttachConceptMapToSub({
-            id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            title: caption,
+          const uploadRes = await uploadConceptMapImage(prepared.dataUrl, {
+            module: "learning",
+            folderName: trackTitle || "Learning",
             caption,
-            url: prepared.dataUrl,
-            createdAt: new Date().toISOString(),
+            fileName: file.name,
+          });
+          handleAttachConceptMapToSub({
+            ...uploadRes.map,
             subSectionId: activeSubSection.id,
           });
           setActivePillar("concept_maps");
@@ -1177,6 +1180,8 @@ export function TopicStudyModal({
             isOpen={isAttachMapOpen}
             onClose={() => setIsAttachMapOpen(false)}
             topicTitle={activeSubSection?.title || item.topic}
+            module="learning"
+            folderName={trackTitle || "Learning"}
             onAttachConceptMap={handleAttachConceptMapToSub}
             onAttachConceptMaps={handleAttachMultipleConceptMapsToSub}
           />
