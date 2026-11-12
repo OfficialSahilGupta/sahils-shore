@@ -376,11 +376,13 @@ export function DsaContainer() {
         time_complexity: problemData.time_complexity || null,
         space_complexity: problemData.space_complexity || null,
         is_favorite: Boolean(problemData.is_favorite),
-        revision_interval_days: 1,
-        next_revision_at: new Date(Date.now() + 86400000).toISOString(),
+        revision_interval_days: problemData.revision_interval_days || 1,
+        next_revision_at:
+          problemData.next_revision_at ||
+          new Date(Date.now() + 86400000).toISOString(),
         revision_count: 0,
         last_revised_at: null,
-        revision_history: [],
+        revision_history: (problemData.revision_history as any) || [],
         rating: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -738,7 +740,7 @@ export function DsaContainer() {
             className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-all"
           >
             <Plus className="h-4 w-4" />
-            <span>Log Problem</span>
+            <span>DSA Problem & Engineering Notes</span>
           </button>
         </div>
       </div>

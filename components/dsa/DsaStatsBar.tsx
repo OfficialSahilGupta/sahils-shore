@@ -110,7 +110,7 @@ export function DsaStatsBar({
           className="flex items-center justify-center gap-2 rounded-xl bg-[var(--primary)] py-3 px-4 text-xs font-semibold text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
         >
           <Plus className="h-4 w-4" />
-          <span>Log DSA Problem</span>
+          <span>DSA Problem & Engineering Notes</span>
         </button>
       </div>
     </div>

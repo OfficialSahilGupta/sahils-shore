@@ -49,6 +49,9 @@ export interface CreateDsaProblemInput {
   time_complexity?: string | null;
   space_complexity?: string | null;
   is_favorite?: boolean;
+  revision_interval_days?: number | null;
+  next_revision_at?: string | null;
+  revision_history?: Json;
 }
 
 export interface WeakTopicReport {
@@ -460,10 +463,10 @@ export async function createDsaProblem(
         language: input.language || "java",
         time_complexity: input.time_complexity || null,
         space_complexity: input.space_complexity || null,
-        revision_interval_days: 1,
-        next_revision_at: initialRevisionDate,
+        revision_interval_days: input.revision_interval_days || 1,
+        next_revision_at: input.next_revision_at || initialRevisionDate,
         revision_count: 0,
-        revision_history: [],
+        revision_history: (input.revision_history as any) || [],
         is_favorite: Boolean(input.is_favorite),
       })
       .select()
