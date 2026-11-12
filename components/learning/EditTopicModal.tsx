@@ -143,6 +143,15 @@ export function EditTopicModal({
         if (!hasExplicit && subSections[0].title.toLowerCase().includes("overview")) {
           subSections[0].title = trimmedTopic || "Chapter Notes";
         }
+        if (status === "completed") {
+          subSections.forEach((s) => {
+            s.isCompleted = true;
+          });
+        } else if (status === "planned") {
+          subSections.forEach((s) => {
+            s.isCompleted = false;
+          });
+        }
       } else {
         subSections.push({
           id: `sub-init-${Date.now()}`,

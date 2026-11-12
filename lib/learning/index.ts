@@ -474,10 +474,17 @@ export function calculateDynamicTrackMastery(
 
     if (hasAnyNotes || hasCodeSnippet) topicsNoted++;
 
-    if (item.status === "completed") {
+    const effectiveCompleted =
+      item.status === "completed" ||
+      (totalSubSections > 0 && completedSubSections === totalSubSections);
+    const effectiveInProgress =
+      item.status === "in_progress" ||
+      (totalSubSections > 0 && completedSubSections > 0 && !effectiveCompleted);
+
+    if (effectiveCompleted) {
       topicsMastered++;
       curriculumPoints += 100;
-    } else if (item.status === "in_progress") {
+    } else if (effectiveInProgress) {
       topicsInProgress++;
       if (completedSubSections > 0 && totalSubSections > 1) {
         const subRatio = completedSubSections / totalSubSections;
@@ -486,13 +493,7 @@ export function calculateDynamicTrackMastery(
         curriculumPoints += hasRichNotes ? 75 : hasAnyNotes ? 50 : 35;
       }
     } else {
-      // Planned: Only award points if the user has actively worked on and completed sub-sections
-      if (completedSubSections > 0 && totalSubSections > 1) {
-        const subRatio = completedSubSections / totalSubSections;
-        curriculumPoints += Math.min(60, Math.round(subRatio * 50));
-      } else {
-        curriculumPoints += 0;
-      }
+      curriculumPoints += 0;
     }
   });
 

@@ -143,19 +143,36 @@ export function RoadmapChecklist({
   };
 
   const filteredItems = items.filter((item) => {
-    if (filter === "completed") return item.status === "completed";
-    if (filter === "in_progress") return item.status === "in_progress";
-    if (filter === "planned") return item.status === "planned";
+    const subSections = parseTopicSubSections(item);
+    const completedSubs = subSections.filter((s) => s.isCompleted).length;
+    const effectiveStatus =
+      subSections.length > 0 && completedSubs === subSections.length
+        ? "completed"
+        : subSections.length > 0 && completedSubs > 0
+          ? item.status === "completed" ? "completed" : "in_progress"
+          : item.status;
+
+    if (filter === "completed") return effectiveStatus === "completed";
+    if (filter === "in_progress") return effectiveStatus === "in_progress";
+    if (filter === "planned") return effectiveStatus === "planned";
     return true;
   });
 
   const handleToggle = async (item: LearningItem) => {
+    const subSections = parseTopicSubSections(item);
+    const completedSubSections = subSections.filter((s) => s.isCompleted).length;
+    const currentEffective =
+      subSections.length > 0 && completedSubSections === subSections.length
+        ? "completed"
+        : subSections.length > 0 && completedSubSections > 0
+          ? item.status === "completed" ? "completed" : "in_progress"
+          : item.status;
+
     let nextStatus: "planned" | "in_progress" | "completed";
-    if (item.status === "planned") nextStatus = "in_progress";
-    else if (item.status === "in_progress") nextStatus = "completed";
+    if (currentEffective === "planned") nextStatus = "in_progress";
+    else if (currentEffective === "in_progress") nextStatus = "completed";
     else nextStatus = "planned";
 
-    const subSections = parseTopicSubSections(item);
     let updatedSubs = subSections;
     if (nextStatus === "completed") {
       updatedSubs = subSections.map((s) => ({ ...s, isCompleted: true }));
@@ -365,7 +382,19 @@ export function RoadmapChecklist({
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {(["all", "planned", "in_progress", "completed"] as const).map((st) => {
             const count =
-              st === "all" ? items.length : items.filter((i) => i.status === st).length;
+              st === "all"
+                ? items.length
+                : items.filter((i) => {
+                    const subSections = parseTopicSubSections(i);
+                    const completedSubs = subSections.filter((s) => s.isCompleted).length;
+                    const effectiveStatus =
+                      subSections.length > 0 && completedSubs === subSections.length
+                        ? "completed"
+                        : subSections.length > 0 && completedSubs > 0
+                          ? i.status === "completed" ? "completed" : "in_progress"
+                          : i.status;
+                    return effectiveStatus === st;
+                  }).length;
             const label =
               st === "all"
                 ? "All Topics"
@@ -413,13 +442,22 @@ export function RoadmapChecklist({
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-[var(--border)] w-full">
+        <div className="space-y-3 w-full">
           {filteredItems.map((item, index) => {
             const subSections = parseTopicSubSections(item);
             const hasSubTopics = hasExplicitSubTopics(item);
             const chapterNotes = getTopicChapterNotes(item);
             const isExpanded = expandedTopicIds.has(item.id);
             const completedSubSections = subSections.filter((s) => s.isCompleted).length;
+            const effectiveStatus: "planned" | "in_progress" | "completed" =
+              subSections.length > 0 && completedSubSections === subSections.length
+                ? "completed"
+                : subSections.length > 0 && completedSubSections > 0
+                  ? item.status === "completed" ? "completed" : "in_progress"
+                  : item.status;
+            const isCompleted = effectiveStatus === "completed";
+            const isInProgress = effectiveStatus === "in_progress";
+
             const hasNotes =
               subSections.some((s) => s.notes && s.notes.trim().length > 0) ||
               Boolean(item.notes && item.notes.trim().length > 0);
@@ -443,12 +481,12 @@ export function RoadmapChecklist({
             return (
               <div
                 key={item.id}
-                className={`py-3 first:pt-0 last:pb-0 space-y-2 w-full group transition-all rounded-xl px-2.5 -mx-2.5 border-l-2 ${
-                  item.status === "completed"
-                    ? "border-l-[var(--success)] bg-[var(--success)]/[0.04] hover:bg-[var(--success)]/[0.07]"
-                    : item.status === "in_progress"
-                      ? "border-l-[var(--warning)] bg-[var(--warning)]/[0.03] hover:bg-[var(--warning)]/[0.06]"
-                      : "border-l-transparent hover:bg-[var(--surface-muted)]/30"
+                className={`p-3.5 sm:p-4 space-y-2.5 w-full group transition-all rounded-xl border border-l-4 ${
+                  isCompleted
+                    ? "border-l-[var(--success)] border-t-[var(--success)]/25 border-r-[var(--success)]/25 border-b-[var(--success)]/25 bg-[var(--success)]/[0.04] hover:bg-[var(--success)]/[0.07] shadow-2xs"
+                    : isInProgress
+                      ? "border-l-[var(--warning)] border-t-[var(--warning)]/25 border-r-[var(--warning)]/25 border-b-[var(--warning)]/25 bg-[var(--warning)]/[0.03] hover:bg-[var(--warning)]/[0.06] shadow-2xs"
+                      : "border-[var(--border)] border-l-[var(--border)]/70 bg-[var(--surface)] hover:bg-[var(--surface-muted)]/20 hover:border-[var(--border-hover)]"
                 }`}
               >
                 {/* Main Topic Row */}
@@ -459,15 +497,15 @@ export function RoadmapChecklist({
                       type="button"
                       onClick={() => handleToggle(item)}
                       className="mt-0.5 shrink-0 transition-transform active:scale-95 p-0.5"
-                      title={`Current: ${item.status === "completed" ? "Mastered" : item.status.replace("_", " ")}. Click to cycle.`}
+                      title={`Current: ${isCompleted ? "Mastered" : effectiveStatus.replace("_", " ")}. Click to cycle.`}
                     >
-                      {item.status === "completed" ? (
+                      {isCompleted ? (
                         <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--success)]/20 text-[var(--success)] border border-[var(--success)]/40 shadow-2xs group-hover:scale-105 transition-transform">
                           <Check className="h-3 w-3 stroke-[2.5]" />
                         </div>
-                      ) : item.status === "in_progress" ? (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--warning)]/15 text-[var(--warning)] border border-[var(--warning)]/40 animate-pulse">
-                          <Clock className="h-3 w-3" />
+                      ) : isInProgress ? (
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--warning)]/15 text-[var(--warning)] border border-[var(--warning)]/40">
+                          <Clock className="h-3 w-3 text-[var(--warning)] animate-pulse" />
                         </div>
                       ) : (
                         <div className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors">
@@ -528,12 +566,12 @@ export function RoadmapChecklist({
                         </span>
 
                         {/* Status Accomplishment Badge */}
-                        {item.status === "completed" ? (
+                        {isCompleted ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-[var(--success)]/15 border border-[var(--success)]/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--success)] shrink-0 shadow-2xs">
                             <Check className="h-3 w-3 stroke-[2.5]" />
                             <span>Mastered</span>
                           </span>
-                        ) : item.status === "in_progress" ? (
+                        ) : isInProgress ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-[var(--warning)]/15 border border-[var(--warning)]/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--warning)] shrink-0">
                             <Clock className="h-3 w-3 animate-pulse" />
                             <span>In Progress</span>
@@ -551,9 +589,11 @@ export function RoadmapChecklist({
                               type="button"
                               onClick={() => handleOpenStudyModal(item)}
                               className={`flex items-center gap-1.5 rounded-l-lg px-2.5 py-0.5 text-[10px] font-semibold border border-r-0 transition-colors ${
-                                item.status === "completed" || (subSections.length > 0 && completedSubSections === subSections.length)
+                                isCompleted
                                   ? "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30 hover:bg-[var(--success)]/20"
-                                  : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 hover:bg-[var(--primary)]/20"
+                                  : isInProgress
+                                    ? "bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30 hover:bg-[var(--warning)]/20"
+                                    : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 hover:bg-[var(--primary)]/20"
                               }`}
                               title="Click to open full-screen study workspace"
                             >
@@ -565,9 +605,11 @@ export function RoadmapChecklist({
                               <div className="w-8 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
                                 <div
                                   className={`h-full transition-all duration-300 ${
-                                    item.status === "completed" || (subSections.length > 0 && completedSubSections === subSections.length)
+                                    isCompleted
                                       ? "bg-[var(--success)]"
-                                      : "bg-[var(--primary)]"
+                                      : isInProgress
+                                        ? "bg-[var(--warning)]"
+                                        : "bg-[var(--primary)]"
                                   }`}
                                   style={{
                                     width: `${subSections.length > 0 ? (completedSubSections / subSections.length) * 100 : 0}%`,
@@ -579,9 +621,11 @@ export function RoadmapChecklist({
                               type="button"
                               onClick={() => toggleExpand(item.id)}
                               className={`rounded-r-lg p-1 border transition-colors ${
-                                item.status === "completed" || (subSections.length > 0 && completedSubSections === subSections.length)
+                                isCompleted
                                   ? "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30 hover:bg-[var(--success)]/20"
-                                  : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 hover:bg-[var(--primary)]/20"
+                                  : isInProgress
+                                    ? "bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30 hover:bg-[var(--warning)]/20"
+                                    : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 hover:bg-[var(--primary)]/20"
                               }`}
                               title={isExpanded ? "Collapse inline preview" : "Expand inline preview"}
                             >
@@ -752,7 +796,7 @@ export function RoadmapChecklist({
                               key={sub.id}
                               className={`flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-xs transition-all group/sub ${
                                 sub.isCompleted
-                                  ? "border-[var(--success)]/30 bg-[var(--success)]/[0.04] hover:border-[var(--success)]/50"
+                                  ? "border-[var(--success)]/30 border-l-2 border-l-[var(--success)] bg-[var(--success)]/[0.04] hover:border-[var(--success)]/50"
                                   : "border-[var(--border)] bg-[var(--surface-muted)]/20 hover:border-[var(--primary)]/30"
                               }`}
                             >
