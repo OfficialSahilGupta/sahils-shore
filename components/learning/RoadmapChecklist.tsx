@@ -9,6 +9,7 @@
 
 import React, { useState } from "react";
 import {
+  Check,
   CheckCircle2,
   Circle,
   Clock,
@@ -420,7 +421,13 @@ export function RoadmapChecklist({
             return (
               <div
                 key={item.id}
-                className="py-3.5 first:pt-0 last:pb-0 space-y-2 w-full group transition-all"
+                className={`py-3 first:pt-0 last:pb-0 space-y-2 w-full group transition-all rounded-xl px-2.5 -mx-2.5 border-l-2 ${
+                  item.status === "completed"
+                    ? "border-l-[var(--success)] bg-[var(--success)]/[0.04] hover:bg-[var(--success)]/[0.07]"
+                    : item.status === "in_progress"
+                      ? "border-l-[var(--warning)] bg-[var(--warning)]/[0.03] hover:bg-[var(--warning)]/[0.06]"
+                      : "border-l-transparent hover:bg-[var(--surface-muted)]/30"
+                }`}
               >
                 {/* Main Topic Row */}
                 <div className="flex items-start justify-between gap-3 w-full">
@@ -429,15 +436,21 @@ export function RoadmapChecklist({
                     <button
                       type="button"
                       onClick={() => handleToggle(item)}
-                      className="mt-0.5 shrink-0 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors p-0.5"
-                      title={`Current: ${item.status}. Click to cycle.`}
+                      className="mt-0.5 shrink-0 transition-transform active:scale-95 p-0.5"
+                      title={`Current: ${item.status === "completed" ? "Mastered" : item.status.replace("_", " ")}. Click to cycle.`}
                     >
                       {item.status === "completed" ? (
-                        <CheckCircle2 className="h-5 w-5 text-[var(--success)]" />
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--success)]/20 text-[var(--success)] border border-[var(--success)]/40 shadow-2xs group-hover:scale-105 transition-transform">
+                          <Check className="h-3 w-3 stroke-[2.5]" />
+                        </div>
                       ) : item.status === "in_progress" ? (
-                        <Clock className="h-5 w-5 text-[var(--warning)] animate-pulse" />
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--warning)]/15 text-[var(--warning)] border border-[var(--warning)]/40 animate-pulse">
+                          <Clock className="h-3 w-3" />
+                        </div>
                       ) : (
-                        <Circle className="h-5 w-5 text-[var(--text-muted)]" />
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors">
+                          <Circle className="h-3.5 w-3.5 opacity-60" />
+                        </div>
                       )}
                     </button>
 
@@ -478,15 +491,11 @@ export function RoadmapChecklist({
                           </span>
                         </div>
 
-                        {/* Topic title button - Clicking opens full-screen study workspace popup */}
+                        {/* Topic title button - Pure clean typography with zero strikethrough */}
                         <button
                           type="button"
                           onClick={() => handleOpenStudyModal(item)}
-                          className={`text-sm font-semibold text-left transition-colors hover:text-[var(--primary)] hover:underline truncate ${
-                            item.status === "completed"
-                              ? "text-[var(--text-muted)] line-through"
-                              : "text-[var(--text)]"
-                          }`}
+                          className="text-sm font-semibold text-left transition-colors text-[var(--text)] hover:text-[var(--primary)] hover:underline truncate"
                           title="Click to open chapter in full-screen study workspace"
                         >
                           {item.topic}
@@ -496,17 +505,22 @@ export function RoadmapChecklist({
                           {itemCategory}
                         </span>
 
-                        <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider shrink-0 ${
-                            item.status === "completed"
-                              ? "bg-[var(--success)]/15 text-[var(--success)]"
-                              : item.status === "in_progress"
-                                ? "bg-[var(--warning)]/15 text-[var(--warning)]"
-                                : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
-                          }`}
-                        >
-                          {item.status.replace("_", " ")}
-                        </span>
+                        {/* Status Accomplishment Badge */}
+                        {item.status === "completed" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-[var(--success)]/15 border border-[var(--success)]/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--success)] shrink-0 shadow-2xs">
+                            <Check className="h-3 w-3 stroke-[2.5]" />
+                            <span>Mastered</span>
+                          </span>
+                        ) : item.status === "in_progress" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-[var(--warning)]/15 border border-[var(--warning)]/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--warning)] shrink-0">
+                            <Clock className="h-3 w-3 animate-pulse" />
+                            <span>In Progress</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] shrink-0">
+                            <span>Planned</span>
+                          </span>
+                        )}
 
                         {/* Sub-topics count badge or Notes trigger button */}
                         {hasSubTopics ? (
@@ -693,20 +707,28 @@ export function RoadmapChecklist({
                           {subSections.map((sub, sIdx) => (
                             <div
                               key={sub.id}
-                              className="flex items-center justify-between gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-3 py-2 text-xs hover:border-[var(--primary)]/30 transition-all group/sub"
+                              className={`flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-xs transition-all group/sub ${
+                                sub.isCompleted
+                                  ? "border-[var(--success)]/30 bg-[var(--success)]/[0.04] hover:border-[var(--success)]/50"
+                                  : "border-[var(--border)] bg-[var(--surface-muted)]/20 hover:border-[var(--primary)]/30"
+                              }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 {/* Sub-topic toggle completion */}
                                 <button
                                   type="button"
                                   onClick={() => handleToggleSubTopic(item, sub.id)}
-                                  className="shrink-0 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                                  className="shrink-0 transition-transform active:scale-95"
                                   title={sub.isCompleted ? "Completed. Click to uncheck." : "Mark complete."}
                                 >
                                   {sub.isCompleted ? (
-                                    <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
+                                    <div className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--success)]/20 text-[var(--success)] border border-[var(--success)]/40 shadow-2xs">
+                                      <Check className="h-2.5 w-2.5 stroke-[3]" />
+                                    </div>
                                   ) : (
-                                    <Circle className="h-4 w-4 text-[var(--text-muted)]" />
+                                    <div className="flex h-4 w-4 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors">
+                                      <Circle className="h-3 w-3 opacity-60" />
+                                    </div>
                                   )}
                                 </button>
 
@@ -716,14 +738,17 @@ export function RoadmapChecklist({
 
                                 <span
                                   onClick={() => handleOpenStudyModal(item, sub.id)}
-                                  className={`font-semibold cursor-pointer hover:text-[var(--primary)] hover:underline truncate ${
-                                    sub.isCompleted
-                                      ? "text-[var(--text-muted)] line-through"
-                                      : "text-[var(--text)]"
-                                  }`}
+                                  className="font-semibold cursor-pointer text-[var(--text)] hover:text-[var(--primary)] hover:underline truncate"
                                 >
                                   {sub.title}
                                 </span>
+
+                                {sub.isCompleted && (
+                                  <span className="inline-flex items-center gap-0.5 rounded-md bg-[var(--success)]/15 border border-[var(--success)]/30 px-1.5 py-0.5 text-[9px] font-bold text-[var(--success)] shrink-0">
+                                    <Check className="h-2.5 w-2.5 stroke-[2.5]" />
+                                    <span>Done</span>
+                                  </span>
+                                )}
 
                                 {/* Indicators */}
                                 <div className="flex items-center gap-1 shrink-0">
