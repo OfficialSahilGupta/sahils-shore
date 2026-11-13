@@ -10,8 +10,17 @@ import type { Database } from "@/types/database";
 export function createClient() {
   const cookieStore = cookies();
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
+  const supabaseUrl = (
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    "https://placeholder-project.supabase.co"
+  ).trim().replace(/^["']|["']$/g, "");
+
+  const supabaseAnonKey = (
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    "placeholder-anon-key"
+  ).trim().replace(/^["']|["']$/g, "");
 
   return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookies: {

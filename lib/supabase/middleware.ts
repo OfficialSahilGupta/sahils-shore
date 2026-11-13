@@ -14,8 +14,11 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const rawAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+  const supabaseUrl = rawUrl ? rawUrl.trim().replace(/^["']|["']$/g, "") : undefined;
+  const supabaseAnonKey = rawAnon ? rawAnon.trim().replace(/^["']|["']$/g, "") : undefined;
 
   // If Supabase keys are not configured yet, skip auth guard to allow setup/health checks
   if (!supabaseUrl || !supabaseAnonKey) {
