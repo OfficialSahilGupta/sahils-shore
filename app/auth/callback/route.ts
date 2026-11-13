@@ -11,9 +11,16 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next") || "/";
 
+  // Resolve true origin behind reverse proxy (Vercel)
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+  const origin = forwardedHost
+    ? `${forwardedProto}://${forwardedHost}`
+    : requestUrl.origin;
+
   if (!code) {
     return NextResponse.redirect(
-      new URL("/login?error=no_code", requestUrl.origin)
+      new URL("/login?error=no_code", origin)
     );
   }
 
@@ -21,9 +28,13 @@ export async function GET(request: Request) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.user) {
-    console.error("[auth/callback] Code exchange error:", error?.message);
+    const errorMsg = error?.message || "No user returned from session exchange";
+    console.error("[auth/callback] Code exchange error:", errorMsg);
     return NextResponse.redirect(
-      new URL("/login?error=auth_failed", requestUrl.origin)
+      new URL(
+        `/login?error=auth_failed&detail=${encodeURIComponent(errorMsg)}`,
+        origin
+      )
     );
   }
 
@@ -40,11 +51,11 @@ export async function GET(request: Request) {
     await supabase.auth.signOut();
 
     return NextResponse.redirect(
-      new URL("/login?error=unauthorized", requestUrl.origin)
+      new URL("/login?error=unauthorized", origin)
     );
   }
 
   // Authorized user successfully authenticated
-  const targetUrl = new URL(next, requestUrl.origin);
+  const targetUrl = new URL(next, origin);
   return NextResponse.redirect(targetUrl);
 }

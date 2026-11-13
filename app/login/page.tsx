@@ -16,6 +16,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/";
   const errorParam = searchParams.get("error");
+  const detailParam = searchParams.get("detail");
 
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(() => {
@@ -23,7 +24,9 @@ function LoginForm() {
       return "Access Restricted: This instance of Sahil's Shore is locked to an authorized account. Your Google account is not permitted.";
     }
     if (errorParam === "auth_failed") {
-      return "Authentication Failed: Could not exchange authorization code with Google.";
+      return detailParam
+        ? `Authentication Failed: ${detailParam}`
+        : "Authentication Failed: Could not exchange authorization code with Google.";
     }
     if (errorParam === "no_code") {
       return "Authentication Error: Authorization code was missing in callback.";
