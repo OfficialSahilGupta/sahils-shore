@@ -37,6 +37,7 @@ export async function GET() {
 
   let dbStatus = "unconfigured";
   let dbLatencyMs: number | null = null;
+  let dbErrorDetails: unknown = null;
 
   if (isSupabaseConfigured) {
     try {
@@ -48,7 +49,8 @@ export async function GET() {
         .select("id", { count: "exact", head: true });
 
       dbLatencyMs = Date.now() - startTime;
-      dbStatus = error ? `error: ${error.message}` : "connected";
+      dbStatus = error ? `error: ${error.message || JSON.stringify(error)}` : "connected";
+      dbErrorDetails = error ? error : null;
     } catch (err: unknown) {
       dbStatus = `unreachable: ${err instanceof Error ? err.message : String(err)}`;
     }
@@ -79,10 +81,13 @@ export async function GET() {
       serviceRoleConfigured: Boolean(serviceRoleKey && !serviceRoleKey.includes("placeholder")),
       singleUserLockActive: Boolean(allowedEmail),
       allowedEmailMasked: maskedAllowedEmail,
+      urlPreview: supabaseUrl ? `${supabaseUrl.slice(0, 15)}... (len: ${supabaseUrl.length})` : "missing",
+      anonKeyPreview: anonKey ? `${anonKey.slice(0, 10)}...${anonKey.slice(-6)} (len: ${anonKey.length})` : "missing",
     },
     database: {
       status: dbStatus,
       latencyMs: dbLatencyMs,
+      details: dbErrorDetails,
     },
   };
 
