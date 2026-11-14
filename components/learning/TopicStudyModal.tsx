@@ -402,19 +402,19 @@ export function TopicStudyModal({
             <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">
               Topic Name & Category
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 type="text"
                 value={topicTitle}
                 onChange={(e) => setTopicTitle(e.target.value)}
-                className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] font-semibold focus:border-[var(--primary)] focus:outline-none"
+                className="flex-1 min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] font-semibold focus:border-[var(--primary)] focus:outline-none"
               />
               <input
                 type="text"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="Category"
-                className="w-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
+                className="w-full sm:w-36 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
               />
             </div>
           </div>

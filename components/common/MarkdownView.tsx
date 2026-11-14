@@ -287,9 +287,9 @@ function renderInline(text: string): React.ReactNode[] {
           href={linkMatch[2]}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[var(--primary)] hover:underline inline-flex items-center gap-0.5 font-medium underline underline-offset-2 transition-opacity hover:opacity-80"
+          className="text-[var(--primary)] hover:underline inline-flex items-center gap-0.5 font-medium underline underline-offset-2 transition-opacity hover:opacity-80 break-all"
         >
-          <span>{linkMatch[1]}</span>
+          <span className="break-all">{linkMatch[1]}</span>
           <ExternalLink className="h-2.5 w-2.5 inline shrink-0" />
         </a>
       );
@@ -301,7 +301,7 @@ function renderInline(text: string): React.ReactNode[] {
       return (
         <code
           key={`code-${idx}`}
-          className="rounded-md bg-[var(--surface-muted)]/80 px-1.5 py-0.5 font-mono text-[11px] text-[var(--primary)] border border-[var(--border)] font-semibold"
+          className="rounded-md bg-[var(--surface-muted)]/80 px-1.5 py-0.5 font-mono text-[11px] text-[var(--primary)] border border-[var(--border)] font-semibold break-all"
         >
           {codeMatch[1]}
         </code>
@@ -569,7 +569,7 @@ export function MarkdownView({ content, className = "", compact = false }: Markd
       elements.push(
         <h1
           key={`h1-${i}`}
-          className="text-base sm:text-lg font-bold text-[var(--text)] pb-1.5 border-b border-[var(--border)] mt-3 mb-1.5 tracking-tight"
+          className="text-base sm:text-lg font-bold text-[var(--text)] pb-1.5 border-b border-[var(--border)] mt-3 mb-1.5 tracking-tight break-words"
         >
           {renderInline(trimmed.slice(2))}
         </h1>
@@ -581,7 +581,7 @@ export function MarkdownView({ content, className = "", compact = false }: Markd
       elements.push(
         <h2
           key={`h2-${i}`}
-          className="text-sm sm:text-base font-bold text-[var(--text)] pb-1 border-b border-[var(--border)]/60 mt-2.5 mb-1 tracking-tight"
+          className="text-sm sm:text-base font-bold text-[var(--text)] pb-1 border-b border-[var(--border)]/60 mt-2.5 mb-1 tracking-tight break-words"
         >
           {renderInline(trimmed.slice(3))}
         </h2>
@@ -593,10 +593,10 @@ export function MarkdownView({ content, className = "", compact = false }: Markd
       elements.push(
         <h3
           key={`h3-${i}`}
-          className="text-xs sm:text-sm font-bold text-[var(--text)] mt-2 mb-1 flex items-center gap-1.5"
+          className="text-xs sm:text-sm font-bold text-[var(--text)] mt-2 mb-1 flex items-center gap-1.5 break-words"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
-          <span>{renderInline(trimmed.slice(4))}</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)] shrink-0" />
+          <span className="min-w-0 flex-1 break-words">{renderInline(trimmed.slice(4))}</span>
         </h3>
       );
       continue;
@@ -606,7 +606,7 @@ export function MarkdownView({ content, className = "", compact = false }: Markd
       elements.push(
         <h4
           key={`h4-${i}`}
-          className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mt-1.5 mb-0.5"
+          className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mt-1.5 mb-0.5 break-words"
         >
           {renderInline(trimmed.slice(5))}
         </h4>
@@ -698,7 +698,7 @@ export function MarkdownView({ content, className = "", compact = false }: Markd
     elements.push(
       <p
         key={`p-${i}`}
-        className={`text-xs text-[var(--text)] leading-relaxed font-sans ${
+        className={`text-xs text-[var(--text)] leading-relaxed font-sans break-words ${
           compact ? "my-0.5" : "my-1"
         }`}
       >
@@ -713,7 +713,7 @@ export function MarkdownView({ content, className = "", compact = false }: Markd
 
   return (
     <div
-      className={`w-full prose-invert max-w-none text-xs text-[var(--text)] space-y-1 ${className}`}
+      className={`w-full max-w-full min-w-0 break-words overflow-hidden prose-invert text-xs text-[var(--text)] space-y-1 ${className}`}
     >
       {elements}
     </div>

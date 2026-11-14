@@ -72,19 +72,19 @@ export function StudyTimerBar({ track, onSaveSession }: StudyTimerBarProps) {
       : "MERN";
 
   return (
-    <div className="w-full rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-3.5 shadow-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="w-full rounded-2xl border border-[var(--surface-muted)] bg-[var(--surface)] p-3.5 shadow-sm min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
         {/* Left: Timer Display & Status */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
             <Clock className="h-5 w-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider shrink-0">
                 Study Timer
               </span>
-              <span className="rounded-md bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--text)]">
+              <span className="rounded-md bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--text)] truncate max-w-full">
                 Syncs to Daily Tracker ({activityName})
               </span>
             </div>

@@ -1103,7 +1103,7 @@ export function LearningContainer() {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 pt-2">
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 pt-2 min-w-0">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-[var(--text)] px-4 py-2.5 text-xs font-semibold text-[var(--surface)] shadow-lg animate-in slide-in-from-bottom duration-200">
@@ -1112,19 +1112,19 @@ export function LearningContainer() {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between w-full">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text)] flex items-center gap-2.5">
-            <Layers className="h-6 w-6 text-[var(--primary)]" />
-            Learning Hub
+            <Layers className="h-6 w-6 text-[var(--primary)] shrink-0" />
+            <span>Learning Hub</span>
           </h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1 max-w-2xl">
+          <p className="text-xs text-[var(--text-muted)] mt-1 max-w-2xl break-words">
             Master your core engineering tracks and technical approaches with structured roadmaps, architecture notes, code implementations, and project milestones.
           </p>
 
           {tracks.length > 0 && (
             <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)]">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] shrink-0">
                 Active Approaches:
               </span>
               {tracks.map((t) => {
@@ -1134,13 +1134,13 @@ export function LearningContainer() {
                     key={t.id}
                     type="button"
                     onClick={() => setActiveTrackId(t.id)}
-                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all ${
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all truncate max-w-xs ${
                       isSelected
                         ? "bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30 font-semibold shadow-2xs"
                         : "bg-[var(--surface-muted)]/50 text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)]"
                     }`}
                   >
-                    <span>{t.title}</span>
+                    <span className="truncate">{t.title}</span>
                   </button>
                 );
               })}
@@ -1159,7 +1159,7 @@ export function LearningContainer() {
             <RefreshCw
               className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
             />
-            <span>Refresh</span>
+            <span className="hidden sm:inline">Refresh</span>
           </button>
 
           <button
@@ -1190,7 +1190,7 @@ export function LearningContainer() {
       />
 
       {/* 3. Navigation Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-[var(--border)] overflow-x-auto pb-1 text-xs font-semibold w-full">
+      <div className="flex items-center gap-1.5 border-b border-[var(--border)] overflow-x-auto pb-1.5 text-xs font-semibold w-full min-w-0 scrollbar-none sm:scrollbar-thin">
         <button
           type="button"
           onClick={() => setActiveTab("roadmap")}

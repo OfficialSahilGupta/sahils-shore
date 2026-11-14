@@ -242,15 +242,15 @@ export function InterviewQaBank({
 
             return (
               <div key={q.id} className="py-3.5 first:pt-0 last:pb-0 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="space-y-1">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 min-w-0">
+                  <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="rounded-md bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--primary)]">
+                      <span className="rounded-md bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--primary)] shrink-0">
                         {q.technology}
                       </span>
                       {q.difficulty && (
                         <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                          className={`rounded-md px-2 py-0.5 text-[10px] font-semibold shrink-0 ${
                             q.difficulty === "Easy"
                               ? "bg-[var(--success)]/15 text-[var(--success)]"
                               : q.difficulty === "Hard"
@@ -265,14 +265,14 @@ export function InterviewQaBank({
                         q.tags.map((t) => (
                           <span
                             key={t}
-                            className="rounded bg-[var(--surface-muted)]/60 px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]"
+                            className="rounded bg-[var(--surface-muted)]/60 px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] shrink-0"
                           >
                             {t}
                           </span>
                         ))}
                     </div>
 
-                    <h4 className="text-sm font-bold text-[var(--text)] leading-snug">
+                    <h4 className="text-sm font-bold text-[var(--text)] leading-snug break-words">
                       {q.question}
                     </h4>
                   </div>
@@ -316,7 +316,7 @@ export function InterviewQaBank({
                     <button
                       type="button"
                       onClick={() => handleDelete(q)}
-                      className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] transition-colors"
+                      className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] transition-colors opacity-70 sm:opacity-0 sm:group-hover:opacity-100"
                       title="Delete question"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -326,7 +326,7 @@ export function InterviewQaBank({
 
                 {/* Answer Drawer */}
                 {isExpanded && (
-                  <div className="mt-2 rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-4 text-xs text-[var(--text)] leading-relaxed whitespace-pre-wrap animate-in fade-in duration-150">
+                  <div className="mt-2 rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-4 text-xs text-[var(--text)] leading-relaxed whitespace-pre-wrap break-words animate-in fade-in duration-150">
                     <strong className="block text-[11px] font-bold uppercase tracking-wider text-[var(--primary)] mb-1">
                       Model Answer:
                     </strong>

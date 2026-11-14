@@ -72,40 +72,70 @@ export function TrackSelector({
             }`}
           >
             {/* Clickable Card Body */}
-            <button
-              type="button"
-              onClick={() => onSelectTrack(track.id)}
-              className="w-full text-left flex flex-col justify-between flex-1"
-            >
-              <div className="flex items-start gap-3.5 w-full min-w-0">
-                <div
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                    isActive
-                      ? "bg-[var(--primary)]/15 text-[var(--primary)]"
-                      : "bg-[var(--surface-muted)]/60 text-[var(--text-muted)] group-hover:text-[var(--text)]"
-                  }`}
-                  style={track.color && isActive ? { color: track.color } : undefined}
+            <div className="w-full text-left flex flex-col justify-between flex-1">
+              <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
+                <button
+                  type="button"
+                  onClick={() => onSelectTrack(track.id)}
+                  className="flex items-start gap-3 min-w-0 flex-1 text-left"
                 >
-                  <IconComponent className="h-6 w-6" />
-                </div>
-
-                <div className="space-y-1 min-w-0 flex-1 pr-16">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-[var(--text)] truncate">
-                      {track.title}
-                    </h3>
-                    {progress === 100 && (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success)]" />
-                    )}
+                  <div
+                    className={`flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                      isActive
+                        ? "bg-[var(--primary)]/15 text-[var(--primary)]"
+                        : "bg-[var(--surface-muted)]/60 text-[var(--text-muted)] group-hover:text-[var(--text)]"
+                    }`}
+                    style={track.color && isActive ? { color: track.color } : undefined}
+                  >
+                    <IconComponent className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <p className="text-xs text-[var(--text-muted)] line-clamp-1 truncate font-sans">
-                    {track.description || "Core roadmap and interview preparation"}
-                  </p>
+
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-sm font-bold text-[var(--text)] truncate">
+                        {track.title}
+                      </h3>
+                      {progress === 100 && (
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success)]" />
+                      )}
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)] line-clamp-1 truncate font-sans">
+                      {track.description || "Core roadmap and interview preparation"}
+                    </p>
+                  </div>
+                </button>
+
+                {/* Badges & Actions in natural flex flow */}
+                <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                  {isActive && (
+                    <span className="rounded-full bg-[var(--primary)]/10 px-2.5 py-0.5 text-[10px] font-bold text-[var(--primary)] border border-[var(--primary)]/20">
+                      Active
+                    </span>
+                  )}
+
+                  {/* Delete button for custom user tracks */}
+                  {!isCoreTrack && onDeleteTrack && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTrackToDelete(track);
+                      }}
+                      className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                      title="Delete Track"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* Progress Bar & Percentage */}
-              <div className="mt-4 flex items-center gap-2.5 w-full pt-1">
+              <button
+                type="button"
+                onClick={() => onSelectTrack(track.id)}
+                className="mt-3.5 flex items-center gap-2.5 w-full pt-1 text-left"
+              >
                 <div className="h-1.5 flex-1 max-w-[150px] overflow-hidden rounded-full bg-[var(--surface-muted)]">
                   <div
                     className="h-full rounded-full transition-all duration-500 bg-[var(--primary)]"
@@ -118,31 +148,7 @@ export function TrackSelector({
                 <span className="text-[11px] font-mono font-semibold text-[var(--text)] shrink-0">
                   {progress}% Mastery
                 </span>
-              </div>
-            </button>
-
-            {/* Badges & Actions */}
-            <div className="absolute top-4 right-4 flex items-center gap-1.5 shrink-0">
-              {isActive ? (
-                <span className="rounded-full bg-[var(--primary)]/10 px-2.5 py-0.5 text-[10px] font-bold text-[var(--primary)] border border-[var(--primary)]/20">
-                  Active
-                </span>
-              ) : null}
-
-              {/* Delete button for custom user tracks */}
-              {!isCoreTrack && onDeleteTrack && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setTrackToDelete(track);
-                  }}
-                  className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Delete Track"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              )}
+              </button>
             </div>
           </div>
         );

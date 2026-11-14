@@ -298,19 +298,19 @@ export function ConceptsLog({
 
             return (
               <div key={concept.id} className="py-3.5 first:pt-0 last:pb-0 space-y-2 group">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-start justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                     {/* Area Badge */}
-                    <span className="flex items-center gap-1 rounded-md bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--primary)] border border-[var(--primary)]/20">
+                    <span className="flex items-center gap-1 rounded-md bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--primary)] border border-[var(--primary)]/20 shrink-0">
                       <Layers className="h-2.5 w-2.5" />
                       <span>{area}</span>
                     </span>
 
-                    <span className="text-sm font-bold text-[var(--text)]">
+                    <span className="text-sm font-bold text-[var(--text)] break-words min-w-0">
                       {cleanTitle}
                     </span>
 
-                    <span className="flex items-center gap-1 rounded bg-[var(--surface-muted)]/60 px-2 py-0.5 text-[10px] text-[var(--text-muted)] font-mono">
+                    <span className="flex items-center gap-1 rounded bg-[var(--surface-muted)]/60 px-2 py-0.5 text-[10px] text-[var(--text-muted)] font-mono shrink-0">
                       <Calendar className="h-3 w-3" />
                       {formatFriendlyISTDate(concept.learned_at)}
                     </span>
@@ -319,14 +319,14 @@ export function ConceptsLog({
                   <button
                     type="button"
                     onClick={() => setConceptToDelete(concept)}
-                    className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] transition-colors opacity-0 group-hover:opacity-100"
+                    className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--danger)]/15 hover:text-[var(--danger)] transition-colors opacity-70 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
                     title="Delete concept"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
-                <p className="text-xs text-[var(--text)] whitespace-pre-wrap leading-relaxed pl-3 border-l-2 border-[var(--primary)]/40 font-sans">
+                <p className="text-xs text-[var(--text)] whitespace-pre-wrap break-words leading-relaxed pl-3 border-l-2 border-[var(--primary)]/40 font-sans">
                   {concept.notes}
                 </p>
               </div>

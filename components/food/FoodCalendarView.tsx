@@ -316,7 +316,7 @@ export function FoodCalendarView({
                   key={day.dateIST}
                   type="button"
                   onClick={() => setSelectedDateIST(day.dateIST)}
-                  className={`relative flex flex-col justify-between p-2 min-h-[72px] sm:min-h-[86px] rounded-xl border text-left transition-all ${
+                  className={`relative flex flex-col justify-between p-1 sm:p-2 min-h-[50px] sm:min-h-[86px] rounded-xl border text-left transition-all min-w-0 ${
                     isSelected
                       ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-xs"
                       : isToday
@@ -327,11 +327,11 @@ export function FoodCalendarView({
                   }`}
                 >
                   {/* Top Day Header */}
-                  <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center justify-between w-full min-w-0">
                     <span
-                      className={`text-xs font-bold ${
+                      className={`text-xs font-bold leading-none ${
                         isToday
-                          ? "flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]"
+                          ? "flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] sm:text-[10px]"
                           : isSelected
                           ? "text-primary"
                           : ""
@@ -340,14 +340,51 @@ export function FoodCalendarView({
                       {day.dayNumber}
                     </span>
                     {day.spendPaise > 0 && (
-                      <span className="text-[9px] font-mono text-text-muted truncate">
-                        ₹{Math.round(day.spendPaise / 100)}
-                      </span>
+                      <>
+                        <span className="hidden sm:inline text-[9px] font-mono text-text-muted truncate ml-1">
+                          ₹{Math.round(day.spendPaise / 100)}
+                        </span>
+                        <span
+                          className="sm:hidden h-1.5 w-1.5 rounded-full bg-accent-warm shrink-0"
+                          title={`₹${Math.round(day.spendPaise / 100)}`}
+                        />
+                      </>
                     )}
                   </div>
 
-                  {/* Slot Badges */}
-                  <div className="flex items-center gap-1 my-1 flex-wrap">
+                  {/* Mobile Slot Indicators (4 colored micro-dots) */}
+                  <div className="flex sm:hidden items-center justify-center gap-1 my-auto w-full py-0.5">
+                    {SLOTS.map(({ type }) => {
+                      const mealForSlot = day.meals.find((m) => m.meal_type === type);
+                      if (!mealForSlot) {
+                        return (
+                          <span
+                            key={type}
+                            className="h-1 w-1 rounded-full bg-border/60 shrink-0"
+                          />
+                        );
+                      }
+                      if (mealForSlot.is_skipped) {
+                        return (
+                          <span
+                            key={type}
+                            className="h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0"
+                            title={`Skipped ${type}`}
+                          />
+                        );
+                      }
+                      return (
+                        <span
+                          key={type}
+                          className="h-1.5 w-1.5 rounded-full bg-primary shrink-0"
+                          title={`${type}: ${mealForSlot.description}`}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Desktop Slot Badges */}
+                  <div className="hidden sm:flex items-center gap-1 my-1 flex-wrap">
                     {SLOTS.map(({ type, short, icon: SlotIcon }) => {
                       const mealForSlot = day.meals.find((m) => m.meal_type === type);
                       if (!mealForSlot) {
@@ -384,7 +421,7 @@ export function FoodCalendarView({
 
                   {/* Bottom photos or items count */}
                   {hasMeals && (
-                    <div className="text-[9px] text-text-muted truncate">
+                    <div className="hidden sm:block text-[9px] text-text-muted truncate">
                       {day.meals.length} {day.meals.length === 1 ? "entry" : "entries"}
                     </div>
                   )}
@@ -438,17 +475,17 @@ export function FoodCalendarView({
                   return (
                     <div
                       key={type}
-                      className="flex items-center justify-between rounded-xl border border-dashed border-border p-3 text-xs bg-surface-muted/30"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-dashed border-border p-3 text-xs bg-surface-muted/30 min-w-0"
                     >
-                      <div className="flex items-center gap-2 text-text-muted">
-                        <SlotIcon className="h-4 w-4" />
+                      <div className="flex items-center gap-2 text-text-muted min-w-0 truncate">
+                        <SlotIcon className="h-4 w-4 shrink-0 text-primary" />
                         <span className="font-semibold text-text">{label}</span>
-                        <span className="text-[10px] font-mono text-text-muted/75">
+                        <span className="text-[10px] font-mono text-text-muted/75 shrink-0">
                           ({schedule[type]?.displayRange})
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
                         <button
                           type="button"
                           onClick={() => onQuickMarkSkipped(selectedDateIST, type, "Intermittent Fasting (16:8)")}
@@ -461,7 +498,7 @@ export function FoodCalendarView({
                         <button
                           type="button"
                           onClick={() => onOpenNewMeal(selectedDateIST, type)}
-                          className="rounded-lg bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors flex items-center gap-1"
+                          className="rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors flex items-center gap-1"
                         >
                           <Plus className="h-3 w-3" />
                           <span>Log</span>

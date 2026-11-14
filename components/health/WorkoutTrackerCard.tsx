@@ -6,7 +6,8 @@
 // ============================================================================
 
 import React, { useState, useEffect } from "react";
-import { Dumbbell, Plus, Clock, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { Dumbbell, Plus, Clock, CheckCircle2, ArrowRight } from "lucide-react";
 
 interface WorkoutTrackerCardProps {
   workoutMinutes: number | null;
@@ -124,8 +125,8 @@ export function WorkoutTrackerCard({
         </div>
       </div>
 
-      {/* Notes */}
-      <div className="pt-1">
+      {/* Notes & Full Hub Link */}
+      <div className="pt-1 space-y-2">
         <input
           type="text"
           value={notes}
@@ -136,6 +137,14 @@ export function WorkoutTrackerCard({
           placeholder="Notes (e.g. Chest/Triceps, 5km outdoor run)..."
           className="w-full rounded-xl border border-border bg-surface-muted/20 px-3 py-1.5 text-xs text-text placeholder:text-text-muted/60 outline-none focus:border-emerald-500 focus:bg-surface"
         />
+
+        <Link
+          href="/workout"
+          className="w-full py-1.5 px-3 rounded-xl border border-border bg-surface-muted/30 hover:bg-surface-muted text-xs font-semibold text-primary transition-colors flex items-center justify-center gap-1.5"
+        >
+          <span>Open Full Workout Hub (Exercises, Sets & Photos)</span>
+          <ArrowRight className="h-3 w-3" />
+        </Link>
       </div>
     </div>
   );

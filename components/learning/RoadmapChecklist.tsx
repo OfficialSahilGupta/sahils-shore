@@ -521,8 +521,8 @@ export function RoadmapChecklist({
                 }`}
               >
                 {/* Main Topic Row */}
-                <div className="flex items-start justify-between gap-3 w-full">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full min-w-0">
+                  <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
                     {/* Status Toggle Button */}
                     <button
                       type="button"
@@ -545,8 +545,8 @@ export function RoadmapChecklist({
                       )}
                     </button>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         {/* Position Badge & Up/Down Toggling Controls */}
                         <div className="flex items-center gap-1 shrink-0 bg-[var(--surface-muted)]/40 rounded-lg px-1.5 py-0.5 border border-[var(--border)]">
                           {onReorderTopics && (
@@ -586,7 +586,7 @@ export function RoadmapChecklist({
                         <button
                           type="button"
                           onClick={() => handleOpenStudyModal(item)}
-                          className="text-sm font-semibold text-left transition-colors text-[var(--text)] hover:text-[var(--primary)] hover:underline truncate"
+                          className="text-sm font-semibold text-left transition-colors text-[var(--text)] hover:text-[var(--primary)] hover:underline truncate max-w-full sm:max-w-md lg:max-w-lg"
                           title="Click to open chapter in full-screen study workspace"
                         >
                           {item.topic}
@@ -733,7 +733,7 @@ export function RoadmapChecklist({
                       {chapterNotes && !isExpanded && (
                         <p
                           onClick={() => handleOpenFullPageNotes(item)}
-                          className="mt-1 text-xs text-[var(--text-muted)] line-clamp-1 font-sans cursor-pointer hover:text-[var(--primary)] transition-colors"
+                          className="mt-1 text-xs text-[var(--text-muted)] line-clamp-1 font-sans cursor-pointer hover:text-[var(--primary)] transition-colors break-words"
                           title="Click to open full-page study notes"
                         >
                           {chapterNotes.replace(/[#*`_~>-]/g, "").trim()}
@@ -743,7 +743,7 @@ export function RoadmapChecklist({
                   </div>
 
                   {/* Actions on topic */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-end lg:self-center flex-wrap pt-1 lg:pt-0">
                     {onReorderTopics && trueIndex > 0 && (
                       <button
                         type="button"
@@ -752,7 +752,7 @@ export function RoadmapChecklist({
                         title="Move directly to #1 (Top of curriculum)"
                       >
                         <ArrowUpToLine className="h-3.5 w-3.5 text-[var(--primary)]" />
-                        <span className="hidden md:inline">To Top</span>
+                        <span className="hidden sm:inline">To Top</span>
                       </button>
                     )}
 
@@ -779,7 +779,7 @@ export function RoadmapChecklist({
                     <button
                       type="button"
                       onClick={() => handleOpenStudyModal(item)}
-                      className="hidden lg:flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-all shrink-0"
+                      className="hidden md:flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/20 px-2.5 py-1.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] transition-all shrink-0"
                       title="Open Code Implementation & Resources Workspace"
                     >
                       <Code2 className="h-3.5 w-3.5 text-[var(--primary)]" />
@@ -796,7 +796,7 @@ export function RoadmapChecklist({
                             title: item.topic,
                           })
                         }
-                        className="rounded-lg p-1.5 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="rounded-lg p-1.5 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                         title="Delete Topic"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -874,10 +874,10 @@ export function RoadmapChecklist({
 
                 {/* Inline Sub-Topics Tree & Quick Adder Drawer */}
                 {isExpanded && (
-                  <div className="mt-3 pl-5 sm:pl-8 pr-1 space-y-3 border-l-2 border-[var(--primary)]/30 ml-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="mt-3 pl-3 sm:pl-7 pr-1 space-y-3 border-l-2 border-[var(--primary)]/30 ml-1 sm:ml-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
                     {hasSubTopics ? (
                       <>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-1">
                           <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
                             <FolderTree className="h-3.5 w-3.5 text-[var(--primary)]" />
                             <span>Sub-Topics Inside &ldquo;{item.topic}&rdquo; ({subSections.length})</span>
@@ -892,13 +892,13 @@ export function RoadmapChecklist({
                           {subSections.map((sub, sIdx) => (
                             <div
                               key={sub.id}
-                              className={`flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-xs transition-all group/sub ${
+                              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs transition-all group/sub ${
                                 sub.isCompleted
                                   ? "border-[var(--success)]/30 border-l-2 border-l-[var(--success)] bg-[var(--success)]/[0.04] hover:border-[var(--success)]/50"
                                   : "border-[var(--border)] bg-[var(--surface-muted)]/20 hover:border-[var(--primary)]/30"
                               }`}
                             >
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap sm:flex-nowrap">
                                 {/* Sub-topic toggle completion */}
                                 <button
                                   type="button"
@@ -923,7 +923,7 @@ export function RoadmapChecklist({
 
                                 <span
                                   onClick={() => handleOpenStudyModal(item, sub.id)}
-                                  className="font-semibold cursor-pointer text-[var(--text)] hover:text-[var(--primary)] hover:underline truncate"
+                                  className="font-semibold cursor-pointer text-[var(--text)] hover:text-[var(--primary)] hover:underline truncate min-w-0 flex-1 max-w-full sm:max-w-xs md:max-w-sm"
                                 >
                                   {sub.title}
                                 </span>
@@ -964,7 +964,7 @@ export function RoadmapChecklist({
                               </div>
 
                               {/* Action buttons */}
-                              <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
                                 <button
                                   type="button"
                                   onClick={() => handleOpenStudyModal(item, sub.id)}
@@ -985,7 +985,7 @@ export function RoadmapChecklist({
                                         title: sub.title,
                                       })
                                     }
-                                    className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-0 group-hover/sub:opacity-100 transition-opacity"
+                                    className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-70 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity"
                                     title="Delete this sub-topic"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -1002,7 +1002,7 @@ export function RoadmapChecklist({
                             e.preventDefault();
                             handleQuickAddSubTopic(item);
                           }}
-                          className="flex items-center gap-2 pt-1"
+                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1"
                         >
                           <input
                             type="text"
@@ -1014,12 +1014,12 @@ export function RoadmapChecklist({
                               }))
                             }
                             placeholder={`+ Add sub-topic to "${item.topic}" (e.g. Bean Scopes & Lifecycle)...`}
-                            className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
+                            className="flex-1 min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none"
                           />
                           <button
                             type="submit"
                             disabled={!(quickAddSubTopicText[item.id] || "").trim()}
-                            className="flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0"
+                            className="flex items-center justify-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0"
                           >
                             <Plus className="h-3.5 w-3.5" />
                             <span>Add Sub-Topic</span>

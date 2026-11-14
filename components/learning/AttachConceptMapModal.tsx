@@ -309,18 +309,18 @@ export function AttachConceptMapModal({
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 px-5 py-2.5 border-b border-[var(--border)] bg-[var(--surface-muted)]/30 shrink-0">
+          <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-[var(--border)] bg-[var(--surface-muted)]/30 shrink-0 overflow-x-auto scrollbar-none sm:scrollbar-thin min-w-0">
             <button
               type="button"
               onClick={() => setActiveTab("upload")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${
                 activeTab === "upload"
                   ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs border border-[var(--border)]"
                   : "text-[var(--text-muted)] hover:text-[var(--text)]"
               }`}
             >
               <Upload className="h-3.5 w-3.5" />
-              <span>Upload Images (Batch Supported)</span>
+              <span>Upload Images<span className="hidden sm:inline"> (Batch Supported)</span></span>
               {queuedImages.length > 0 && (
                 <span className="rounded-full bg-[var(--primary)] text-white px-1.5 py-0.2 text-[10px] font-bold">
                   {queuedImages.length}
@@ -331,27 +331,27 @@ export function AttachConceptMapModal({
             <button
               type="button"
               onClick={() => setActiveTab("url")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${
                 activeTab === "url"
                   ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs border border-[var(--border)]"
                   : "text-[var(--text-muted)] hover:text-[var(--text)]"
               }`}
             >
               <LinkIcon className="h-3.5 w-3.5" />
-              <span>Direct Image URL</span>
+              <span>Direct<span className="hidden sm:inline"> Image</span> URL</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("presets")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${
                 activeTab === "presets"
                   ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs border border-[var(--border)]"
                   : "text-[var(--text-muted)] hover:text-[var(--text)]"
               }`}
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Curated Blueprints</span>
+              <span><span className="hidden sm:inline">Curated </span>Blueprints</span>
             </button>
           </div>
 

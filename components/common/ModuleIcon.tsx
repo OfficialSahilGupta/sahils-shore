@@ -18,6 +18,7 @@ import {
   Target,
   HeartPulse,
   BarChart3,
+  Dumbbell,
   HelpCircle,
   LucideProps,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   Target,
   HeartPulse,
   BarChart3,
+  Dumbbell,
 };
 
 export function ModuleIcon({ name, ...props }: ModuleIconProps) {

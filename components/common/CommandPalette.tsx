@@ -36,6 +36,7 @@ import {
   Settings,
   HelpCircle,
   Calendar,
+  Dumbbell,
 } from "lucide-react";
 
 interface CommandPaletteProps {
@@ -292,6 +293,7 @@ export function CommandPalette({
                 { label: "Learning Hub", route: "/learning", shortcut: "g l", icon: BookOpen },
                 { label: "German Hub & Pronunciation Lab", route: "/german", shortcut: "g g", icon: Languages },
                 { label: "Resume & Career Hub", route: "/career", shortcut: "g c", icon: Briefcase },
+                { label: "Workout & Fitness Hub", route: "/workout", shortcut: "g w", icon: Dumbbell },
                 { label: "Expense Tracker", route: "/expenses", shortcut: "g e", icon: Wallet },
                 { label: "Food Diary", route: "/food", icon: Utensils },
                 { label: "Places & Map", route: "/places", shortcut: "g p", icon: Compass },

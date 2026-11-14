@@ -142,6 +142,7 @@ export function TopBar() {
           case "l": router.push("/learning"); return;
           case "g": router.push("/german"); return;
           case "c": router.push("/career"); return;
+          case "w": router.push("/workout"); return;
           case "j": router.push("/journal"); return;
           case "n": router.push("/notes"); return;
           case "m": router.push("/media"); return;

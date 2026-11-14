@@ -143,14 +143,14 @@ export function ProjectTracker({
       </div>
 
       {/* Status Filter */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none sm:scrollbar-thin min-w-0">
         {(["all", "in_progress", "completed", "deployed", "idea"] as const).map(
           (s) => (
             <button
               key={s}
               type="button"
               onClick={() => setFilter(s)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition-all shrink-0 ${
                 filter === s
                   ? "bg-[var(--primary)] text-white shadow-sm"
                   : "border border-[var(--surface-muted)] bg-[var(--surface-muted)]/30 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/60"
@@ -174,7 +174,7 @@ export function ProjectTracker({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
           {filteredProjects.map((p) => {
             const statusClass =
               p.status === "deployed"
@@ -188,16 +188,16 @@ export function ProjectTracker({
             return (
               <div
                 key={p.id}
-                className="flex flex-col justify-between rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/15 p-4 space-y-3 hover:border-[var(--primary)]/40 transition-all"
+                className="flex flex-col justify-between rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/15 p-4 space-y-3 hover:border-[var(--primary)]/40 transition-all min-w-0"
               >
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <span
                       className={`rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusClass}`}
                     >
                       {p.status.replace("_", " ")}
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
                         onClick={() => openEditModal(p)}
@@ -216,11 +216,11 @@ export function ProjectTracker({
                     </div>
                   </div>
 
-                  <h4 className="mt-2 text-sm font-bold text-[var(--text)]">
+                  <h4 className="mt-2 text-sm font-bold text-[var(--text)] break-words">
                     {p.title}
                   </h4>
                   {p.description && (
-                    <p className="mt-1 text-xs text-[var(--text-muted)] line-clamp-2">
+                    <p className="mt-1 text-xs text-[var(--text-muted)] line-clamp-2 break-words">
                       {p.description}
                     </p>
                   )}

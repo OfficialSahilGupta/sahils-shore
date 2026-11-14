@@ -140,7 +140,22 @@ export const MODULES: AppModule[] = [
     category: "growth",
     phase: 9,
   },
-  // 9. Food Diary
+  // 9. Workout & Fitness Hub
+  {
+    id: "workout",
+    name: "Workout & Fitness",
+    shortName: "Workout",
+    description:
+      "Daily exercises, muscle group splits, weight & reps logging, daily physique photos, and workout calendar.",
+    tagline: "Forge your strength and discipline",
+    iconName: "Dumbbell",
+    route: "/workout",
+    enabled: true,
+    order: 9,
+    category: "growth",
+    phase: 10,
+  },
+  // 10. Food Diary
   {
     id: "food",
     name: "Food Diary",
@@ -151,11 +166,11 @@ export const MODULES: AppModule[] = [
     iconName: "Utensils",
     route: "/food",
     enabled: true,
-    order: 9,
+    order: 10,
     category: "life",
     phase: 4,
   },
-  // 10. Places & Map
+  // 11. Places & Map
   {
     id: "places",
     name: "Places & Map",
@@ -166,11 +181,11 @@ export const MODULES: AppModule[] = [
     iconName: "MapPin",
     route: "/places",
     enabled: true,
-    order: 10,
+    order: 11,
     category: "life",
     phase: 7,
   },
-  // 11. Life Log / Media Vault
+  // 12. Life Log / Media Vault
   {
     id: "media",
     name: "Life Log / Media Vault",
@@ -181,11 +196,11 @@ export const MODULES: AppModule[] = [
     iconName: "Image",
     route: "/media",
     enabled: true,
-    order: 11,
+    order: 12,
     category: "life",
     phase: 7,
   },
-  // 12. Journal & Reflection
+  // 13. Journal & Reflection
   {
     id: "journal",
     name: "Journal & Reflection",
@@ -196,11 +211,11 @@ export const MODULES: AppModule[] = [
     iconName: "BookOpen",
     route: "/journal",
     enabled: true,
-    order: 12,
+    order: 13,
     category: "life",
     phase: 10,
   },
-  // 13. Notes / Second Brain
+  // 14. Notes / Second Brain
   {
     id: "notes",
     name: "Notes / Second Brain",
@@ -211,11 +226,11 @@ export const MODULES: AppModule[] = [
     iconName: "FileText",
     route: "/notes",
     enabled: true,
-    order: 13,
+    order: 14,
     category: "life",
     phase: 10,
   },
-  // 14. Goals
+  // 15. Goals
   {
     id: "goals",
     name: "Goals",
@@ -226,11 +241,11 @@ export const MODULES: AppModule[] = [
     iconName: "Target",
     route: "/goals",
     enabled: true,
-    order: 14,
+    order: 15,
     category: "core",
     phase: 10,
   },
-  // 15. Health Mini-Trackers
+  // 16. Health Mini-Trackers
   {
     id: "health",
     name: "Health Mini-Trackers",
@@ -241,11 +256,11 @@ export const MODULES: AppModule[] = [
     iconName: "HeartPulse",
     route: "/health",
     enabled: true,
-    order: 15,
+    order: 16,
     category: "life",
     phase: 10,
   },
-  // 16. Analytics
+  // 17. Analytics
   {
     id: "analytics",
     name: "Analytics",
@@ -256,7 +271,7 @@ export const MODULES: AppModule[] = [
     iconName: "BarChart3",
     route: "/analytics",
     enabled: true,
-    order: 16,
+    order: 17,
     category: "insights",
     phase: 11,
   },

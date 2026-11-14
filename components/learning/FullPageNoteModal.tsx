@@ -368,27 +368,27 @@ export function FullPageNoteModal({
         <div className="w-full h-full sm:m-2.5 sm:w-[calc(100vw-20px)] sm:h-[calc(100vh-20px)] rounded-none sm:rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl flex flex-col overflow-hidden transition-all">
           
           {/* Top Document Studio Navigation Bar */}
-          <header className="h-14 sm:h-16 px-4 sm:px-6 border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur flex items-center justify-between gap-3 shrink-0">
+          <header className="h-14 sm:h-16 px-3 sm:px-6 border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur flex items-center justify-between gap-2 sm:gap-3 shrink-0 overflow-x-auto scrollbar-none">
             {/* Left: Back Arrow, Breadcrumbs, Category & Status */}
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 max-w-[48%] lg:max-w-[40%]">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)] transition-colors shrink-0"
+                className="rounded-xl p-1.5 sm:p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)] transition-colors shrink-0"
                 title="Back to Learning Hub (Esc)"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
 
               <div className="min-w-0 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
+                <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
                   <FileText className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] truncate">
-                    <span>Learning Hub</span>
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[var(--text-muted)] truncate">
+                    <span>Learning</span>
                     <span>/</span>
-                    <span>{trackTitle}</span>
+                    <span className="truncate">{trackTitle}</span>
                   </div>
                   <h2 className="text-xs sm:text-sm font-bold text-[var(--text)] truncate">
                     {item.topic}
@@ -429,7 +429,7 @@ export function FullPageNoteModal({
             </div>
 
             {/* Center: Reading Stats & Save Indicator */}
-            <div className="hidden lg:flex items-center gap-2 text-xs text-[var(--text-muted)] shrink-0">
+            <div className="hidden xl:flex items-center gap-2 text-xs text-[var(--text-muted)] shrink-0">
               <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-0.5 font-mono text-[11px]">
                 {readTimeMinutes} min read • {wordCount} words
                 {conceptMaps.length > 0 && ` • ${conceptMaps.length} visual maps`}
@@ -443,22 +443,23 @@ export function FullPageNoteModal({
             </div>
 
             {/* Right: Mode Switcher & Actions */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsAttachMapOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0"
+                className="hidden sm:flex items-center gap-1 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all shrink-0"
                 title="Attach Concept Map or Architecture Diagram (Upload / URL / Presets)"
               >
                 <ImagePlus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Add Map</span>
+                <span className="hidden md:inline">Add Map</span>
               </button>
+
               {/* Segmented Mode Selector: Read | Split | Edit | Visuals */}
-              <div className="flex items-center gap-1 rounded-xl bg-[var(--surface-muted)]/60 p-0.5 border border-[var(--border)]">
+              <div className="flex items-center gap-0.5 sm:gap-1 rounded-xl bg-[var(--surface-muted)]/60 p-0.5 border border-[var(--border)] shrink-0">
                 <button
                   type="button"
                   onClick={() => setMode("read")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all ${
                     mode === "read"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -466,12 +467,12 @@ export function FullPageNoteModal({
                   title="Reading Document View"
                 >
                   <BookOpen className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Read</span>
+                  <span className="hidden md:inline">Read</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("split")}
-                  className={`hidden md:flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  className={`hidden md:flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all ${
                     mode === "split"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -479,12 +480,12 @@ export function FullPageNoteModal({
                   title="Side-by-side Editor & Live Markdown Preview"
                 >
                   <Columns className="h-3.5 w-3.5" />
-                  <span>Split</span>
+                  <span className="hidden lg:inline">Split</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("edit")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all ${
                     mode === "edit"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -492,12 +493,12 @@ export function FullPageNoteModal({
                   title="Markdown Editor"
                 >
                   <Edit3 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Edit</span>
+                  <span className="hidden md:inline">Edit</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("visuals")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all ${
                     mode === "visuals"
                       ? "bg-[var(--surface)] text-[var(--primary)] shadow-2xs"
                       : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -505,7 +506,12 @@ export function FullPageNoteModal({
                   title="Dedicated Chapter Visual Concept Maps & Flowcharts"
                 >
                   <ImageIcon className="h-3.5 w-3.5" />
-                  <span>Visuals ({conceptMaps.length})</span>
+                  <span className="hidden lg:inline">Visuals</span>
+                  {conceptMaps.length > 0 && (
+                    <span className="text-[10px] font-mono font-bold bg-[var(--primary)] text-white rounded-full px-1">
+                      {conceptMaps.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -513,7 +519,7 @@ export function FullPageNoteModal({
               <button
                 type="button"
                 onClick={handleCopy}
-                className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                className="hidden sm:flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors shrink-0"
                 title="Copy Markdown to Clipboard"
               >
                 {copied ? (
@@ -521,17 +527,17 @@ export function FullPageNoteModal({
                 ) : (
                   <Copy className="h-3.5 w-3.5 text-[var(--text-muted)]" />
                 )}
-                <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+                <span className="hidden lg:inline">{copied ? "Copied" : "Copy"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleDownload}
-                className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors"
+                className="hidden md:flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-muted)] transition-colors shrink-0"
                 title="Download this note as a .md file"
               >
                 <Download className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-                <span className="hidden md:inline">.md</span>
+                <span className="hidden lg:inline">.md</span>
               </button>
 
               {onOpenStudyWorkspace && (
@@ -541,7 +547,7 @@ export function FullPageNoteModal({
                     onClose();
                     onOpenStudyWorkspace(item);
                   }}
-                  className="hidden sm:flex items-center gap-1 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
+                  className="hidden lg:flex items-center gap-1 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors shrink-0"
                   title="Open hands-on Code Implementation & Resources"
                 >
                   <Code2 className="h-3.5 w-3.5" />
@@ -554,17 +560,17 @@ export function FullPageNoteModal({
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
                 title="Save Document (Cmd+S)"
               >
                 <Save className="h-3.5 w-3.5" />
-                <span>{isSaving ? "Saving..." : "Save"}</span>
+                <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] transition-colors"
+                className="rounded-xl p-1.5 sm:p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] transition-colors shrink-0"
                 title="Close"
               >
                 <X className="h-4 w-4" />
@@ -789,9 +795,9 @@ export function FullPageNoteModal({
 
           {/* 2. SPLIT STUDIO MODE */}
             {mode === "split" && (
-              <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] bg-[var(--background)]">
+              <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] bg-[var(--background)] min-w-0">
                 {/* Left Column: Markdown Editor */}
-                <div className="flex flex-col h-full overflow-hidden bg-[var(--surface)]">
+                <div className="flex flex-col h-full overflow-hidden bg-[var(--surface)] min-w-0">
                   {/* Markdown Helper Toolbar */}
                   <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface-muted)]/30 flex items-center justify-between gap-1 overflow-x-auto scrollbar-thin shrink-0">
                     <div className="flex items-center gap-1">
@@ -900,7 +906,7 @@ export function FullPageNoteModal({
                 </div>
 
                 {/* Right Column: Live Markdown Preview */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[var(--background)] scrollbar-thin">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[var(--background)] scrollbar-thin min-w-0">
                   <div className="mb-3 pb-2 border-b border-[var(--border)] flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
                       <Eye className="h-3.5 w-3.5 text-[var(--primary)]" />

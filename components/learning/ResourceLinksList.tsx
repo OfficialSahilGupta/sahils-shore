@@ -115,14 +115,14 @@ export function ResourceLinksList({
       </div>
 
       {/* Category Filter */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none sm:scrollbar-thin min-w-0">
         {(["all", "Documentation", "Tutorial", "Practice", "Video"] as const).map(
           (c) => (
             <button
               key={c}
               type="button"
               onClick={() => setCategoryFilter(c)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition-all shrink-0 ${
                 categoryFilter.toLowerCase() === c.toLowerCase()
                   ? "bg-[var(--primary)] text-white shadow-sm"
                   : "border border-[var(--surface-muted)] bg-[var(--surface-muted)]/30 text-[var(--text-muted)] hover:bg-[var(--surface-muted)]/60"
@@ -146,19 +146,19 @@ export function ResourceLinksList({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
           {filteredResources.map((res) => (
             <div
               key={res.id}
-              className="flex items-start justify-between rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/15 p-4 hover:border-[var(--primary)]/40 transition-all"
+              className="flex items-start justify-between rounded-xl border border-[var(--surface-muted)] bg-[var(--surface-muted)]/15 p-4 hover:border-[var(--primary)]/40 transition-all min-w-0 gap-3"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
                 <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
                   {getCategoryIcon(res.category)}
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                    <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-muted)] shrink-0">
                       {res.category}
                     </span>
                   </div>
@@ -166,13 +166,13 @@ export function ResourceLinksList({
                     href={res.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 text-sm font-bold text-[var(--text)] hover:text-[var(--primary)] flex items-center gap-1 transition-colors group"
+                    className="mt-1 text-sm font-bold text-[var(--text)] hover:text-[var(--primary)] inline-flex items-center gap-1 transition-colors group break-words max-w-full"
                   >
-                    <span>{res.title}</span>
-                    <ExternalLink className="h-3.5 w-3.5 text-[var(--text-muted)] group-hover:text-[var(--primary)]" />
+                    <span className="break-words">{res.title}</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-[var(--text-muted)] group-hover:text-[var(--primary)] shrink-0" />
                   </a>
                   {res.description && (
-                    <p className="mt-1 text-xs text-[var(--text-muted)] line-clamp-2">
+                    <p className="mt-1 text-xs text-[var(--text-muted)] line-clamp-2 break-words">
                       {res.description}
                     </p>
                   )}

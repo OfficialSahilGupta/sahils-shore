@@ -43,6 +43,7 @@ export function KeyboardShortcutsModal({ open, onOpenChange }: KeyboardShortcuts
         { key: "g  l", desc: "Go to Learning Hub" },
         { key: "g  g", desc: "Go to German Hub & Lab" },
         { key: "g  c", desc: "Go to Career & Resume Hub" },
+        { key: "g  w", desc: "Go to Workout & Fitness Hub" },
         { key: "g  n", desc: "Go to Notes (Second Brain)" },
         { key: "g  j", desc: "Go to Journal & Reflection" },
         { key: "g  m", desc: "Go to Media Vault & Memories" },
